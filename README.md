@@ -12,6 +12,28 @@ Yatri Shield is an offline-first tourist safety demonstration for India. It supp
 - Light/dark tokens, accessible controls, live monitoring status, and demo Digital Tourist ID/QR flows.
 - English and Hindi across the demo path — onboarding, tabs, home, trip planner, consent tiers, permission primer, Shield, the SOS screen and its incident timeline. The language switch applies immediately and survives a restart. Screens outside that path (Alerts, Trips, Profile, Demo Lab, identity) still render English; their strings are not yet in the catalogue.
 
+## Screenshots
+
+Captured from the running app on a Pixel 9 Pro emulator. All data shown is demo data. The map area renders a zone summary because no Google Maps API key is configured in this build (see [Maps](#maps)).
+
+| Home · empty state and monitoring pill                                                                                                                                                                     | Consent tiers · "what leaves your phone"                                                                                                                                                                |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| <img src="docs/screenshots/01-home.png" width="270" alt="Home screen showing the Protected · live monitoring pill, a plan-your-next-trip empty state, and nearby police aid post and area advisory cards"> | <img src="docs/screenshots/02-consent-tiers.png" width="270" alt="Consent tier selector with Off, Check-ins only, Zone alerts and Full monitoring; Full monitoring is expanded showing its data table"> |
+
+| Shield · hold to arm                                                                                                                                                                                 | SOS · five-second countdown                                                                                                                              |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| <img src="docs/screenshots/03-shield.png" width="270" alt="Shield screen with the circular red SOS button, Medical, Police and Just watch me chips, a Silent SOS card, and the call-112 disclaimer"> | <img src="docs/screenshots/04-sos-countdown.png" width="270" alt="SOS countdown screen showing a large number 3 in red and an I am safe, cancel button"> |
+
+| SOS · responder dispatched from the mock operator                                                                                                                                  | Incident timeline · hash-chain integrity                                                                                                                                                           |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| <img src="docs/screenshots/05-sos-responder-enroute.png" width="270" alt="SOS active screen showing status responder en route and the message responder unit UK-12 is on the way"> | <img src="docs/screenshots/06-incident-timeline.png" width="270" alt="Incident timeline listing five hash-chained events with actors and timestamps, ending in the line 5 events, chain verified"> |
+
+| Home in Hindi                                                                                                                                                                | SOS in Hindi                                                                                                                                                                           |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| <img src="docs/screenshots/07-home-hindi.png" width="270" alt="Home screen rendered in Hindi, showing the greeting suprabhat and the plan-a-trip empty state in Devanagari"> | <img src="docs/screenshots/08-sos-hindi.png" width="270" alt="SOS active screen in Hindi with the incident timeline and the integrity line reading 4 ghatnayein, shrinkhala satyapit"> |
+
+The integrity line is a real check, not a label: it recomputes the SHA-256 event chain and will read `integrity check failed` if the chain does not verify.
+
 ## Prerequisites
 
 - Node.js 20 or later. Node 25 is installed on this development machine and has been used for validation.
