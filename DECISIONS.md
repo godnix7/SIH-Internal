@@ -35,3 +35,15 @@ The project does not score people or implement fake-report detection. It uses de
 ## D-09: Scope boundaries
 
 This is a development-quality demonstrator. Production requires tested permissions across OEMs, real secure backend infrastructure, a validated retention workflow, evidence upload pipeline, accessibility audit, human Hindi review, penetration test, and formal agency/telecom/legal agreements.
+
+## D-10: The OpenSSL runtime is packaged by our own config plugin
+
+`expo-sqlite` compiles SQLCipher against OpenSSL but declares `io.github.ronickg:openssl` as `compileOnly`, and that artifact ships only a `prefab/` tree for native linking. Neither route places `libcrypto.so` in the APK, so `libexpo-sqlite.so` — which carries a `DT_NEEDED` entry for it — fails to load and the encrypted outbox cannot be opened. `plugins/withSqlCipherRuntime.js` extracts the prefab `libcrypto.so` per ABI into a `jniLibs` source directory. Confirm `lib/<abi>/libcrypto.so` exists in any release APK before shipping.
+
+## D-11: A missing Maps API key degrades, it does not crash
+
+`react-native-maps` on Android always uses the Google provider and throws `IllegalStateException` at `MapView.onCreate` without an API key. Rather than committing a key to the repository or leaving the trip and SOS screens crashing, `MapZoneLayer` renders a zone summary when `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` is unset, and `app.config.js` injects the key into the manifest when it is set. This follows D-03 and the monitoring pill: degradation is visible and honest, never silent.
+
+## D-12: The integrity line reports a real check
+
+`verifyChain` existed but no screen called it; the SOS and incident screens printed the words "chain verified" unconditionally. The integrity line now recomputes the SHA-256 chain and can read `integrity check failed`. Doing so immediately exposed a genuine defect: `canonicalJson` serialised `undefined` members as a literal while `JSON.stringify` drops them, so a chain never re-verified after being persisted and restored. A tamper-evidence claim that cannot fail is not evidence of anything.

@@ -9,7 +9,8 @@ Yatri Shield is an offline-first tourist safety demonstration for India. It supp
 - On-device polygon evaluation with accuracy gates, consecutive-fix confirmation, and cooldowns.
 - Local Fastify + Socket.IO mock service and Leaflet dashboard at `http://localhost:4000/dashboard`.
 - Four deterministic demo scenarios: Jaipur advisory, Sikkim restricted boundary, Sahastra Tal off-route/offline replay, and SOS drill.
-- English and Hindi foundation, light/dark tokens, accessible controls, live monitoring status, and demo Digital Tourist ID/QR flows.
+- Light/dark tokens, accessible controls, live monitoring status, and demo Digital Tourist ID/QR flows.
+- An English and Hindi string catalogue. Note that no screen reads from it yet: every screen renders hardcoded English, so the language toggle changes nothing on screen. Wiring `useTranslation` through the screens is outstanding work, not a shipped feature.
 
 ## Prerequisites
 
@@ -64,8 +65,23 @@ npm run mock
 | Zone alerts     | Zone evaluation on-device              | Restricted/disaster entries only          |
 | Full monitoring | Mode-controlled local location batches | Location batches and critical zone events |
 
+## Maps
+
+`react-native-maps` uses the Google provider on Android and throws `IllegalStateException: API key not found` at `MapView.onCreate` when no key is present. Without a key the trip and SOS screens render a zone summary (last known location, accuracy, and the zone list) rather than a map. To enable the map, set `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` in `.env` and re-run `npm run prebuild` so the key reaches `AndroidManifest.xml`.
+
+## Building for an emulator only
+
+A default build compiles four ABIs and needs several GB of free disk. To build only what an x86_64 emulator runs:
+
+```powershell
+cd android
+./gradlew assembleDebug -PreactNativeArchitectures=x86_64
+```
+
 ## Known platform limitations
 
+- The location-engine mode table (`ACTIVE_TRIP` 60 s, `HIGH_RISK` 20 s, `EMERGENCY` 3 s, `LOW_BATTERY` 240 s) is defined and unit-tested, but `startMonitoring` currently requests a fixed 60 s interval. `HIGH_RISK`, `EMERGENCY` and `LOW_BATTERY` are never entered, and motion gating is not wired: `expo-sensors` and `expo-battery` are dependencies with no callers. Treat the mode table as design, not behaviour.
+- Geofence entry uses an accuracy gate, two consecutive inside fixes, and a per-zone cooldown. The accuracy-buffer hysteresis described in the design (shrink the polygon on entry, expand it on exit) is not implemented -- `Zone.bufferM` is stored and never read -- and no zone-exit event is emitted.
 - iOS does not offer an arbitrary persistent background service. The project uses the supported location/background model and must disclose reduced fidelity when the user only grants While Using permission.
 - iOS cannot send an SMS silently; the app opens a pre-filled system SMS composer for the demo shortcode `78112`.
 - Android power-button five-press interception is not implemented. It is intentionally not faked. The SOS button remains one tap away and the native power-button path requires a reviewed Android module before release.
