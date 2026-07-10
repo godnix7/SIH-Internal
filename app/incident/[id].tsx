@@ -19,9 +19,14 @@ export default function IncidentDetail() {
         {events.length ? (
           events.map((event) => <TimelineItem key={event.id} event={event} />)
         ) : (
-          <Text style={[type.body, { color: c.slate }]}>{t('sos.noEvents')}</Text>
+          <Text style={[type.body, { color: c.onSurfaceVariant }]}>{t('sos.noEvents')}</Text>
         )}
-        <Text style={[type.caption, { color: integrity === 'broken' ? c.signal : c.slate }]}>
+        <Text
+          style={[
+            type.caption,
+            { color: integrity === 'broken' ? c.critical : c.onSurfaceVariant },
+          ]}
+        >
           {t('sos.integrityRecord', {
             summary: t(integrityKey(integrity), { count: events.length }),
           })}

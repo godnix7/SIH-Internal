@@ -42,7 +42,7 @@ export default function ConceptTour() {
                   height: 4,
                   flex: 1,
                   borderRadius: 2,
-                  backgroundColor: item <= index ? c.trail : c.hairline,
+                  backgroundColor: item <= index ? c.primary : c.surfaceVariant,
                 }}
               />
             ))}
@@ -52,15 +52,15 @@ export default function ConceptTour() {
               width: 88,
               height: 88,
               borderRadius: 44,
-              backgroundColor: `${c.sky}15`,
+              backgroundColor: `${c.primary}15`,
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <Icon color={c.sky} size={42} />
+            <Icon color={c.primary} size={42} />
           </View>
-          <Text style={[type.display, { color: c.ink }]}>{slide.title}</Text>
-          <Text style={[type.body, { color: c.slate }]}>{slide.body}</Text>
+          <Text style={[type.display, { color: c.onSurface }]}>{slide.title}</Text>
+          <Text style={[type.body, { color: c.onSurfaceVariant }]}>{slide.body}</Text>
         </View>
         <View style={{ gap: space.sm }}>
           <Button

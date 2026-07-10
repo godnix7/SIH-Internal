@@ -112,7 +112,7 @@ export default function NewTrip() {
     <Screen title={t('trip.title')} subtitle={t('trip.step', { step })}>
       {step === 1 && (
         <View style={{ gap: space.sm }}>
-          <Text style={[type.heading, { color: c.ink }]}>{t('trip.destination')}</Text>
+          <Text style={[type.subtitle, { color: c.onSurface }]}>{t('trip.destination')}</Text>
           {destinations.map((item) => (
             <Button
               key={item}
@@ -141,8 +141,8 @@ export default function NewTrip() {
       )}
       {step === 3 && (
         <View style={{ gap: space.sm }}>
-          <Text style={[type.heading, { color: c.ink }]}>{t('trip.trekQuestion')}</Text>
-          <Text style={[type.body, { color: c.slate }]}>{t('trip.trekBody')}</Text>
+          <Text style={[type.subtitle, { color: c.onSurface }]}>{t('trip.trekQuestion')}</Text>
+          <Text style={[type.body, { color: c.onSurfaceVariant }]}>{t('trip.trekBody')}</Text>
           <Button
             label={trek ? t('trip.trekOn') : t('trip.trekOff')}
             variant={trek ? 'primary' : 'secondary'}
@@ -152,8 +152,8 @@ export default function NewTrip() {
       )}
       {step === 4 && (
         <View style={{ gap: space.sm }}>
-          <Text style={[type.heading, { color: c.ink }]}>{t('trip.contacts')}</Text>
-          <Text style={[type.body, { color: c.slate }]}>{t('trip.contactsBody')}</Text>
+          <Text style={[type.subtitle, { color: c.onSurface }]}>{t('trip.contacts')}</Text>
+          <Text style={[type.body, { color: c.onSurfaceVariant }]}>{t('trip.contactsBody')}</Text>
           <Button
             label={t('trip.contactsConfirm')}
             variant="secondary"
@@ -163,20 +163,22 @@ export default function NewTrip() {
       )}
       {step === 5 && (
         <View style={{ gap: space.sm }}>
-          <Text style={[type.heading, { color: c.ink }]}>{t('trip.tierTitle')}</Text>
+          <Text style={[type.subtitle, { color: c.onSurface }]}>{t('trip.tierTitle')}</Text>
           <TierSelector value={tier} onChange={setTier} />
         </View>
       )}
       {step === 6 && (
         <View style={{ gap: space.sm }}>
-          <Text style={[type.title, { color: c.ink }]}>{t('trip.reviewTitle')}</Text>
-          <Text style={[type.body, { color: c.slate }]}>
+          <Text style={[type.title, { color: c.onSurface }]}>{t('trip.reviewTitle')}</Text>
+          <Text style={[type.body, { color: c.onSurfaceVariant }]}>
             {destination} · {dates.start} to {dates.end}
           </Text>
-          <Text style={[type.body, { color: c.slate }]}>
+          <Text style={[type.body, { color: c.onSurfaceVariant }]}>
             {t('trip.monitoring', { tier: t(`tiers.${tier}.title`) })}
           </Text>
-          <Text style={[type.caption, { color: c.slate }]}>{t('trip.zonePackNote')}</Text>
+          <Text style={[type.caption, { color: c.onSurfaceVariant }]}>
+            {t('trip.zonePackNote')}
+          </Text>
         </View>
       )}
       {primer ? (

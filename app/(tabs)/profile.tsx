@@ -23,38 +23,38 @@ export default function ProfileScreen() {
     >
       <Card>
         <ListRow
-          icon={<CreditCard color={c.trail} />}
+          icon={<CreditCard color={c.primary} />}
           title="Digital Tourist ID"
           sub="Show a signed demo QR to a responder"
           onPress={() => router.push('/identity/card')}
-          trailing={<ChevronRight color={c.slate} />}
+          trailing={<ChevronRight color={c.onSurfaceVariant} />}
         />
         <ListRow
-          icon={<HeartPulse color={c.signal} />}
+          icon={<HeartPulse color={c.critical} />}
           title="Medical card"
           sub="Self-declared details for emergencies"
           onPress={() => router.push('/settings/medical')}
         />
         <ListRow
-          icon={<UsersRound color={c.sky} />}
+          icon={<UsersRound color={c.primary} />}
           title="Emergency contacts"
           sub="Choose who receives an escalation"
           onPress={() => router.push('/settings/contacts')}
         />
         <ListRow
-          icon={<LockKeyhole color={c.trail} />}
+          icon={<LockKeyhole color={c.primary} />}
           title="Privacy centre"
           sub="Review trip data and consent"
           onPress={() => router.push('/settings/privacy')}
         />
         <ListRow
-          icon={<Globe2 color={c.sky} />}
+          icon={<Globe2 color={c.primary} />}
           title="Language and appearance"
           sub="English, हिन्दी, light or dark"
           onPress={() => router.push('/settings/language')}
         />
       </Card>
-      <Text style={[type.caption, { color: c.slate }]}>
+      <Text style={[type.caption, { color: c.onSurfaceVariant }]}>
         The Demo Lab is available from your privacy centre. It marks operator data clearly as demo
         data.
       </Text>

@@ -33,8 +33,8 @@ export default function HomeScreen() {
   return (
     <Screen>
       <View style={{ gap: space.xs }}>
-        <Text style={[type.caption, { color: c.slate }]}>{t('home.greeting')}</Text>
-        <Text style={[type.display, { color: c.ink }]}>
+        <Text style={[type.caption, { color: c.onSurfaceVariant }]}>{t('home.greeting')}</Text>
+        <Text style={[type.display, { color: c.onSurface }]}>
           {profile?.name?.split(' ')[0] ?? t('home.fallbackName')}
         </Text>
         <MonitoringStatusPill state={state} onPress={() => router.push('/settings/privacy')} />
@@ -44,8 +44,8 @@ export default function HomeScreen() {
         <Card>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: space.sm }}>
             <View style={{ flex: 1, gap: 4 }}>
-              <Text style={[type.heading, { color: c.ink }]}>{trip.destination}</Text>
-              <Text style={[type.body, { color: c.slate }]}>
+              <Text style={[type.subtitle, { color: c.onSurface }]}>{trip.destination}</Text>
+              <Text style={[type.body, { color: c.onSurfaceVariant }]}>
                 {t('home.protectedWith', { tier: t(`tiers.${trip.tier}.title`) })}
               </Text>
               <Button
@@ -71,10 +71,10 @@ export default function HomeScreen() {
         />
       )}
       <View style={{ gap: space.xs }}>
-        <Text style={[type.title, { color: c.ink }]}>{t('home.nearby')}</Text>
+        <Text style={[type.title, { color: c.onSurface }]}>{t('home.nearby')}</Text>
         <Card>
           <ListRow
-            icon={<MapPin color={c.sky} />}
+            icon={<MapPin color={c.primary} />}
             title={t('home.policeAidPost')}
             sub={t('home.policeAidPostSub')}
             onPress={() =>
@@ -87,7 +87,7 @@ export default function HomeScreen() {
             }
           />
           <ListRow
-            icon={<ShieldCheck color={c.amber} />}
+            icon={<ShieldCheck color={c.warning} />}
             title={t('home.areaAdvisory')}
             sub={t('home.areaAdvisorySub')}
             onPress={() => router.push('/alerts')}
@@ -96,10 +96,12 @@ export default function HomeScreen() {
       </View>
       <Card>
         <View style={{ flexDirection: 'row', gap: space.sm, alignItems: 'center' }}>
-          <Umbrella color={c.sky} />
+          <Umbrella color={c.primary} />
           <View>
-            <Text style={[type.heading, { color: c.ink }]}>{t('home.weatherTitle')}</Text>
-            <Text style={[type.caption, { color: c.slate }]}>{t('home.weatherSub')}</Text>
+            <Text style={[type.subtitle, { color: c.onSurface }]}>{t('home.weatherTitle')}</Text>
+            <Text style={[type.caption, { color: c.onSurfaceVariant }]}>
+              {t('home.weatherSub')}
+            </Text>
           </View>
         </View>
       </Card>

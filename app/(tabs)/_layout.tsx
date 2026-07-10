@@ -29,7 +29,7 @@ function ShieldTabButton({
       testID={testID}
       onPress={onPress}
       onLongPress={onLongPress}
-      style={[styles.shield, { backgroundColor: c.signal }]}
+      style={[styles.shield, { backgroundColor: c.critical }]}
     >
       <Shield color="#FFFFFF" size={25} />
     </Pressable>
@@ -42,11 +42,11 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: c.trail,
-        tabBarInactiveTintColor: c.slate,
+        tabBarActiveTintColor: c.primary,
+        tabBarInactiveTintColor: c.onSurfaceVariant,
         tabBarStyle: {
-          backgroundColor: c.card,
-          borderTopColor: c.hairline,
+          backgroundColor: c.surface,
+          borderTopColor: c.surfaceVariant,
           height: 70,
           paddingTop: 6,
         },

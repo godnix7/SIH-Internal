@@ -1,8 +1,9 @@
 import * as SecureStore from 'expo-secure-store';
 import { create } from 'zustand';
+import { storage } from '@/src/lib/storage';
 
 import i18n, { LANGUAGE_KEY, savedLanguage, type Language } from '@/src/i18n';
-import { DEMO_CANCEL_PIN, remoteConfig } from '@/src/lib/constants';
+import { SOS_CANCEL_PIN, remoteConfig } from '@/src/lib/constants';
 import { tierLabel } from '@/src/lib/formatters';
 import { hashEvent } from '@/src/lib/hashChain';
 import type {
@@ -102,7 +103,6 @@ type Profile = {
 
 type AppStore = {
   hasCompletedOnboarding: boolean;
-  demoMode: boolean;
   online: boolean;
   language: Language;
   profile?: Profile;
@@ -111,8 +111,12 @@ type AppStore = {
   sos?: SOSRecord;
   incidentEvents: IncidentEvent[];
   theme: 'system' | 'light' | 'dark';
+  isAuthenticated: boolean;
+  userId?: string;
+  hydrateAuth: () => Promise<void>;
+  login: (userId: string) => void;
+  logout: () => Promise<void>;
   completeOnboarding: () => void;
-  setDemoMode: (enabled: boolean) => void;
   setOnline: (online: boolean) => void;
   saveProfile: (profile: Omit<Profile, 'idRef' | 'language'>) => void;
   setLanguage: (language: Language) => void;
@@ -158,8 +162,20 @@ async function clearPersistedSos(): Promise<void> {
 }
 
 export const useAppStore = create<AppStore>((set, get) => ({
+  isAuthenticated: false,
+  userId: undefined,
+  hydrateAuth: async () => {
+    const token = await storage.getAccessToken();
+    if (token) {
+      set({ isAuthenticated: true });
+    }
+  },
+  login: (userId) => set({ isAuthenticated: true, userId }),
+  logout: async () => {
+    await storage.clearTokens();
+    set({ isAuthenticated: false, userId: undefined });
+  },
   hasCompletedOnboarding: preferences.getBoolean('onboarding.completed') ?? false,
-  demoMode: preferences.getBoolean('demo.enabled') ?? true,
   online: true,
   profile: undefined,
   trips: [],
@@ -170,10 +186,6 @@ export const useAppStore = create<AppStore>((set, get) => ({
   completeOnboarding: () => {
     preferences.set('onboarding.completed', true);
     set({ hasCompletedOnboarding: true });
-  },
-  setDemoMode: (demoMode) => {
-    preferences.set('demo.enabled', demoMode);
-    set({ demoMode });
   },
   setOnline: (online) => {
     set({ online });
@@ -306,7 +318,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       });
   },
   cancelSos: async (pin) => {
-    if (pin !== DEMO_CANCEL_PIN || !get().sos) return false;
+    if (pin !== SOS_CANCEL_PIN || !get().sos) return false;
     await get().setSosStatus('CANCELLED');
     await clearPersistedSos();
     await locationEngine.setEmergency(false);

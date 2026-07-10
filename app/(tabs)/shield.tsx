@@ -23,8 +23,8 @@ export default function ShieldScreen() {
     <Screen scroll={false}>
       <View style={{ flex: 1, justifyContent: 'space-between', paddingVertical: space.lg }}>
         <View style={{ gap: space.sm }}>
-          <Text style={[type.display, { color: c.ink }]}>{t('shield.title')}</Text>
-          <Text style={[type.body, { color: c.slate }]}>{t('shield.hint')}</Text>
+          <Text style={[type.display, { color: c.onSurface }]}>{t('shield.title')}</Text>
+          <Text style={[type.body, { color: c.onSurfaceVariant }]}>{t('shield.hint')}</Text>
         </View>
         <View style={{ alignItems: 'center', gap: space.lg }}>
           <SOSButton onComplete={() => void start(false)} />
@@ -49,10 +49,14 @@ export default function ShieldScreen() {
         <View style={{ gap: space.sm }}>
           <Card>
             <View style={{ flexDirection: 'row', gap: space.sm }}>
-              <EyeOff color={c.slate} />
+              <EyeOff color={c.onSurfaceVariant} />
               <View style={{ flex: 1 }}>
-                <Text style={[type.heading, { color: c.ink }]}>{t('shield.silentTitle')}</Text>
-                <Text style={[type.body, { color: c.slate }]}>{t('shield.silentBody')}</Text>
+                <Text style={[type.subtitle, { color: c.onSurface }]}>
+                  {t('shield.silentTitle')}
+                </Text>
+                <Text style={[type.body, { color: c.onSurfaceVariant }]}>
+                  {t('shield.silentBody')}
+                </Text>
               </View>
             </View>
             <Button
@@ -62,8 +66,8 @@ export default function ShieldScreen() {
             />
           </Card>
           <View style={{ flexDirection: 'row', gap: space.xs, alignItems: 'center' }}>
-            <HeartPulse color={c.signal} size={17} />
-            <Text style={[type.caption, { color: c.slate, flex: 1 }]}>
+            <HeartPulse color={c.critical} size={17} />
+            <Text style={[type.caption, { color: c.onSurfaceVariant, flex: 1 }]}>
               {t('shield.disclaimer')}
             </Text>
           </View>

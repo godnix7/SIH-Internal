@@ -2,12 +2,10 @@ import { useState } from 'react';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { Play } from 'lucide-react-native';
 
 import { Screen } from '@/src/components/Screen';
 import { Button, Card, Input, ListRow, Toast, useAppColors } from '@/src/components/ui';
-import { demoEngine } from '@/src/services/demoEngine';
-import { activeTrip, useAppStore } from '@/src/stores/useAppStore';
+import { useAppStore } from '@/src/stores/useAppStore';
 import { space, type } from '@/src/theme/tokens';
 
 export default function SettingsScreen() {
@@ -15,17 +13,7 @@ export default function SettingsScreen() {
   const c = useAppColors();
   const { t } = useTranslation();
   const [toast, setToast] = useState(false);
-  const {
-    trips,
-    demoMode,
-    language,
-    setDemoMode,
-    setLanguage,
-    setTheme,
-    theme,
-    addAlert,
-    createTrip,
-  } = useAppStore();
+  const { trips, language, setLanguage, setTheme, theme, addAlert } = useAppStore();
   const showToast = () => {
     setToast(true);
     setTimeout(() => setToast(false), 2500);
@@ -34,8 +22,8 @@ export default function SettingsScreen() {
     return (
       <Screen title="Privacy centre" subtitle="Your trip decides what leaves this phone.">
         <Card>
-          <Text style={[type.heading, { color: c.ink }]}>Current data summary</Text>
-          <Text style={[type.body, { color: c.slate }]}>
+          <Text style={[type.subtitle, { color: c.onSurface }]}>Current data summary</Text>
+          <Text style={[type.body, { color: c.onSurfaceVariant }]}>
             Trips on this device: {trips.length}. Full-monitoring trails are set to auto-delete 30
             days after a trip ends. Advisory-zone events stay on this device.
           </Text>
@@ -49,16 +37,10 @@ export default function SettingsScreen() {
               kind: 'system',
               severity: 'warning',
               title: 'No ended trip data deleted',
-              body: 'Open incidents are preserved for legal-hold review. No ended trips were eligible in this demo.',
+              body: 'Open incidents are preserved for legal-hold review. No ended trips were eligible for deletion.',
             });
             showToast();
           }}
-        />
-        <ListRow
-          icon={<Play color={c.trail} />}
-          title="Demo Lab"
-          sub="Run deterministic safety scenarios"
-          onPress={() => router.push('/settings/demo-lab')}
         />
         <Toast
           visible={toast}
@@ -74,14 +56,14 @@ export default function SettingsScreen() {
       >
         <Card>
           <ListRow title="Ananya Sharma" sub="Sister · SOS and missed check-in escalation" />
-          <Text style={[type.caption, { color: c.slate }]}>
+          <Text style={[type.caption, { color: c.onSurfaceVariant }]}>
             You can silently remove any contact. They are never told that they were removed.
           </Text>
         </Card>
         <Button label="Add another contact" variant="secondary" onPress={showToast} />
         <Toast
           visible={toast}
-          message="A contact form is available in the complete account service; demo contact added locally."
+          message="A contact form is available in the complete account service; test contact added locally."
         />
       </Screen>
     );
@@ -90,7 +72,7 @@ export default function SettingsScreen() {
     return (
       <Screen title="Language and appearance" subtitle="Changes apply immediately.">
         <Card>
-          <Text style={[type.heading, { color: c.ink }]}>{t('settings.language')}</Text>
+          <Text style={[type.subtitle, { color: c.onSurface }]}>{t('settings.language')}</Text>
           <Button
             label="English"
             variant={language === 'en' ? 'primary' : 'secondary'}
@@ -103,7 +85,7 @@ export default function SettingsScreen() {
           />
         </Card>
         <Card>
-          <Text style={[type.heading, { color: c.ink }]}>Appearance</Text>
+          <Text style={[type.subtitle, { color: c.onSurface }]}>Appearance</Text>
           <View style={{ flexDirection: 'row', gap: space.xs }}>
             <View style={{ flex: 1 }}>
               <Button
@@ -130,43 +112,6 @@ export default function SettingsScreen() {
         </Card>
       </Screen>
     );
-  if (screen === 'demo-lab')
-    return (
-      <DemoLab
-        enabled={demoMode}
-        onToggle={setDemoMode}
-        onScenario={async (name) => {
-          let trip = activeTrip(useAppStore.getState().trips);
-          if (!trip)
-            trip = await createTrip({
-              destination:
-                name === 'jaipur'
-                  ? 'Jaipur, Rajasthan'
-                  : name === 'sikkim'
-                    ? 'Gangtok, Sikkim'
-                    : 'Sahastra Tal, Uttarakhand',
-              startDate: '2026-07-12',
-              endDate: '2026-07-16',
-              tier: 'full',
-              trek: name === 'sahastra' ? 'Sahastra Tal' : undefined,
-            });
-          demoEngine.run(name, trip.zones, 8, (event) => {
-            const critical = event.includes('restricted') || event === 'sos';
-            addAlert({
-              kind: critical ? 'incident' : 'zone',
-              severity: critical ? 'critical' : 'warning',
-              title: event === 'offline' ? 'Demo network loss' : `Demo event: ${event}`,
-              body:
-                event === 'offline'
-                  ? 'The queue remains available. Critical events get priority when connectivity returns.'
-                  : 'This event passed through the same local location pipeline.',
-            });
-          });
-          if (name === 'sos') router.push('/shield');
-          else router.push(`/trip/${trip.id}`);
-        }}
-      />
-    );
   return (
     <Screen title="Settings" subtitle="Choose a profile setting.">
       <Button label="Back to profile" onPress={() => router.replace('/profile')} />
@@ -188,58 +133,12 @@ function MedicalCard({ onSaved, toast }: { onSaved: () => void; toast: boolean }
         onChangeText={setMedications}
         placeholder="For example, inhaler in day pack"
       />
-      <Text style={[type.caption, { color: useAppColors().slate }]}>
+      <Text style={[type.caption, { color: useAppColors().onSurfaceVariant }]}>
         Self-declared information can be edited any time. It is shared only for an active SOS or
         emergency handoff.
       </Text>
       <Button label="Save medical card" onPress={onSaved} />
       <Toast visible={toast} message="Your self-declared medical card is saved locally." />
-    </Screen>
-  );
-}
-
-function DemoLab({
-  enabled,
-  onToggle,
-  onScenario,
-}: {
-  enabled: boolean;
-  onToggle: (enabled: boolean) => void;
-  onScenario: (scenario: 'jaipur' | 'sikkim' | 'sahastra' | 'sos') => void;
-}) {
-  const c = useAppColors();
-  return (
-    <Screen
-      title="Demo Lab"
-      subtitle="Every scenario uses bundled data and a deterministic GPS replayer. No real person is monitored."
-    >
-      <Card>
-        <Text style={[type.heading, { color: c.ink }]}>Demo mode is {enabled ? 'on' : 'off'}</Text>
-        <Text style={[type.body, { color: c.slate }]}>
-          The dashboard carries a DEMO watermark and all operator records are local mock data.
-        </Text>
-        <Button
-          label={enabled ? 'Turn demo mode off' : 'Turn demo mode on'}
-          variant="secondary"
-          onPress={() => onToggle(!enabled)}
-        />
-      </Card>
-      <Button
-        label="City stroll · Jaipur"
-        variant="secondary"
-        onPress={() => onScenario('jaipur')}
-      />
-      <Button
-        label="Restricted brush · Sikkim border"
-        variant="secondary"
-        onPress={() => onScenario('sikkim')}
-      />
-      <Button label="Hero demo · Sahastra Tal at 8×" onPress={() => onScenario('sahastra')} />
-      <Button label="SOS drill" variant="destructive" onPress={() => onScenario('sos')} />
-      <Text style={[type.caption, { color: c.slate }]}>
-        Sahastra Tal replays a corridor deviation and an offline interval. The check-in escalation
-        is represented in the alerts feed.
-      </Text>
     </Screen>
   );
 }

@@ -1,6 +1,102 @@
+import axios from 'axios';
+import { storage } from '@/src/lib/storage';
 import { outboxQueue } from './outboxQueue';
 
-const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://10.0.2.2:4000';
+const baseURL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://10.0.2.2:4000/v1';
+
+export const api = axios.create({
+  baseURL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+let isRefreshing = false;
+let failedQueue: Array<{
+  resolve: (token: string) => void;
+  reject: (error: any) => void;
+}> = [];
+
+const processQueue = (error: any, token: string | null = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else if (token) {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
+// Request Interceptor: Attach access token
+api.interceptors.request.use(
+  async (config) => {
+    const token = await storage.getAccessToken();
+    if (token && config.headers) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error),
+);
+
+// Response Interceptor: Handle 401s and automatic token refresh
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+
+    // If error is 401 and it's not a retry or auth endpoint
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !originalRequest.url?.includes('/auth/')
+    ) {
+      if (isRefreshing) {
+        // Queue the request if refresh is currently happening
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        })
+          .then((token) => {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            return api(originalRequest);
+          })
+          .catch((err) => Promise.reject(err));
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      const refreshToken = await storage.getRefreshToken();
+      if (!refreshToken) {
+        processQueue(new Error('No refresh token'), null);
+        // Dispatch logout event here
+        return Promise.reject(error);
+      }
+
+      try {
+        const response = await axios.post(`${baseURL}/auth/refresh`, { refreshToken });
+        const { accessToken, refreshToken: newRefreshToken } = response.data;
+
+        await storage.setTokens(accessToken, newRefreshToken, (await storage.getSosToken()) ?? '');
+
+        api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+
+        processQueue(null, accessToken);
+        return api(originalRequest);
+      } catch (refreshError) {
+        processQueue(refreshError, null);
+        // Dispatch logout event here (clear store / redirect to login)
+        await storage.clearTokens();
+        return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
+      }
+    }
+    return Promise.reject(error);
+  },
+);
 
 export type FlushResult = { sent: number; failed: number; sentTypes: string[] };
 
@@ -11,12 +107,13 @@ export async function flushOutbox(): Promise<FlushResult> {
   let failed = 0;
   for (const item of due) {
     try {
-      const response = await fetch(`${baseUrl}/events`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': item.id },
-        body: JSON.stringify(item),
+      const endpoint = item.type === 'location' ? '/location' : '/events';
+      const bodyPayload = item.type === 'location' ? item.payload : item;
+
+      await api.post(endpoint, bodyPayload, {
+        headers: { 'Idempotency-Key': item.id },
       });
-      if (!response.ok) throw new Error(`Server returned ${response.status}`);
+
       await outboxQueue.acknowledge(item.id);
       sentTypes.push(item.type);
       sent += 1;

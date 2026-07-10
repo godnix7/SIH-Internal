@@ -19,7 +19,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { isSosActive, useAppStore } from '@/src/stores/useAppStore';
-import { connectDemoRealtime, type RemoteIncident } from '@/src/services/realtime';
+import { connectRealtime, type RemoteIncident } from '@/src/services/realtime';
 
 const client = new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 30_000 } } });
 
@@ -34,11 +34,9 @@ function SafetyRestorer() {
 }
 
 function RealtimeBridge() {
-  const demoMode = useAppStore((state) => state.demoMode);
   const setSosStatus = useAppStore((state) => state.setSosStatus);
   useEffect(() => {
-    if (!demoMode) return;
-    const socket = connectDemoRealtime((incident: RemoteIncident) => {
+    const socket = connectRealtime((incident: RemoteIncident) => {
       const sos = useAppStore.getState().sos;
       if (!sos || sos.incidentId !== incident.id) return;
       const next =
@@ -54,14 +52,29 @@ function RealtimeBridge() {
     return () => {
       socket.disconnect();
     };
-  }, [demoMode, setSosStatus]);
+  }, [setSosStatus]);
   return null;
 }
 
 export default function RootLayout() {
-  const [interLoaded] = useInterFonts({ Inter_400Regular, Inter_500Medium, Inter_600SemiBold });
-  const [frauncesLoaded] = useFrauncesFonts({ Fraunces_500Medium, Fraunces_600SemiBold });
-  if (!interLoaded || !frauncesLoaded) return <View />;
+  const [interLoaded, interError] = useInterFonts({
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+  });
+  const [frauncesLoaded, frauncesError] = useFrauncesFonts({
+    Fraunces_500Medium,
+    Fraunces_600SemiBold,
+  });
+
+  useEffect(() => {
+    if (interError || frauncesError) {
+    }
+  }, [interError, frauncesError]);
+
+  if (!interLoaded && !interError) return <View />;
+  if (!frauncesLoaded && !frauncesError) return <View />;
+
   return (
     <SafeAreaProvider>
       <QueryClientProvider client={client}>

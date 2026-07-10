@@ -16,12 +16,12 @@ export default function Success() {
       subtitle="It is a demo credential for this local build."
     >
       <Card>
-        <BadgeCheck color={c.trail} size={32} />
-        <Text style={[type.title, { color: c.ink }]}>{profile?.name}</Text>
-        <Text style={[type.body, { color: c.slate }]}>
+        <BadgeCheck color={c.primary} size={32} />
+        <Text style={[type.title, { color: c.onSurface }]}>{profile?.name}</Text>
+        <Text style={[type.body, { color: c.onSurfaceVariant }]}>
           {profile?.idRef} · Valid for your active trip
         </Text>
-        <Text style={[type.caption, { color: c.slate, marginTop: space.xs }]}>
+        <Text style={[type.caption, { color: c.onSurfaceVariant, marginTop: space.xs }]}>
           QR details are signed in the demo only. This is not a government identity document.
         </Text>
       </Card>

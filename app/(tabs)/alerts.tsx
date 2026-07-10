@@ -15,10 +15,10 @@ export default function AlertsScreen() {
       subtitle="A local, reverse-chronological record of safety events and notices."
     >
       <View style={{ flexDirection: 'row', gap: space.xs }}>
-        <Text style={[type.caption, { color: c.trail }]}>All</Text>
-        <Text style={[type.caption, { color: c.slate }]}>Zones</Text>
-        <Text style={[type.caption, { color: c.slate }]}>Check-ins</Text>
-        <Text style={[type.caption, { color: c.slate }]}>Incidents</Text>
+        <Text style={[type.caption, { color: c.primary }]}>All</Text>
+        <Text style={[type.caption, { color: c.onSurfaceVariant }]}>Zones</Text>
+        <Text style={[type.caption, { color: c.onSurfaceVariant }]}>Check-ins</Text>
+        <Text style={[type.caption, { color: c.onSurfaceVariant }]}>Incidents</Text>
       </View>
       {alerts.length ? (
         <Card>
@@ -27,11 +27,11 @@ export default function AlertsScreen() {
               key={alert.id}
               icon={
                 alert.severity === 'critical' ? (
-                  <ShieldAlert color={c.signal} />
+                  <ShieldAlert color={c.critical} />
                 ) : alert.kind === 'zone' ? (
-                  <MapPinned color={c.amber} />
+                  <MapPinned color={c.warning} />
                 ) : (
-                  <BellRing color={c.sky} />
+                  <BellRing color={c.primary} />
                 )
               }
               title={alert.title}

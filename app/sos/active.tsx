@@ -8,8 +8,8 @@ import { MapZoneLayer } from '@/src/components/MapZoneLayer';
 import { Screen } from '@/src/components/Screen';
 import { Button, Card, OfflineBar, PinPad, TimelineItem, useAppColors } from '@/src/components/ui';
 import {
-  DEMO_CANCEL_PIN,
-  DEMO_SHORTCODE,
+  SOS_CANCEL_PIN,
+  SMS_SHORTCODE,
   EMERGENCY_NUMBER,
   OFFLINE_RETRY_MS,
 } from '@/src/lib/constants';
@@ -70,21 +70,21 @@ export default function SosActiveScreen() {
           }}
         >
           <View style={{ gap: space.xs, alignItems: 'center' }}>
-            <ShieldAlert color={c.signal} size={34} />
-            <Text style={[type.title, { color: c.ink }]}>{t('sos.sending')}</Text>
-            <Text style={[type.body, { color: c.slate, textAlign: 'center' }]}>
+            <ShieldAlert color={c.critical} size={34} />
+            <Text style={[type.title, { color: c.onSurface }]}>{t('sos.sending')}</Text>
+            <Text style={[type.body, { color: c.onSurfaceVariant, textAlign: 'center' }]}>
               {t('sos.sendingBody')}
             </Text>
           </View>
-          <Text style={[type.display, { color: c.signal, fontSize: 110, lineHeight: 120 }]}>
+          <Text style={[type.display, { color: c.critical, fontSize: 110, lineHeight: 120 }]}>
             {secondsLeft}
           </Text>
           <Button label={t('sos.cancel')} variant="secondary" onPress={() => setCancelOpen(true)} />
           {cancelOpen && (
             <Card>
               <PinPad value={pin} onChange={setPin} />
-              <Text style={[type.caption, { color: c.slate }]}>
-                {t('sos.pinHint', { pin: DEMO_CANCEL_PIN })}
+              <Text style={[type.caption, { color: c.onSurfaceVariant }]}>
+                {t('sos.pinHint', { pin: SOS_CANCEL_PIN })}
               </Text>
               <Button
                 label={t('sos.cancelButton')}
@@ -105,25 +105,25 @@ export default function SosActiveScreen() {
       subtitle={sos.silent ? t('sos.decoySub') : t('sos.statusLine', { status: statusText })}
     >
       <Card>
-        <Text style={[type.heading, { color: c.signal }]}>
+        <Text style={[type.subtitle, { color: c.critical }]}>
           {sos.status === 'RESPONDER_ENROUTE'
             ? t('sos.enroute')
             : sos.status === 'ACKNOWLEDGED'
               ? t('sos.acknowledged')
               : t('sos.delivering')}
         </Text>
-        <Text style={[type.body, { color: c.slate }]}>{t('sos.sharedLine')}</Text>
+        <Text style={[type.body, { color: c.onSurfaceVariant }]}>{t('sos.sharedLine')}</Text>
       </Card>
       {offline && (
         <View style={{ gap: space.sm }}>
           <OfflineBar />
           <Card>
-            <Text style={[type.body, { color: c.ink }]}>{t('sos.offlineCard')}</Text>
+            <Text style={[type.body, { color: c.onSurface }]}>{t('sos.offlineCard')}</Text>
             <Button
-              label={t('sos.openSms', { code: DEMO_SHORTCODE })}
+              label={t('sos.openSms', { code: SMS_SHORTCODE })}
               variant="secondary"
               onPress={() =>
-                void Linking.openURL(`sms:${DEMO_SHORTCODE}?body=${encodeURIComponent(sms)}`)
+                void Linking.openURL(`sms:${SMS_SHORTCODE}?body=${encodeURIComponent(sms)}`)
               }
             />
           </Card>
@@ -148,11 +148,16 @@ export default function SosActiveScreen() {
         </View>
       </View>
       <Card>
-        <Text style={[type.heading, { color: c.ink }]}>{t('sos.timeline')}</Text>
+        <Text style={[type.subtitle, { color: c.onSurface }]}>{t('sos.timeline')}</Text>
         {incidentEvents.map((event) => (
           <TimelineItem key={event.id} event={event} />
         ))}
-        <Text style={[type.caption, { color: integrity === 'broken' ? c.signal : c.slate }]}>
+        <Text
+          style={[
+            type.caption,
+            { color: integrity === 'broken' ? c.critical : c.onSurfaceVariant },
+          ]}
+        >
           {t(integrityKey(integrity), { count: incidentEvents.length })}
         </Text>
       </Card>

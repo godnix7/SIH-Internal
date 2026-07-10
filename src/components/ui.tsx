@@ -46,17 +46,17 @@ export function Button({
   const c = useAppColors();
   const background =
     variant === 'primary'
-      ? c.trail
+      ? c.primary
       : variant === 'destructive'
-        ? c.signal
+        ? c.critical
         : variant === 'secondary'
-          ? c.card
+          ? c.surface
           : 'transparent';
   const color =
     variant === 'secondary' || variant === 'ghost'
       ? variant === 'ghost'
-        ? c.sky
-        : c.ink
+        ? c.primary
+        : c.onSurface
       : '#FFFFFF';
   return (
     <Pressable
@@ -69,7 +69,7 @@ export function Button({
         styles.button,
         {
           backgroundColor: background,
-          borderColor: variant === 'secondary' ? c.hairline : 'transparent',
+          borderColor: variant === 'secondary' ? c.surfaceVariant : 'transparent',
           opacity: disabled ? 0.45 : pressed ? 0.82 : 1,
         },
       ]}
@@ -77,7 +77,7 @@ export function Button({
       {loading ? (
         <ActivityIndicator color={color} />
       ) : (
-        <Text style={[type.heading, { color }]}>{label}</Text>
+        <Text style={[type.subtitle, { color }]}>{label}</Text>
       )}
     </Pressable>
   );
@@ -87,7 +87,12 @@ export function Card({ children, style }: { children: ReactNode; style?: object 
   const c = useAppColors();
   return (
     <View
-      style={[styles.card, elevation, { backgroundColor: c.card, borderColor: c.hairline }, style]}
+      style={[
+        styles.card,
+        elevation,
+        { backgroundColor: c.surface, borderColor: c.surfaceVariant },
+        style,
+      ]}
     >
       {children}
     </View>
@@ -109,13 +114,13 @@ export function ListRow({
 }) {
   const c = useAppColors();
   const content = (
-    <View style={[styles.row, { borderBottomColor: c.hairline }]}>
+    <View style={[styles.row, { borderBottomColor: c.surfaceVariant }]}>
       {icon && <View style={styles.leading}>{icon}</View>}
       <View style={styles.rowText}>
-        <Text style={[type.heading, { color: c.ink }]}>{title}</Text>
-        {sub && <Text style={[type.body, { color: c.slate }]}>{sub}</Text>}
+        <Text style={[type.subtitle, { color: c.onSurface }]}>{title}</Text>
+        {sub && <Text style={[type.body, { color: c.onSurfaceVariant }]}>{sub}</Text>}
       </View>
-      {trailing ?? (onPress ? <ChevronRight color={c.slate} size={20} /> : null)}
+      {trailing ?? (onPress ? <ChevronRight color={c.onSurfaceVariant} size={20} /> : null)}
     </View>
   );
   return onPress ? (
@@ -137,11 +142,11 @@ export function MonitoringStatusPill({
   const c = useAppColors();
   const { t } = useTranslation();
   const colors = {
-    live: c.trail,
-    offline: c.amber,
-    limited: c.amber,
-    paused: c.slate,
-    emergency: c.signal,
+    live: c.primary,
+    offline: c.warning,
+    limited: c.warning,
+    paused: c.onSurfaceVariant,
+    emergency: c.critical,
   } as const;
   const label = t(`status.${state}`);
   const color = colors[state];
@@ -192,27 +197,29 @@ export function TierSelector({
             style={[
               styles.tier,
               {
-                backgroundColor: selected ? `${c.trail}12` : c.card,
-                borderColor: selected ? c.trail : c.hairline,
+                backgroundColor: selected ? `${c.primary}12` : c.surface,
+                borderColor: selected ? c.primary : c.surfaceVariant,
               },
             ]}
           >
             <View style={styles.tierHead}>
-              <View style={[styles.radio, { borderColor: selected ? c.trail : c.slate }]}>
-                {selected && <View style={[styles.radioInner, { backgroundColor: c.trail }]} />}
+              <View
+                style={[styles.radio, { borderColor: selected ? c.primary : c.onSurfaceVariant }]}
+              >
+                {selected && <View style={[styles.radioInner, { backgroundColor: c.primary }]} />}
               </View>
               <View style={styles.rowText}>
-                <Text style={[type.heading, { color: c.ink }]}>
+                <Text style={[type.subtitle, { color: c.onSurface }]}>
                   {item.title}
                   {tier === 'checkins' ? t('tiers.defaultSuffix') : ''}
                 </Text>
-                <Text style={[type.body, { color: c.slate }]}>{item.copy}</Text>
+                <Text style={[type.body, { color: c.onSurfaceVariant }]}>{item.copy}</Text>
               </View>
             </View>
             {open && (
-              <View style={[styles.tierDetail, { borderTopColor: c.hairline }]}>
+              <View style={[styles.tierDetail, { borderTopColor: c.surfaceVariant }]}>
                 {item.leaves.map((line) => (
-                  <Text key={line} style={[type.caption, { color: c.slate }]}>
+                  <Text key={line} style={[type.caption, { color: c.onSurfaceVariant }]}>
                     {line}
                   </Text>
                 ))}
@@ -248,7 +255,7 @@ export function SOSButton({ onComplete }: { onComplete: () => void }) {
       <MotiView
         animate={{ scale: holding ? 1.08 : 1 }}
         transition={{ type: 'timing', duration: 180 }}
-        style={[styles.sos, { backgroundColor: c.signal }]}
+        style={[styles.sos, { backgroundColor: c.critical }]}
       >
         <Pressable
           accessibilityRole="button"
@@ -259,12 +266,12 @@ export function SOSButton({ onComplete }: { onComplete: () => void }) {
           style={styles.sosPress}
         >
           <ShieldAlert color="#FFFFFF" size={38} />
-          <Text style={[type.heading, { color: '#FFFFFF', textAlign: 'center' }]}>
+          <Text style={[type.subtitle, { color: '#FFFFFF', textAlign: 'center' }]}>
             {holding ? t('shield.keepHolding') : 'SOS'}
           </Text>
         </Pressable>
       </MotiView>
-      <Text style={[type.caption, { color: c.slate }]}>{t('shield.hold')}</Text>
+      <Text style={[type.caption, { color: c.onSurfaceVariant }]}>{t('shield.hold')}</Text>
     </View>
   );
 }
@@ -280,10 +287,12 @@ export function CheckInCountdown({ target, onPress }: { target: number; onPress?
     <Pressable
       accessibilityRole={onPress ? 'button' : undefined}
       onPress={onPress}
-      style={[styles.countdown, { borderColor: c.trail }]}
+      style={[styles.countdown, { borderColor: c.primary }]}
     >
-      <Text style={[type.caption, { color: c.slate }]}>Next check-in</Text>
-      <Text style={[type.title, { color: c.ink }]}>{formatCountdown(target, now ?? target)}</Text>
+      <Text style={[type.caption, { color: c.onSurfaceVariant }]}>Next check-in</Text>
+      <Text style={[type.title, { color: c.onSurface }]}>
+        {formatCountdown(target, now ?? target)}
+      </Text>
     </Pressable>
   );
 }
@@ -298,19 +307,19 @@ export function ZoneBanner({
   onDismiss?: () => void;
 }) {
   const c = useAppColors();
-  const color = bannerType === 'advisory' ? c.amber : c.signal;
+  const color = bannerType === 'advisory' ? c.warning : c.critical;
   return (
     <View style={[styles.banner, { backgroundColor: `${color}12`, borderColor: `${color}55` }]}>
       <AlertTriangle color={color} size={22} />
       <View style={styles.rowText}>
-        <Text style={[type.heading, { color }]}>
+        <Text style={[type.subtitle, { color }]}>
           {bannerType === 'uncertain'
             ? 'GPS is imprecise here'
             : bannerType === 'restricted'
               ? 'Restricted-area alert'
               : 'Heads up'}
         </Text>
-        <Text style={[type.body, { color: c.ink }]}>{children}</Text>
+        <Text style={[type.body, { color: c.onSurface }]}>{children}</Text>
       </View>
       {onDismiss && (
         <Pressable
@@ -335,15 +344,19 @@ export function TimelineItem({ event }: { event: IncidentEvent }) {
           styles.timelineDot,
           {
             backgroundColor:
-              event.actor === 'you' ? c.trail : event.actor === 'operator' ? c.sky : c.signal,
+              event.actor === 'you'
+                ? c.primary
+                : event.actor === 'operator'
+                  ? c.primary
+                  : c.critical,
           },
         ]}
       />
       <View style={styles.rowText}>
-        <Text style={[type.heading, { color: c.ink }]}>
+        <Text style={[type.subtitle, { color: c.onSurface }]}>
           {t(`sos.events.${event.type}`, { defaultValue: event.type.replaceAll('.', ' ') })}
         </Text>
-        <Text style={[type.caption, { color: c.slate }]}>
+        <Text style={[type.caption, { color: c.onSurfaceVariant }]}>
           {t(`sos.actors.${event.actor}`, { defaultValue: event.actor })} ·{' '}
           {new Date(event.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         </Text>
@@ -356,9 +369,9 @@ export function OfflineBar() {
   const c = useAppColors();
   const { t } = useTranslation();
   return (
-    <View style={[styles.offline, { backgroundColor: `${c.amber}1A` }]}>
-      <CircleHelp color={c.amber} size={18} />
-      <Text style={[type.caption, { color: c.ink, flex: 1 }]}>{t('offline.bar')}</Text>
+    <View style={[styles.offline, { backgroundColor: `${c.warning}1A` }]}>
+      <CircleHelp color={c.warning} size={18} />
+      <Text style={[type.caption, { color: c.onSurface, flex: 1 }]}>{t('offline.bar')}</Text>
     </View>
   );
 }
@@ -380,16 +393,18 @@ export function PermissionPrimer({
   const { t } = useTranslation();
   return (
     <Card>
-      <Text style={[type.title, { color: c.ink }]}>
+      <Text style={[type.title, { color: c.onSurface }]}>
         {t('primer.title', { tier: t(`tiers.${tier}.title`) })}
       </Text>
-      <Text style={[type.body, { color: c.slate, marginTop: space.sm }]}>{t('primer.body')}</Text>
-      <Text style={[type.caption, { color: c.slate, marginTop: space.sm }]}>
+      <Text style={[type.body, { color: c.onSurfaceVariant, marginTop: space.sm }]}>
+        {t('primer.body')}
+      </Text>
+      <Text style={[type.caption, { color: c.onSurfaceVariant, marginTop: space.sm }]}>
         {t('primer.note')}
       </Text>
       {notice && (
-        <View style={[styles.permissionNotice, { backgroundColor: `${c.amber}14` }]}>
-          <Text style={[type.caption, { color: c.ink }]}>{notice}</Text>
+        <View style={[styles.permissionNotice, { backgroundColor: `${c.warning}14` }]}>
+          <Text style={[type.caption, { color: c.onSurface }]}>{notice}</Text>
         </View>
       )}
       <View style={styles.actions}>
@@ -417,11 +432,11 @@ export function EmptyState({
   const c = useAppColors();
   return (
     <View style={styles.empty}>
-      <View style={[styles.mountain, { borderColor: c.trail }]}>
-        <View style={[styles.mountainPeak, { borderColor: c.trail }]} />
+      <View style={[styles.mountain, { borderColor: c.primary }]}>
+        <View style={[styles.mountainPeak, { borderColor: c.primary }]} />
       </View>
-      <Text style={[type.title, { color: c.ink, textAlign: 'center' }]}>{title}</Text>
-      <Text style={[type.body, { color: c.slate, textAlign: 'center' }]}>{body}</Text>
+      <Text style={[type.title, { color: c.onSurface, textAlign: 'center' }]}>{title}</Text>
+      <Text style={[type.body, { color: c.onSurfaceVariant, textAlign: 'center' }]}>{body}</Text>
       {action}
     </View>
   );
@@ -445,19 +460,19 @@ export function Input({
   const c = useAppColors();
   return (
     <View style={styles.inputWrap}>
-      <Text style={[type.caption, { color: c.ink }]}>{label}</Text>
+      <Text style={[type.caption, { color: c.onSurface }]}>{label}</Text>
       <TextInput
         accessibilityLabel={label}
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor={c.slate}
+        placeholderTextColor={c.onSurfaceVariant}
         secureTextEntry={secureTextEntry}
         keyboardType={keyboardType}
         style={[
           styles.input,
           type.body,
-          { color: c.ink, borderColor: c.hairline, backgroundColor: c.card },
+          { color: c.onSurface, borderColor: c.surfaceVariant, backgroundColor: c.surface },
         ]}
       />
     </View>
@@ -502,7 +517,7 @@ export function Toast({ message, visible }: { message: string; visible: boolean 
     <MotiView
       from={{ opacity: 0, translateY: 12 }}
       animate={{ opacity: 1, translateY: 0 }}
-      style={[styles.toast, { backgroundColor: c.ink }]}
+      style={[styles.toast, { backgroundColor: c.onSurface }]}
     >
       <Check color="#FFFFFF" size={18} />
       <Text style={[type.caption, { color: '#FFFFFF', flex: 1 }]}>{message}</Text>
@@ -523,7 +538,7 @@ export function Skeleton({
       from={{ opacity: 0.35 }}
       animate={{ opacity: 0.8 }}
       transition={{ type: 'timing', loop: true, duration: 700 }}
-      style={{ width, height, backgroundColor: c.hairline, borderRadius: 4 }}
+      style={{ width, height, backgroundColor: c.surfaceVariant, borderRadius: 4 }}
     />
   );
 }
@@ -532,13 +547,13 @@ const styles = StyleSheet.create({
   button: {
     minHeight: 48,
     borderWidth: 1,
-    borderRadius: radius.button,
+    borderRadius: radius.small,
     paddingHorizontal: space.md,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
   },
-  card: { borderWidth: 1, borderRadius: radius.card, padding: space.md, gap: space.xs },
+  card: { borderWidth: 1, borderRadius: radius.medium, padding: space.md, gap: space.xs },
   row: {
     minHeight: 64,
     flexDirection: 'row',
@@ -553,7 +568,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     minHeight: 32,
     borderWidth: 1,
-    borderRadius: radius.pill,
+    borderRadius: radius.full,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: space.sm,
@@ -561,7 +576,7 @@ const styles = StyleSheet.create({
   },
   dot: { width: 7, height: 7, borderRadius: 4 },
   stack: { gap: space.sm },
-  tier: { borderWidth: 1, borderRadius: radius.card, padding: space.md, gap: space.sm },
+  tier: { borderWidth: 1, borderRadius: radius.medium, padding: space.md, gap: space.sm },
   tierHead: { flexDirection: 'row', gap: space.sm },
   radio: {
     width: 20,
@@ -591,7 +606,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: space.sm,
     gap: space.sm,
-    borderRadius: radius.card,
+    borderRadius: radius.medium,
     alignItems: 'flex-start',
   },
   offline: {
@@ -602,7 +617,7 @@ const styles = StyleSheet.create({
     gap: space.xs,
   },
   actions: { flexDirection: 'row', gap: space.sm, justifyContent: 'flex-end', marginTop: space.sm },
-  permissionNotice: { borderRadius: radius.button, padding: space.sm, marginTop: space.sm },
+  permissionNotice: { borderRadius: radius.small, padding: space.sm, marginTop: space.sm },
   timeline: { flexDirection: 'row', gap: space.sm, minHeight: 56 },
   timelineDot: { width: 12, height: 12, borderRadius: 6, marginTop: 5 },
   empty: {
@@ -631,7 +646,7 @@ const styles = StyleSheet.create({
   input: {
     minHeight: 50,
     borderWidth: 1,
-    borderRadius: radius.button,
+    borderRadius: radius.small,
     paddingHorizontal: space.sm,
   },
   toast: {
@@ -640,7 +655,7 @@ const styles = StyleSheet.create({
     left: 16,
     right: 16,
     minHeight: 48,
-    borderRadius: radius.button,
+    borderRadius: radius.small,
     padding: space.sm,
     flexDirection: 'row',
     gap: space.xs,

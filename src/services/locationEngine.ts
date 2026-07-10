@@ -149,8 +149,12 @@ export class LocationEngine {
     if (moving !== undefined) this.setMoving(moving);
     this.state = { ...this.state, lastFix: fix };
     this.emit();
-    if (this.state.tier === 'full') {
-      await outboxQueue.enqueue('location.batch', { fixes: [fix] }, 'LOCATION_BATCH');
+    if (this.state.tier === 'full' || this.state.mode === 'EMERGENCY') {
+      await outboxQueue.enqueue(
+        'location',
+        { lat: fix.latitude, lng: fix.longitude, timestamp: new Date().toISOString() },
+        'LOCATION_BATCH',
+      );
     }
     const evaluations = zones.map((zone) => this.evaluate(zone, fix));
     for (const evaluation of evaluations) {

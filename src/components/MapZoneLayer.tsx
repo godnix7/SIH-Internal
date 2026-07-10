@@ -9,9 +9,9 @@ import { space, type } from '@/src/theme/tokens';
 import { useAppColors } from './ui';
 
 function zoneColor(zone: Zone, c: ReturnType<typeof useAppColors>): string {
-  if (zone.class === 'advisory') return c.sky;
-  if (zone.class === 'corridor') return c.trail;
-  return c.signal;
+  if (zone.class === 'advisory') return c.primary;
+  if (zone.class === 'corridor') return c.primary;
+  return c.critical;
 }
 
 /** Shown when no Google Maps API key is configured; the zone data is still real. */
@@ -20,10 +20,14 @@ function MapUnavailable({ zones, center }: { zones: Zone[]; center: Coordinates 
   const { t } = useTranslation();
   return (
     <View
-      style={[styles.wrap, styles.fallback, { backgroundColor: c.card, borderColor: c.hairline }]}
+      style={[
+        styles.wrap,
+        styles.fallback,
+        { backgroundColor: c.surface, borderColor: c.surfaceVariant },
+      ]}
     >
-      <Text style={[type.caption, { color: c.slate }]}>{t('maps.unavailable')}</Text>
-      <Text style={[type.body, { color: c.ink }]}>
+      <Text style={[type.caption, { color: c.onSurfaceVariant }]}>{t('maps.unavailable')}</Text>
+      <Text style={[type.body, { color: c.onSurface }]}>
         {t('maps.lastKnown', {
           coords: formatCoordinates(center.latitude, center.longitude),
           accuracy: Math.round(center.accuracy),
@@ -32,7 +36,7 @@ function MapUnavailable({ zones, center }: { zones: Zone[]; center: Coordinates 
       {zones.map((zone) => (
         <View key={zone.id} style={styles.legendRow}>
           <View style={[styles.dot, { backgroundColor: zoneColor(zone, c) }]} />
-          <Text style={[type.caption, { color: c.slate }]}>
+          <Text style={[type.caption, { color: c.onSurfaceVariant }]}>
             {zone.name} · {t(`zoneClass.${zone.class}`)}
           </Text>
         </View>
@@ -84,10 +88,10 @@ export function MapZoneLayer({
             }
             strokeColor={
               zone.class === 'advisory'
-                ? `${c.sky}88`
+                ? `${c.primary}88`
                 : zone.class === 'corridor'
-                  ? `${c.trail}88`
-                  : `${c.signal}AA`
+                  ? `${c.primary}88`
+                  : `${c.critical}AA`
             }
             strokeWidth={2}
           />
@@ -98,7 +102,7 @@ export function MapZoneLayer({
               { latitude: center.latitude - 0.009, longitude: center.longitude - 0.009 },
               { latitude: center.latitude, longitude: center.longitude },
             ]}
-            strokeColor={c.trail}
+            strokeColor={c.primary}
             strokeWidth={4}
           />
         )}
@@ -106,7 +110,7 @@ export function MapZoneLayer({
           coordinate={{ latitude: center.latitude, longitude: center.longitude }}
           title="Your last known location"
           description={`Accuracy ±${Math.round(center.accuracy)} m`}
-          pinColor={c.trail}
+          pinColor={c.primary}
         />
       </MapView>
     </View>

@@ -16,19 +16,19 @@ export default function Kyc() {
   return (
     <Screen
       title="Make your Tourist ID"
-      subtitle="Choose Aadhaar through the DigiLocker demo or passport capture. This demo issues a clearly labelled mock ID."
+      subtitle="Choose Aadhaar through DigiLocker or passport capture."
     >
       <View style={{ flexDirection: 'row', gap: space.sm }}>
         <View style={{ flex: 1 }}>
           <Button
-            label="Aadhaar · demo"
+            label="Aadhaar"
             variant={method === 'aadhaar' ? 'primary' : 'secondary'}
             onPress={() => setMethod('aadhaar')}
           />
         </View>
         <View style={{ flex: 1 }}>
           <Button
-            label="Passport · demo"
+            label="Passport"
             variant={method === 'passport' ? 'primary' : 'secondary'}
             onPress={() => setMethod('passport')}
           />
@@ -47,10 +47,10 @@ export default function Kyc() {
         placeholder="India"
       />
       <Input label="Home city" value={city} onChangeText={setCity} placeholder="Bengaluru" />
-      <Text style={[type.caption, { color: c.slate }]}>
+      <Text style={[type.caption, { color: c.onSurfaceVariant }]}>
         {method === 'aadhaar'
-          ? 'DigiLocker verification takes about two seconds in demo mode.'
-          : 'Passport frame capture is simulated in demo mode and takes about two seconds.'}{' '}
+          ? 'DigiLocker verification takes about two seconds.'
+          : 'Passport frame capture takes about two seconds.'}{' '}
         Medical details remain self-declared.
       </Text>
       <Button

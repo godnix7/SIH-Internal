@@ -20,11 +20,11 @@ export default function TripsScreen() {
           {trips.map((trip) => (
             <ListRow
               key={trip.id}
-              icon={<MapPinned color={c.trail} />}
+              icon={<MapPinned color={c.primary} />}
               title={trip.destination}
               sub={`${trip.startDate} to ${trip.endDate} · ${trip.status}`}
               onPress={() => router.push(`/trip/${trip.id}`)}
-              trailing={<CalendarDays color={c.slate} size={20} />}
+              trailing={<CalendarDays color={c.onSurfaceVariant} size={20} />}
             />
           ))}
         </Card>

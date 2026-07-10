@@ -21,15 +21,15 @@ export function Screen({
     <View style={[styles.content, !scroll && styles.fill]}>
       {title && (
         <View style={styles.heading}>
-          <Text style={[type.display, { color: c.ink }]}>{title}</Text>
-          {subtitle && <Text style={[type.body, { color: c.slate }]}>{subtitle}</Text>}
+          <Text style={[type.display, { color: c.onSurface }]}>{title}</Text>
+          {subtitle && <Text style={[type.body, { color: c.onSurfaceVariant }]}>{subtitle}</Text>}
         </View>
       )}
       {children}
     </View>
   );
   return (
-    <SafeAreaView edges={['top']} style={[styles.safe, { backgroundColor: c.paper }]}>
+    <SafeAreaView edges={['top']} style={[styles.safe, { backgroundColor: c.surfaceVariant }]}>
       {scroll ? (
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           {content}

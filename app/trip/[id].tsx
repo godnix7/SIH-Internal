@@ -41,8 +41,8 @@ export default function TripDetail() {
           style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
         >
           <View>
-            <Text style={[type.heading, { color: c.ink }]}>Your next check-in</Text>
-            <Text style={[type.caption, { color: c.slate }]}>
+            <Text style={[type.subtitle, { color: c.onSurface }]}>Your next check-in</Text>
+            <Text style={[type.caption, { color: c.onSurfaceVariant }]}>
               We ask before escalating to a contact.
             </Text>
           </View>
@@ -94,7 +94,7 @@ export default function TripDetail() {
         }}
       />
       <Card>
-        <Text style={[type.heading, { color: c.ink }]}>Change monitoring for this trip</Text>
+        <Text style={[type.subtitle, { color: c.onSurface }]}>Change monitoring for this trip</Text>
         <TierSelector
           value={trip.tier}
           onChange={(tier) => void updateTier(trip.id, tier).then(() => setToast(true))}
