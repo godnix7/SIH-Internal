@@ -33,6 +33,11 @@ describe('canonicalJson', () => {
     expect(canonicalJson({ b: 1, a: 2 })).toBe(canonicalJson({ a: 2, b: 1 }));
     expect(canonicalJson({ a: [{ y: 1, x: 2 }] })).toBe('{"a":[{"x":2,"y":1}]}');
   });
+
+  it('drops undefined members, as a JSON round trip does', () => {
+    expect(canonicalJson({ a: 1, location: undefined })).toBe('{"a":1}');
+    expect(canonicalJson({ a: 1 })).toBe(canonicalJson({ a: 1, location: undefined }));
+  });
 });
 
 describe('verifyChain', () => {
@@ -50,6 +55,22 @@ describe('verifyChain', () => {
   it('rejects a chain with an event removed from the middle', async () => {
     const events = await buildChain(4);
     await expect(verifyChain([events[0], events[2], events[3]])).resolves.toBe(false);
+  });
+
+  it('still verifies after the chain is persisted and read back as JSON', async () => {
+    // An SOS raised without a location fix carries `location: undefined`.
+    const body = {
+      id: 'evt-0',
+      type: 'sos.created',
+      actor: 'you' as const,
+      timestamp: 1_000,
+      payload: { type: 'police', silent: false, location: undefined },
+    };
+    const hash = await hashEvent('GENESIS', body);
+    const events: IncidentEvent[] = [{ ...body, prevHash: 'GENESIS', hash }];
+
+    const restored = JSON.parse(JSON.stringify(events)) as IncidentEvent[];
+    await expect(verifyChain(restored)).resolves.toBe(true);
   });
 
   it('rejects a chain that does not start at GENESIS', async () => {

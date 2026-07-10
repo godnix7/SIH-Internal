@@ -13,6 +13,12 @@ describe('formatters', () => {
     expect(formatCountdown(0, 5_000)).toBe('0:00');
   });
 
+  it('rolls a multi-hour check-in into hours rather than 236 minutes', () => {
+    expect(formatCountdown(4 * 60 * 60_000, 0)).toBe('4:00:00');
+    expect(formatCountdown(3 * 60 * 60_000 + 56 * 60_000 + 2_000, 0)).toBe('3:56:02');
+    expect(formatCountdown(59 * 60_000 + 59_000, 0)).toBe('59:59');
+  });
+
   it('formats coordinates and distance for emergency UI', () => {
     expect(formatCoordinates(30.73512, 78.44291)).toBe('30.7351, 78.4429');
     expect(formatDistance(400)).toBe('400 m');

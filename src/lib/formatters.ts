@@ -1,9 +1,13 @@
 import type { ConsentTier } from './types';
 
 export function formatCountdown(target: number, now = Date.now()): string {
-  const seconds = Math.max(0, Math.ceil((target - now) / 1000));
-  const minutes = Math.floor(seconds / 60);
-  return `${minutes}:${String(seconds % 60).padStart(2, '0')}`;
+  const total = Math.max(0, Math.ceil((target - now) / 1000));
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const seconds = total % 60;
+  const paddedSeconds = String(seconds).padStart(2, '0');
+  if (hours === 0) return `${minutes}:${paddedSeconds}`;
+  return `${hours}:${String(minutes).padStart(2, '0')}:${paddedSeconds}`;
 }
 
 export function formatTime(timestamp: number): string {
