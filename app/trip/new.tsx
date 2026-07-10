@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { router } from 'expo-router';
 import { Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { Screen } from '@/src/components/Screen';
 import {
@@ -11,7 +12,6 @@ import {
   Toast,
   useAppColors,
 } from '@/src/components/ui';
-import { tierLabel } from '@/src/lib/formatters';
 import type { ConsentTier } from '@/src/lib/types';
 import { requestTripPermissions, startMonitoring } from '@/src/services/monitoring';
 import { useAppStore } from '@/src/stores/useAppStore';
@@ -27,6 +27,7 @@ const destinations = [
 
 export default function NewTrip() {
   const c = useAppColors();
+  const { t } = useTranslation();
   const createTrip = useAppStore((state) => state.createTrip);
   const addAlert = useAppStore((state) => state.addAlert);
   const [step, setStep] = useState(1);
@@ -41,15 +42,13 @@ export default function NewTrip() {
 
   const requestPermissionsAndStart = async () => {
     setPermissionBusy(true);
-    setPermissionNotice('Waiting for your Android permission choice…');
+    setPermissionNotice(t('trip.waiting'));
     try {
       let permissions;
       try {
         permissions = await requestTripPermissions(tier);
       } catch {
-        setPermissionNotice(
-          'Android could not complete the permission request. Your trip has not started—please try again or choose Check-ins only.',
-        );
+        setPermissionNotice(t('trip.permissionFailed'));
         return;
       }
       const needsBackgroundLocation = tier === 'zones' || tier === 'full';
@@ -67,9 +66,7 @@ export default function NewTrip() {
           monitoringLimited,
         });
       } catch {
-        setPermissionNotice(
-          'Your trip could not be saved to this phone’s encrypted store, so it has not started. Nothing was sent. Please try again.',
-        );
+        setPermissionNotice(t('trip.saveFailed'));
         return;
       }
 
@@ -80,8 +77,8 @@ export default function NewTrip() {
           addAlert({
             kind: 'system',
             severity: 'warning',
-            title: 'Monitoring needs attention',
-            body: 'Your trip is active, but background monitoring could not start. Check Android location settings before relying on it.',
+            title: t('trip.monitorWarnTitle'),
+            body: t('trip.monitorWarnBody'),
           });
         }
       }
@@ -89,15 +86,15 @@ export default function NewTrip() {
         addAlert({
           kind: 'system',
           severity: 'warning',
-          title: 'Background location is off',
-          body: 'Your trip is active with check-ins, but zone or trail monitoring pauses when the app is closed. Enable background location in Android Settings to restore it.',
+          title: t('trip.limitedTitle'),
+          body: t('trip.limitedBody'),
         });
       } else if (!permissions.notifications) {
         addAlert({
           kind: 'system',
           severity: 'warning',
-          title: 'Notifications are off',
-          body: 'Your trip is active, but check-in reminders will not appear until notifications are enabled in Android Settings.',
+          title: t('trip.notificationsTitle'),
+          body: t('trip.notificationsBody'),
         });
       }
       setToast(true);
@@ -112,13 +109,10 @@ export default function NewTrip() {
     else void requestPermissionsAndStart();
   };
   return (
-    <Screen
-      title="Plan a trip"
-      subtitle={`Step ${step} of 6 · your choice stays editable after the trip starts.`}
-    >
+    <Screen title={t('trip.title')} subtitle={t('trip.step', { step })}>
       {step === 1 && (
         <View style={{ gap: space.sm }}>
-          <Text style={[type.heading, { color: c.ink }]}>Destination</Text>
+          <Text style={[type.heading, { color: c.ink }]}>{t('trip.destination')}</Text>
           {destinations.map((item) => (
             <Button
               key={item}
@@ -132,13 +126,13 @@ export default function NewTrip() {
       {step === 2 && (
         <View style={{ gap: space.sm }}>
           <Input
-            label="Start date"
+            label={t('trip.startDate')}
             value={dates.start}
             onChangeText={(start) => setDates((value) => ({ ...value, start }))}
             placeholder="YYYY-MM-DD"
           />
           <Input
-            label="End date"
+            label={t('trip.endDate')}
             value={dates.end}
             onChangeText={(end) => setDates((value) => ({ ...value, end }))}
             placeholder="YYYY-MM-DD"
@@ -147,12 +141,10 @@ export default function NewTrip() {
       )}
       {step === 3 && (
         <View style={{ gap: space.sm }}>
-          <Text style={[type.heading, { color: c.ink }]}>Is this a trek?</Text>
-          <Text style={[type.body, { color: c.slate }]}>
-            Trek trips include a route-corridor zone pack and checkpoint reminders.
-          </Text>
+          <Text style={[type.heading, { color: c.ink }]}>{t('trip.trekQuestion')}</Text>
+          <Text style={[type.body, { color: c.slate }]}>{t('trip.trekBody')}</Text>
           <Button
-            label={trek ? 'Trek route: Sahastra Tal' : 'Make this a trek'}
+            label={trek ? t('trip.trekOn') : t('trip.trekOff')}
             variant={trek ? 'primary' : 'secondary'}
             onPress={() => setTrek((value) => !value)}
           />
@@ -160,13 +152,10 @@ export default function NewTrip() {
       )}
       {step === 4 && (
         <View style={{ gap: space.sm }}>
-          <Text style={[type.heading, { color: c.ink }]}>Emergency contacts</Text>
-          <Text style={[type.body, { color: c.slate }]}>
-            Ananya (sister) will receive an escalation only if you miss two check-ins or trigger an
-            SOS. She cannot see your location history.
-          </Text>
+          <Text style={[type.heading, { color: c.ink }]}>{t('trip.contacts')}</Text>
+          <Text style={[type.body, { color: c.slate }]}>{t('trip.contactsBody')}</Text>
           <Button
-            label="Ananya is my emergency contact"
+            label={t('trip.contactsConfirm')}
             variant="secondary"
             onPress={() => setToast(true)}
           />
@@ -174,21 +163,20 @@ export default function NewTrip() {
       )}
       {step === 5 && (
         <View style={{ gap: space.sm }}>
-          <Text style={[type.heading, { color: c.ink }]}>Choose your monitoring tier</Text>
+          <Text style={[type.heading, { color: c.ink }]}>{t('trip.tierTitle')}</Text>
           <TierSelector value={tier} onChange={setTier} />
         </View>
       )}
       {step === 6 && (
         <View style={{ gap: space.sm }}>
-          <Text style={[type.title, { color: c.ink }]}>Ready to protect this trip</Text>
+          <Text style={[type.title, { color: c.ink }]}>{t('trip.reviewTitle')}</Text>
           <Text style={[type.body, { color: c.slate }]}>
             {destination} · {dates.start} to {dates.end}
           </Text>
-          <Text style={[type.body, { color: c.slate }]}>Monitoring: {tierLabel(tier)}</Text>
-          <Text style={[type.caption, { color: c.slate }]}>
-            Your zone pack downloads locally. A missing zone pack is shown as unavailable; it never
-            silently changes your consent choice.
+          <Text style={[type.body, { color: c.slate }]}>
+            {t('trip.monitoring', { tier: t(`tiers.${tier}.title`) })}
           </Text>
+          <Text style={[type.caption, { color: c.slate }]}>{t('trip.zonePackNote')}</Text>
         </View>
       )}
       {primer ? (
@@ -206,7 +194,7 @@ export default function NewTrip() {
         <View style={{ flexDirection: 'row', gap: space.sm }}>
           <View style={{ flex: 1 }}>
             <Button
-              label="Back"
+              label={t('common.back')}
               variant="ghost"
               disabled={step === 1 || permissionBusy}
               onPress={() => setStep((value) => Math.max(1, value - 1))}
@@ -214,7 +202,7 @@ export default function NewTrip() {
           </View>
           <View style={{ flex: 1 }}>
             <Button
-              label={step === 6 ? 'Start protecting this trip' : 'Continue'}
+              label={step === 6 ? t('trip.start') : t('common.continue')}
               loading={permissionBusy}
               disabled={permissionBusy}
               onPress={proceed}
@@ -224,11 +212,7 @@ export default function NewTrip() {
       )}
       <Toast
         visible={toast}
-        message={
-          step === 4
-            ? 'Ananya will be notified only during an escalation.'
-            : 'Your trip is set up locally.'
-        }
+        message={step === 4 ? t('trip.toastContacts') : t('trip.toastCreated')}
       />
     </Screen>
   );

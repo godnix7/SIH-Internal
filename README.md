@@ -10,7 +10,7 @@ Yatri Shield is an offline-first tourist safety demonstration for India. It supp
 - Local Fastify + Socket.IO mock service and Leaflet dashboard at `http://localhost:4000/dashboard`.
 - Four deterministic demo scenarios: Jaipur advisory, Sikkim restricted boundary, Sahastra Tal off-route/offline replay, and SOS drill.
 - Light/dark tokens, accessible controls, live monitoring status, and demo Digital Tourist ID/QR flows.
-- An English and Hindi string catalogue. Note that no screen reads from it yet: every screen renders hardcoded English, so the language toggle changes nothing on screen. Wiring `useTranslation` through the screens is outstanding work, not a shipped feature.
+- English and Hindi across the demo path — onboarding, tabs, home, trip planner, consent tiers, permission primer, Shield, the SOS screen and its incident timeline. The language switch applies immediately and survives a restart. Screens outside that path (Alerts, Trips, Profile, Demo Lab, identity) still render English; their strings are not yet in the catalogue.
 
 ## Prerequisites
 
@@ -65,6 +65,22 @@ npm run mock
 | Zone alerts     | Zone evaluation on-device              | Restricted/disaster entries only          |
 | Full monitoring | Mode-controlled local location batches | Location batches and critical zone events |
 
+Mode transitions are themselves telemetry, so only Full monitoring uploads them. The one exception is `EMERGENCY`, which is uploaded on every tier because a user-triggered SOS always leaves the phone.
+
+## Monitoring modes
+
+The location engine derives its mode and reconfigures the OS subscription on every change.
+
+| Mode          | GPS interval | Accuracy | Entered when                                     |
+| ------------- | ------------ | -------- | ------------------------------------------------ |
+| `IDLE`        | —            | none     | No active trip                                   |
+| `ACTIVE_TRIP` | 60 s         | balanced | Trip running                                     |
+| `HIGH_RISK`   | 20 s         | high     | Inside a restricted or disaster zone             |
+| `EMERGENCY`   | 3 s          | highest  | SOS raised; outranks every other mode            |
+| `LOW_BATTERY` | 240 s        | low      | Battery ≤ 15% and not charging (recovers at 20%) |
+
+Motion gating: ten stationary minutes in `ACTIVE_TRIP` stretch GPS to 5 minutes until the accelerometer sees movement again.
+
 ## Maps
 
 `react-native-maps` uses the Google provider on Android and throws `IllegalStateException: API key not found` at `MapView.onCreate` when no key is present. Without a key the trip and SOS screens render a zone summary (last known location, accuracy, and the zone list) rather than a map. To enable the map, set `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` in `.env` and re-run `npm run prebuild` so the key reaches `AndroidManifest.xml`.
@@ -80,8 +96,10 @@ cd android
 
 ## Known platform limitations
 
-- The location-engine mode table (`ACTIVE_TRIP` 60 s, `HIGH_RISK` 20 s, `EMERGENCY` 3 s, `LOW_BATTERY` 240 s) is defined and unit-tested, but `startMonitoring` currently requests a fixed 60 s interval. `HIGH_RISK`, `EMERGENCY` and `LOW_BATTERY` are never entered, and motion gating is not wired: `expo-sensors` and `expo-battery` are dependencies with no callers. Treat the mode table as design, not behaviour.
 - Geofence entry uses an accuracy gate, two consecutive inside fixes, and a per-zone cooldown. The accuracy-buffer hysteresis described in the design (shrink the polygon on entry, expand it on exit) is not implemented -- `Zone.bufferM` is stored and never read -- and no zone-exit event is emitted.
+- The outbox has no periodic flusher and the app has no connectivity detection. `online` is a manual toggle in Demo Lab, so the airplane-mode acceptance criterion must be driven by hand. An offline SOS does retry every 10 s while its screen is open.
+- Trips live only in memory. Unlike the SOS record, they do not survive a relaunch.
+- Battery level and charging state drive `LOW_BATTERY` through `expo-battery`. On an emulator, exercise it with `adb shell dumpsys battery unplug` and `adb shell dumpsys battery set level 10`, then `adb shell dumpsys battery reset`.
 - iOS does not offer an arbitrary persistent background service. The project uses the supported location/background model and must disclose reduced fidelity when the user only grants While Using permission.
 - iOS cannot send an SMS silently; the app opens a pre-filled system SMS composer for the demo shortcode `78112`.
 - Android power-button five-press interception is not implemented. It is intentionally not faked. The SOS button remains one tap away and the native power-button path requires a reviewed Android module before release.

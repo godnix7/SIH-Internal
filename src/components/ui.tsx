@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { MotiView } from 'moti';
+import { useTranslation } from 'react-i18next';
 import { AlertTriangle, Check, ChevronRight, CircleHelp, ShieldAlert } from 'lucide-react-native';
 
 import { formatCountdown } from '@/src/lib/formatters';
@@ -134,18 +135,20 @@ export function MonitoringStatusPill({
   onPress?: () => void;
 }) {
   const c = useAppColors();
-  const values = {
-    live: ['Protected · live', c.trail],
-    offline: ['Protected · syncing (offline)', c.amber],
-    limited: ['Limited — background off', c.amber],
-    paused: ['Paused', c.slate],
-    emergency: ['EMERGENCY', c.signal],
+  const { t } = useTranslation();
+  const colors = {
+    live: c.trail,
+    offline: c.amber,
+    limited: c.amber,
+    paused: c.slate,
+    emergency: c.signal,
   } as const;
-  const [label, color] = values[state];
+  const label = t(`status.${state}`);
+  const color = colors[state];
   return (
     <Pressable
       accessibilityRole={onPress ? 'button' : undefined}
-      accessibilityLabel={`Monitoring status: ${label}`}
+      accessibilityLabel={t('status.label', { label })}
       onPress={onPress}
       style={[styles.pill, { backgroundColor: `${color}18`, borderColor: `${color}50` }]}
     >
@@ -155,48 +158,7 @@ export function MonitoringStatusPill({
   );
 }
 
-const tierCopy: Record<ConsentTier, { title: string; copy: string; leaves: string[] }> = {
-  off: {
-    title: 'Off',
-    copy: 'Nothing is tracked. SOS still works if you trigger it.',
-    leaves: [
-      'Location trail: No',
-      'Zone warnings: No',
-      'Check-ins: No',
-      'SOS: Only when you trigger it',
-    ],
-  },
-  checkins: {
-    title: 'Check-ins only',
-    copy: "No location is stored. You confirm you're OK on a schedule you set. Miss two and we alert your contact with your last check-in point.",
-    leaves: [
-      'Location trail: No',
-      'Zone warnings: No',
-      'Check-ins: Yes',
-      'SOS: Only when you trigger it',
-    ],
-  },
-  zones: {
-    title: 'Zone alerts',
-    copy: "Your phone checks zones on-device. We're only notified if you enter a restricted or disaster area.",
-    leaves: [
-      'Location trail: No',
-      'Zone warnings: Only restricted',
-      'Check-ins: Yes',
-      'SOS: Only when you trigger it',
-    ],
-  },
-  full: {
-    title: 'Full monitoring',
-    copy: 'Location saved every few minutes while the trip is on. Auto-deleted 30 days after your trip ends.',
-    leaves: [
-      'Location trail: Yes',
-      'Zone warnings: Only restricted',
-      'Check-ins: Yes',
-      'SOS: Only when you trigger it',
-    ],
-  },
-};
+const TIER_ORDER: ConsentTier[] = ['off', 'checkins', 'zones', 'full'];
 
 export function TierSelector({
   value,
@@ -206,11 +168,16 @@ export function TierSelector({
   onChange: (tier: ConsentTier) => void;
 }) {
   const c = useAppColors();
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState<ConsentTier>(value);
   return (
     <View style={styles.stack}>
-      {(Object.keys(tierCopy) as ConsentTier[]).map((tier) => {
-        const item = tierCopy[tier];
+      {TIER_ORDER.map((tier) => {
+        const item = {
+          title: t(`tiers.${tier}.title`),
+          copy: t(`tiers.${tier}.copy`),
+          leaves: t(`tiers.${tier}.leaves`, { returnObjects: true }) as string[],
+        };
         const selected = tier === value;
         const open = tier === expanded;
         return (
@@ -237,7 +204,7 @@ export function TierSelector({
               <View style={styles.rowText}>
                 <Text style={[type.heading, { color: c.ink }]}>
                   {item.title}
-                  {tier === 'checkins' ? ' · default' : ''}
+                  {tier === 'checkins' ? t('tiers.defaultSuffix') : ''}
                 </Text>
                 <Text style={[type.body, { color: c.slate }]}>{item.copy}</Text>
               </View>
@@ -260,6 +227,7 @@ export function TierSelector({
 
 export function SOSButton({ onComplete }: { onComplete: () => void }) {
   const c = useAppColors();
+  const { t } = useTranslation();
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [holding, setHolding] = useState(false);
   const start = () => {
@@ -284,19 +252,19 @@ export function SOSButton({ onComplete }: { onComplete: () => void }) {
       >
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Hold for SOS"
-          accessibilityHint="Press and hold for one and a half seconds to begin an emergency alert"
+          accessibilityLabel={t('shield.hold')}
+          accessibilityHint={t('shield.holdHint')}
           onPressIn={start}
           onPressOut={stop}
           style={styles.sosPress}
         >
           <ShieldAlert color="#FFFFFF" size={38} />
           <Text style={[type.heading, { color: '#FFFFFF', textAlign: 'center' }]}>
-            {holding ? 'Keep holding' : 'SOS'}
+            {holding ? t('shield.keepHolding') : 'SOS'}
           </Text>
         </Pressable>
       </MotiView>
-      <Text style={[type.caption, { color: c.slate }]}>Hold for SOS</Text>
+      <Text style={[type.caption, { color: c.slate }]}>{t('shield.hold')}</Text>
     </View>
   );
 }
@@ -359,6 +327,7 @@ export function ZoneBanner({
 
 export function TimelineItem({ event }: { event: IncidentEvent }) {
   const c = useAppColors();
+  const { t } = useTranslation();
   return (
     <View style={styles.timeline}>
       <View
@@ -371,9 +340,11 @@ export function TimelineItem({ event }: { event: IncidentEvent }) {
         ]}
       />
       <View style={styles.rowText}>
-        <Text style={[type.heading, { color: c.ink }]}>{event.type.replaceAll('.', ' ')}</Text>
+        <Text style={[type.heading, { color: c.ink }]}>
+          {t(`sos.events.${event.type}`, { defaultValue: event.type.replaceAll('.', ' ') })}
+        </Text>
         <Text style={[type.caption, { color: c.slate }]}>
-          {event.actor} ·{' '}
+          {t(`sos.actors.${event.actor}`, { defaultValue: event.actor })} ·{' '}
           {new Date(event.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         </Text>
       </View>
@@ -383,12 +354,11 @@ export function TimelineItem({ event }: { event: IncidentEvent }) {
 
 export function OfflineBar() {
   const c = useAppColors();
+  const { t } = useTranslation();
   return (
     <View style={[styles.offline, { backgroundColor: `${c.amber}1A` }]}>
       <CircleHelp color={c.amber} size={18} />
-      <Text style={[type.caption, { color: c.ink, flex: 1 }]}>
-        No connection — everything is saved and will sync automatically.
-      </Text>
+      <Text style={[type.caption, { color: c.ink, flex: 1 }]}>{t('offline.bar')}</Text>
     </View>
   );
 }
@@ -407,18 +377,15 @@ export function PermissionPrimer({
   notice?: string;
 }) {
   const c = useAppColors();
+  const { t } = useTranslation();
   return (
     <Card>
       <Text style={[type.title, { color: c.ink }]}>
-        Before you choose {tier === 'full' ? 'full monitoring' : 'zone alerts'}
+        {t('primer.title', { tier: t(`tiers.${tier}.title`) })}
       </Text>
-      <Text style={[type.body, { color: c.slate, marginTop: space.sm }]}>
-        During this trip, the app needs background location so it can keep checking when you close
-        it. Android will show a persistent notification with your trip name and next check-in time.
-      </Text>
+      <Text style={[type.body, { color: c.slate, marginTop: space.sm }]}>{t('primer.body')}</Text>
       <Text style={[type.caption, { color: c.slate, marginTop: space.sm }]}>
-        You can pause or change this choice whenever you like. We do not collect a location trail in
-        Zone alerts.
+        {t('primer.note')}
       </Text>
       {notice && (
         <View style={[styles.permissionNotice, { backgroundColor: `${c.amber}14` }]}>
@@ -426,9 +393,9 @@ export function PermissionPrimer({
         </View>
       )}
       <View style={styles.actions}>
-        <Button label="Not now" variant="ghost" disabled={loading} onPress={onBack} />
+        <Button label={t('primer.notNow')} variant="ghost" disabled={loading} onPress={onBack} />
         <Button
-          label="Continue to permission"
+          label={t('primer.continue')}
           loading={loading}
           onPress={onContinue}
           accessibilityHint="Android will ask for location permission. You can continue with limited monitoring if you decline."

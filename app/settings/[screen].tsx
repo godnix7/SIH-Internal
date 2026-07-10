@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { Play } from 'lucide-react-native';
 
-import i18n from '@/src/i18n';
 import { Screen } from '@/src/components/Screen';
 import { Button, Card, Input, ListRow, Toast, useAppColors } from '@/src/components/ui';
 import { demoEngine } from '@/src/services/demoEngine';
@@ -13,11 +13,12 @@ import { space, type } from '@/src/theme/tokens';
 export default function SettingsScreen() {
   const { screen } = useLocalSearchParams<{ screen: string }>();
   const c = useAppColors();
+  const { t } = useTranslation();
   const [toast, setToast] = useState(false);
   const {
-    profile,
     trips,
     demoMode,
+    language,
     setDemoMode,
     setLanguage,
     setTheme,
@@ -89,22 +90,16 @@ export default function SettingsScreen() {
     return (
       <Screen title="Language and appearance" subtitle="Changes apply immediately.">
         <Card>
-          <Text style={[type.heading, { color: c.ink }]}>Language</Text>
+          <Text style={[type.heading, { color: c.ink }]}>{t('settings.language')}</Text>
           <Button
             label="English"
-            variant={profile?.language !== 'hi' ? 'primary' : 'secondary'}
-            onPress={() => {
-              setLanguage('en');
-              void i18n.changeLanguage('en');
-            }}
+            variant={language === 'en' ? 'primary' : 'secondary'}
+            onPress={() => setLanguage('en')}
           />
           <Button
             label="हिन्दी"
-            variant={profile?.language === 'hi' ? 'primary' : 'secondary'}
-            onPress={() => {
-              setLanguage('hi');
-              void i18n.changeLanguage('hi');
-            }}
+            variant={language === 'hi' ? 'primary' : 'secondary'}
+            onPress={() => setLanguage('hi')}
           />
         </Card>
         <Card>

@@ -1,79 +1,491 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 
-const resources = {
-  en: {
-    translation: {
-      common: {
-        continue: 'Continue',
-        back: 'Back',
-        save: 'Save',
-        cancel: 'Cancel',
-        demo: 'Demo mode',
-      },
-      status: {
-        live: 'Protected · live',
-        offline: 'Protected · syncing (offline)',
-        limited: 'Limited — background off',
-        paused: 'Paused',
-        emergency: 'EMERGENCY',
-      },
-      onboarding: {
-        title: "Travel far. Someone's watching over you.",
-        subtitle:
-          'Choose the support that fits this trip. You stay in control of what leaves your phone.',
-        getStarted: 'Get started',
-        exploreDemo: 'Explore demo mode',
-      },
-      sos: {
-        hold: 'Hold for SOS',
-        countdown: 'Sending SOS',
-        cancel: "I'm safe — cancel",
-        call: 'Call 112',
-        offline: 'No network — SOS saved. Trying every 10 s. Send by SMS instead?',
-      },
+import { preferences } from '@/src/services/preferences';
+
+export type Language = 'en' | 'hi';
+
+export const LANGUAGE_KEY = 'language';
+
+const en = {
+  common: {
+    continue: 'Continue',
+    back: 'Back',
+    save: 'Save',
+    cancel: 'Cancel',
+    demo: 'Demo mode',
+    planTrip: 'Plan a trip',
+    imOk: 'I’m OK',
+  },
+  status: {
+    live: 'Protected · live',
+    offline: 'Protected · syncing (offline)',
+    limited: 'Limited — background off',
+    paused: 'Paused',
+    emergency: 'EMERGENCY',
+    label: 'Monitoring status: {{label}}',
+  },
+  offline: {
+    bar: 'No connection — everything is saved and will sync automatically.',
+  },
+  onboarding: {
+    title: 'Travel far.\nSomeone’s watching over you.',
+    subtitle:
+      'Plan a trip, choose the support you want, and keep a clear path to help when you need it.',
+    emergencyTitle: '112 stays one tap away',
+    emergencyBody:
+      'Yatri Shield adds your trip context and last known location. It never replaces India’s emergency service.',
+    getStarted: 'Get started',
+    exploreDemo: 'Explore demo mode',
+  },
+  home: {
+    greeting: 'Good morning',
+    fallbackName: 'Traveller',
+    protectedWith: 'Protected with {{tier}}',
+    emptyTitle: 'Plan your next trip',
+    emptyBody: 'Set your destination, dates and the monitoring tier that feels right for you.',
+    nearby: 'Nearby right now',
+    policeAidPost: 'Police aid post',
+    policeAidPostSub: 'MI Road help desk · 400 m away',
+    areaAdvisory: 'Area advisory',
+    areaAdvisorySub: 'Keep valuables zipped around busy markets after dark.',
+    weatherTitle: 'Light rain later',
+    weatherSub: 'Demo forecast · carry a light layer for the evening.',
+    checkInTitle: 'Check-in received',
+    checkInBody: 'You are marked OK. Your next check-in is scheduled automatically.',
+    aidSavedTitle: 'Aid post saved',
+    aidSavedBody: 'MI Road help desk has been added to your local trip notes.',
+  },
+  shield: {
+    title: 'Need help?',
+    hint: 'Hold the button for 1.5 seconds. A five-second countdown gives you time to cancel an accidental SOS.',
+    hold: 'Hold for SOS',
+    keepHolding: 'Keep holding',
+    holdHint: 'Press and hold for one and a half seconds to begin an emergency alert',
+    medical: 'Medical',
+    police: 'Police',
+    watch: 'Just watch me',
+    silentTitle: 'Silent SOS',
+    silentBody:
+      'This local demo uses two short vibrations and a discreet weather-card screen after you trigger it.',
+    silentStart: 'Start silent SOS',
+    disclaimer:
+      'For immediate emergency services, call 112. Yatri Shield adds context; it does not replace 112.',
+  },
+  sos: {
+    sending: 'Sending SOS',
+    sendingBody: 'We will send your selected SOS with your last known location.',
+    cancel: 'I’m safe — cancel',
+    cancelWithPin: 'I’m safe — cancel with PIN',
+    cancelButton: 'Cancel SOS',
+    pinHint: 'Enter the cancellation PIN set in this demo: {{pin}}.',
+    activeTitle: 'SOS active',
+    statusLine: 'Status: {{status}}',
+    decoyTitle: 'Weather update',
+    decoySub: 'Chance of rain later today',
+    delivering: 'Your SOS is being delivered',
+    acknowledged: 'Seen by SI Dorjee at the control room',
+    enroute: 'Responder unit UK-12 is on the way',
+    sharedLine:
+      'Your identity, location and self-declared medical card are shared for this incident only.',
+    offlineCard: 'No network — SOS saved. Trying every 10 s. Send by SMS instead?',
+    openSms: 'Open SMS to {{code}}',
+    call: 'Call 112',
+    callHint: 'Opens your phone’s emergency calling screen',
+    updateStatus: 'Update status',
+    timeline: 'Incident timeline',
+    resolve: 'Mark incident resolved',
+    integrityRecord: 'Record integrity: {{summary}}',
+    integrityChecking: '{{count}} events · checking integrity',
+    integrityVerified: '{{count}} events · chain verified',
+    integrityBroken: '{{count}} events · integrity check failed',
+    integrityChecking_one: '{{count}} event · checking integrity',
+    integrityVerified_one: '{{count}} event · chain verified',
+    integrityBroken_one: '{{count}} event · integrity check failed',
+    noEvents: 'No incident events are stored on this device yet.',
+    backToAlerts: 'Back to alerts',
+    statuses: {
+      COUNTDOWN: 'Counting down',
+      SENDING: 'Sending',
+      SENT: 'Sent',
+      ACKNOWLEDGED: 'Acknowledged',
+      RESPONDER_ENROUTE: 'Responder en route',
+      RESOLVED: 'Resolved',
+      CANCELLED: 'Cancelled',
+      OFFLINE_QUEUED: 'Queued offline',
+    },
+    events: {
+      'sos.created': 'SOS created',
+      'sos.sending': 'Sending SOS',
+      'sos.sent': 'SOS sent',
+      'sos.acknowledged': 'Seen by the control room',
+      'sos.responder_enroute': 'Responder dispatched',
+      'sos.resolved': 'Incident resolved',
+      'sos.cancelled': 'SOS cancelled',
+      'sos.offline_queued': 'Saved offline',
+    },
+    actors: {
+      you: 'you',
+      system: 'system',
+      operator: 'operator',
+      responder: 'responder',
     },
   },
-  hi: {
-    translation: {
-      common: {
-        continue: 'आगे बढ़ें',
-        back: 'वापस',
-        save: 'सहेजें',
-        cancel: 'रद्द करें',
-        demo: 'डेमो मोड',
-      },
-      status: {
-        live: 'सुरक्षित · लाइव',
-        offline: 'सुरक्षित · ऑफ़लाइन सिंक हो रहा है',
-        limited: 'सीमित — बैकग्राउंड बंद है',
-        paused: 'रुका हुआ',
-        emergency: 'आपातकाल',
-      },
-      onboarding: {
-        title: 'दूर तक जाइए। कोई आपका ध्यान रख रहा है।',
-        subtitle:
-          'इस यात्रा के लिए अपनी सुविधा का सुरक्षा स्तर चुनें। आपके फ़ोन से क्या बाहर जाता है, वह आपके नियंत्रण में है।',
-        getStarted: 'शुरू करें',
-        exploreDemo: 'डेमो मोड देखें',
-      },
-      sos: {
-        hold: 'SOS के लिए दबाकर रखें',
-        countdown: 'SOS भेजा जा रहा है',
-        cancel: 'मैं सुरक्षित हूँ — रद्द करें',
-        call: '112 पर कॉल करें',
-        offline: 'नेटवर्क नहीं है — SOS सुरक्षित है। हर 10 सेकंड में फिर कोशिश होगी। SMS से भेजें?',
-      },
+  maps: {
+    unavailable: 'Map unavailable — no Google Maps API key is configured for this build.',
+    lastKnown: 'Last known location {{coords}} · ±{{accuracy}} m',
+  },
+  zoneClass: {
+    advisory: 'advisory',
+    restricted: 'restricted',
+    disaster: 'disaster',
+    corridor: 'corridor',
+  },
+  tiers: {
+    defaultSuffix: ' · default',
+    off: {
+      title: 'Off',
+      copy: 'Nothing is tracked. SOS still works if you trigger it.',
+      leaves: [
+        'Location trail: No',
+        'Zone warnings: No',
+        'Check-ins: No',
+        'SOS: Only when you trigger it',
+      ],
+    },
+    checkins: {
+      title: 'Check-ins only',
+      copy: 'No location is stored. You confirm you’re OK on a schedule you set. Miss two and we alert your contact with your last check-in point.',
+      leaves: [
+        'Location trail: No',
+        'Zone warnings: No',
+        'Check-ins: Yes',
+        'SOS: Only when you trigger it',
+      ],
+    },
+    zones: {
+      title: 'Zone alerts',
+      copy: 'Your phone checks zones on-device. We’re only notified if you enter a restricted or disaster area.',
+      leaves: [
+        'Location trail: No',
+        'Zone warnings: Only restricted',
+        'Check-ins: Yes',
+        'SOS: Only when you trigger it',
+      ],
+    },
+    full: {
+      title: 'Full monitoring',
+      copy: 'Location saved every few minutes while the trip is on. Auto-deleted 30 days after your trip ends.',
+      leaves: [
+        'Location trail: Yes',
+        'Zone warnings: Only restricted',
+        'Check-ins: Yes',
+        'SOS: Only when you trigger it',
+      ],
     },
   },
-} as const;
+  primer: {
+    title: 'Before you choose {{tier}}',
+    body: 'During this trip, the app needs background location so it can keep checking when you close it. Android will show a persistent notification with your trip name and next check-in time.',
+    note: 'You can pause or change this choice whenever you like. We do not collect a location trail in Zone alerts.',
+    continue: 'Continue to permission',
+    notNow: 'Not now',
+  },
+  trip: {
+    title: 'Plan a trip',
+    step: 'Step {{step}} of 6 · your choice stays editable after the trip starts.',
+    destination: 'Destination',
+    startDate: 'Start date',
+    endDate: 'End date',
+    datePlaceholder: 'YYYY-MM-DD',
+    trekQuestion: 'Is this a trek?',
+    trekBody: 'Trek trips include a route-corridor zone pack and checkpoint reminders.',
+    trekOn: 'Trek route: Sahastra Tal',
+    trekOff: 'Make this a trek',
+    contacts: 'Emergency contacts',
+    contactsBody:
+      'Ananya (sister) will receive an escalation only if you miss two check-ins or trigger an SOS. She cannot see your location history.',
+    contactsConfirm: 'Ananya is my emergency contact',
+    tierTitle: 'Choose your monitoring tier',
+    reviewTitle: 'Ready to protect this trip',
+    monitoring: 'Monitoring: {{tier}}',
+    zonePackNote:
+      'Your zone pack downloads locally. A missing zone pack is shown as unavailable; it never silently changes your consent choice.',
+    start: 'Start protecting this trip',
+    waiting: 'Waiting for your Android permission choice…',
+    permissionFailed:
+      'Android could not complete the permission request. Your trip has not started—please try again or choose Check-ins only.',
+    saveFailed:
+      'Your trip could not be saved to this phone’s encrypted store, so it has not started. Nothing was sent. Please try again.',
+    toastContacts: 'Ananya will be notified only during an escalation.',
+    toastCreated: 'Your trip is set up locally.',
+    monitorWarnTitle: 'Monitoring needs attention',
+    monitorWarnBody:
+      'Your trip is active, but background monitoring could not start. Check Android location settings before relying on it.',
+    limitedTitle: 'Background location is off',
+    limitedBody:
+      'Your trip is active with check-ins, but zone or trail monitoring pauses when the app is closed. Enable background location in Android Settings to restore it.',
+    notificationsTitle: 'Notifications are off',
+    notificationsBody:
+      'Your trip is active, but check-in reminders will not appear until notifications are enabled in Android Settings.',
+  },
+  settings: {
+    language: 'Language',
+  },
+  tabs: {
+    home: 'Home',
+    trips: 'Trips',
+    shield: 'Shield',
+    alerts: 'Alerts',
+    profile: 'Profile',
+  },
+};
+
+const hi: typeof en = {
+  common: {
+    continue: 'आगे बढ़ें',
+    back: 'वापस',
+    save: 'सहेजें',
+    cancel: 'रद्द करें',
+    demo: 'डेमो मोड',
+    planTrip: 'यात्रा की योजना बनाएँ',
+    imOk: 'मैं ठीक हूँ',
+  },
+  status: {
+    live: 'सुरक्षित · लाइव',
+    offline: 'सुरक्षित · ऑफ़लाइन सिंक हो रहा है',
+    limited: 'सीमित — बैकग्राउंड बंद है',
+    paused: 'रुका हुआ',
+    emergency: 'आपातकाल',
+    label: 'निगरानी की स्थिति: {{label}}',
+  },
+  offline: {
+    bar: 'कनेक्शन नहीं है — सब कुछ सहेज लिया गया है और अपने आप सिंक हो जाएगा।',
+  },
+  onboarding: {
+    title: 'दूर तक जाइए।\nकोई आप पर नज़र रखे हुए है।',
+    subtitle:
+      'यात्रा की योजना बनाइए, अपनी पसंद की सुरक्षा चुनिए, और ज़रूरत पड़ने पर मदद तक सीधा रास्ता खुला रखिए।',
+    emergencyTitle: '112 हमेशा एक टैप दूर है',
+    emergencyBody:
+      'यात्री शील्ड आपकी यात्रा का संदर्भ और अंतिम ज्ञात स्थान जोड़ता है। यह भारत की आपातकालीन सेवा की जगह कभी नहीं लेता।',
+    getStarted: 'शुरू करें',
+    exploreDemo: 'डेमो मोड देखें',
+  },
+  home: {
+    greeting: 'सुप्रभात',
+    fallbackName: 'यात्री',
+    protectedWith: '{{tier}} के साथ सुरक्षित',
+    emptyTitle: 'अपनी अगली यात्रा की योजना बनाएँ',
+    emptyBody: 'अपना गंतव्य, तारीख़ें और वह निगरानी स्तर चुनिए जो आपको ठीक लगे।',
+    nearby: 'अभी आस-पास',
+    policeAidPost: 'पुलिस सहायता चौकी',
+    policeAidPostSub: 'एमआई रोड हेल्प डेस्क · 400 मीटर दूर',
+    areaAdvisory: 'क्षेत्र सलाह',
+    areaAdvisorySub: 'अँधेरे के बाद भीड़ भरे बाज़ारों में क़ीमती सामान संभालकर रखें।',
+    weatherTitle: 'बाद में हल्की बारिश',
+    weatherSub: 'डेमो पूर्वानुमान · शाम के लिए हल्का कपड़ा साथ रखें।',
+    checkInTitle: 'चेक-इन मिल गया',
+    checkInBody: 'आप ठीक दर्ज किए गए हैं। आपका अगला चेक-इन अपने आप तय हो गया है।',
+    aidSavedTitle: 'सहायता चौकी सहेजी गई',
+    aidSavedBody: 'एमआई रोड हेल्प डेस्क आपकी स्थानीय यात्रा नोट्स में जोड़ दी गई है।',
+  },
+  shield: {
+    title: 'मदद चाहिए?',
+    hint: 'बटन को 1.5 सेकंड तक दबाए रखें। पाँच सेकंड की गिनती आपको ग़लती से भेजे गए SOS को रद्द करने का समय देती है।',
+    hold: 'SOS के लिए दबाए रखें',
+    keepHolding: 'दबाए रखें',
+    holdHint: 'आपातकालीन अलर्ट शुरू करने के लिए डेढ़ सेकंड तक दबाए रखें',
+    medical: 'चिकित्सा',
+    police: 'पुलिस',
+    watch: 'बस नज़र रखें',
+    silentTitle: 'साइलेंट SOS',
+    silentBody:
+      'यह स्थानीय डेमो दो छोटे कंपन देता है और भेजने के बाद मौसम कार्ड वाली सामान्य दिखने वाली स्क्रीन दिखाता है।',
+    silentStart: 'साइलेंट SOS भेजें',
+    disclaimer:
+      'तुरंत आपातकालीन सेवा के लिए 112 पर कॉल करें। यात्री शील्ड संदर्भ जोड़ता है; यह 112 की जगह नहीं लेता।',
+  },
+  sos: {
+    sending: 'SOS भेजा जा रहा है',
+    sendingBody: 'हम आपका चुना हुआ SOS आपके अंतिम ज्ञात स्थान के साथ भेजेंगे।',
+    cancel: 'मैं सुरक्षित हूँ — रद्द करें',
+    cancelWithPin: 'मैं सुरक्षित हूँ — PIN से रद्द करें',
+    cancelButton: 'SOS रद्द करें',
+    pinHint: 'इस डेमो में तय किया गया रद्दीकरण PIN डालें: {{pin}}।',
+    activeTitle: 'SOS सक्रिय',
+    statusLine: 'स्थिति: {{status}}',
+    decoyTitle: 'मौसम अपडेट',
+    decoySub: 'आज बाद में बारिश की संभावना',
+    delivering: 'आपका SOS भेजा जा रहा है',
+    acknowledged: 'नियंत्रण कक्ष में एसआई दोरजी ने देख लिया है',
+    enroute: 'बचाव दल UK-12 रास्ते में है',
+    sharedLine:
+      'आपकी पहचान, स्थान और स्वयं-घोषित चिकित्सा जानकारी केवल इसी घटना के लिए साझा की गई है।',
+    offlineCard: 'नेटवर्क नहीं है — SOS सहेजा गया। हर 10 सेकंड में कोशिश जारी है। SMS से भेजें?',
+    openSms: '{{code}} पर SMS खोलें',
+    call: '112 पर कॉल करें',
+    callHint: 'आपके फ़ोन की आपातकालीन कॉल स्क्रीन खोलता है',
+    updateStatus: 'स्थिति अपडेट करें',
+    timeline: 'घटना का घटनाक्रम',
+    resolve: 'घटना को हल किया हुआ चिह्नित करें',
+    integrityRecord: 'रिकॉर्ड की अखंडता: {{summary}}',
+    integrityChecking: '{{count}} घटनाएँ · अखंडता जाँची जा रही है',
+    integrityVerified: '{{count}} घटनाएँ · श्रृंखला सत्यापित',
+    integrityBroken: '{{count}} घटनाएँ · अखंडता जाँच विफल',
+    integrityChecking_one: '{{count}} घटना · अखंडता जाँची जा रही है',
+    integrityVerified_one: '{{count}} घटना · श्रृंखला सत्यापित',
+    integrityBroken_one: '{{count}} घटना · अखंडता जाँच विफल',
+    noEvents: 'इस फ़ोन पर अभी कोई घटना दर्ज नहीं है।',
+    backToAlerts: 'अलर्ट पर वापस जाएँ',
+    statuses: {
+      COUNTDOWN: 'गिनती जारी',
+      SENDING: 'भेजा जा रहा है',
+      SENT: 'भेज दिया गया',
+      ACKNOWLEDGED: 'देख लिया गया',
+      RESPONDER_ENROUTE: 'बचाव दल रास्ते में',
+      RESOLVED: 'हल हो गया',
+      CANCELLED: 'रद्द किया गया',
+      OFFLINE_QUEUED: 'ऑफ़लाइन क़तार में',
+    },
+    events: {
+      'sos.created': 'SOS बनाया गया',
+      'sos.sending': 'SOS भेजा जा रहा है',
+      'sos.sent': 'SOS भेज दिया गया',
+      'sos.acknowledged': 'नियंत्रण कक्ष ने देखा',
+      'sos.responder_enroute': 'बचाव दल भेजा गया',
+      'sos.resolved': 'घटना हल हुई',
+      'sos.cancelled': 'SOS रद्द किया गया',
+      'sos.offline_queued': 'ऑफ़लाइन सहेजा गया',
+    },
+    actors: {
+      you: 'आप',
+      system: 'सिस्टम',
+      operator: 'ऑपरेटर',
+      responder: 'बचाव दल',
+    },
+  },
+  maps: {
+    unavailable: 'नक़्शा उपलब्ध नहीं — इस बिल्ड में Google Maps API कुंजी सेट नहीं है।',
+    lastKnown: 'अंतिम ज्ञात स्थान {{coords}} · ±{{accuracy}} मीटर',
+  },
+  zoneClass: {
+    advisory: 'सलाह',
+    restricted: 'प्रतिबंधित',
+    disaster: 'आपदा',
+    corridor: 'गलियारा',
+  },
+  tiers: {
+    defaultSuffix: ' · डिफ़ॉल्ट',
+    off: {
+      title: 'बंद',
+      copy: 'कुछ भी ट्रैक नहीं होता। SOS फिर भी काम करता है, अगर आप उसे चलाएँ।',
+      leaves: [
+        'स्थान का रिकॉर्ड: नहीं',
+        'ज़ोन चेतावनियाँ: नहीं',
+        'चेक-इन: नहीं',
+        'SOS: केवल जब आप ख़ुद भेजें',
+      ],
+    },
+    checkins: {
+      title: 'केवल चेक-इन',
+      copy: 'कोई स्थान सहेजा नहीं जाता। आप अपनी तय समय-सारणी पर बताते हैं कि आप ठीक हैं। दो चेक-इन छूटने पर हम आपके संपर्क को आपके अंतिम चेक-इन स्थान के साथ सूचित करते हैं।',
+      leaves: [
+        'स्थान का रिकॉर्ड: नहीं',
+        'ज़ोन चेतावनियाँ: नहीं',
+        'चेक-इन: हाँ',
+        'SOS: केवल जब आप ख़ुद भेजें',
+      ],
+    },
+    zones: {
+      title: 'ज़ोन अलर्ट',
+      copy: 'आपका फ़ोन ज़ोन की जाँच फ़ोन पर ही करता है। हमें केवल तभी पता चलता है जब आप प्रतिबंधित या आपदा क्षेत्र में जाते हैं।',
+      leaves: [
+        'स्थान का रिकॉर्ड: नहीं',
+        'ज़ोन चेतावनियाँ: केवल प्रतिबंधित',
+        'चेक-इन: हाँ',
+        'SOS: केवल जब आप ख़ुद भेजें',
+      ],
+    },
+    full: {
+      title: 'पूर्ण निगरानी',
+      copy: 'यात्रा चलने तक हर कुछ मिनट में स्थान सहेजा जाता है। यात्रा ख़त्म होने के 30 दिन बाद अपने आप मिट जाता है।',
+      leaves: [
+        'स्थान का रिकॉर्ड: हाँ',
+        'ज़ोन चेतावनियाँ: केवल प्रतिबंधित',
+        'चेक-इन: हाँ',
+        'SOS: केवल जब आप ख़ुद भेजें',
+      ],
+    },
+  },
+  primer: {
+    title: '{{tier}} चुनने से पहले',
+    body: 'इस यात्रा के दौरान ऐप को बैकग्राउंड लोकेशन चाहिए, ताकि ऐप बंद रहने पर भी जाँच जारी रहे। Android आपकी यात्रा का नाम और अगले चेक-इन का समय दिखाने वाली एक स्थायी सूचना दिखाएगा।',
+    note: 'आप इस चुनाव को कभी भी रोक या बदल सकते हैं। ज़ोन अलर्ट में हम आपके स्थान का रिकॉर्ड नहीं रखते।',
+    continue: 'अनुमति के लिए आगे बढ़ें',
+    notNow: 'अभी नहीं',
+  },
+  trip: {
+    title: 'यात्रा की योजना बनाएँ',
+    step: 'चरण {{step}} / 6 · यात्रा शुरू होने के बाद भी आपका चुनाव बदला जा सकता है।',
+    destination: 'गंतव्य',
+    startDate: 'शुरू होने की तारीख़',
+    endDate: 'ख़त्म होने की तारीख़',
+    datePlaceholder: 'YYYY-MM-DD',
+    trekQuestion: 'क्या यह ट्रेक है?',
+    trekBody: 'ट्रेक यात्राओं में मार्ग-गलियारे का ज़ोन पैक और चेकपॉइंट याद-दिलावे शामिल होते हैं।',
+    trekOn: 'ट्रेक मार्ग: सहस्त्र ताल',
+    trekOff: 'इसे ट्रेक बनाएँ',
+    contacts: 'आपातकालीन संपर्क',
+    contactsBody:
+      'अनन्या (बहन) को तभी सूचना जाएगी जब आपके दो चेक-इन छूट जाएँ या आप SOS भेजें। वे आपका स्थान इतिहास नहीं देख सकतीं।',
+    contactsConfirm: 'अनन्या मेरी आपातकालीन संपर्क हैं',
+    tierTitle: 'अपना निगरानी स्तर चुनें',
+    reviewTitle: 'इस यात्रा की सुरक्षा के लिए तैयार',
+    monitoring: 'निगरानी: {{tier}}',
+    zonePackNote:
+      'आपका ज़ोन पैक फ़ोन पर ही डाउनलोड होता है। ज़ोन पैक न मिलने पर उसे अनुपलब्ध दिखाया जाता है; यह आपकी सहमति चुपचाप कभी नहीं बदलता।',
+    start: 'इस यात्रा की सुरक्षा शुरू करें',
+    waiting: 'आपकी Android अनुमति के चुनाव का इंतज़ार है…',
+    permissionFailed:
+      'Android अनुमति की माँग पूरी नहीं कर सका। आपकी यात्रा शुरू नहीं हुई है—फिर कोशिश करें या केवल चेक-इन चुनें।',
+    saveFailed:
+      'आपकी यात्रा इस फ़ोन के एन्क्रिप्टेड स्टोर में सहेजी नहीं जा सकी, इसलिए वह शुरू नहीं हुई। कुछ भी भेजा नहीं गया। कृपया फिर कोशिश करें।',
+    toastContacts: 'अनन्या को केवल किसी आपात स्थिति में सूचित किया जाएगा।',
+    toastCreated: 'आपकी यात्रा फ़ोन पर सेट हो गई है।',
+    monitorWarnTitle: 'निगरानी पर ध्यान देने की ज़रूरत है',
+    monitorWarnBody:
+      'आपकी यात्रा चालू है, लेकिन बैकग्राउंड निगरानी शुरू नहीं हो सकी। इस पर भरोसा करने से पहले Android की लोकेशन सेटिंग जाँचें।',
+    limitedTitle: 'बैकग्राउंड लोकेशन बंद है',
+    limitedBody:
+      'आपकी यात्रा चेक-इन के साथ चालू है, लेकिन ऐप बंद होने पर ज़ोन या रास्ते की निगरानी रुक जाती है। इसे वापस चालू करने के लिए Android सेटिंग में बैकग्राउंड लोकेशन चालू करें।',
+    notificationsTitle: 'सूचनाएँ बंद हैं',
+    notificationsBody:
+      'आपकी यात्रा चालू है, लेकिन जब तक Android सेटिंग में सूचनाएँ चालू नहीं होतीं, चेक-इन याद-दिलावे नहीं दिखेंगे।',
+  },
+  settings: {
+    language: 'भाषा',
+  },
+  tabs: {
+    home: 'होम',
+    trips: 'यात्राएँ',
+    shield: 'शील्ड',
+    alerts: 'अलर्ट',
+    profile: 'प्रोफ़ाइल',
+  },
+};
+
+export function savedLanguage(): Language {
+  return preferences.getString(LANGUAGE_KEY) === 'hi' ? 'hi' : 'en';
+}
 
 void i18n.use(initReactI18next).init({
-  resources,
-  lng: 'en',
+  resources: { en: { translation: en }, hi: { translation: hi } },
+  lng: savedLanguage(),
   fallbackLng: 'en',
   interpolation: { escapeValue: false },
   compatibilityJSON: 'v4',
+  returnObjects: true,
 });
 
 export default i18n;

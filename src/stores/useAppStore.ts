@@ -1,6 +1,7 @@
 import * as SecureStore from 'expo-secure-store';
 import { create } from 'zustand';
 
+import i18n, { LANGUAGE_KEY, savedLanguage, type Language } from '@/src/i18n';
 import { DEMO_CANCEL_PIN, remoteConfig } from '@/src/lib/constants';
 import { tierLabel } from '@/src/lib/formatters';
 import { hashEvent } from '@/src/lib/hashChain';
@@ -96,13 +97,14 @@ type Profile = {
   nationality: string;
   homeCity: string;
   idRef: string;
-  language: 'en' | 'hi';
+  language: Language;
 };
 
 type AppStore = {
   hasCompletedOnboarding: boolean;
   demoMode: boolean;
   online: boolean;
+  language: Language;
   profile?: Profile;
   trips: Trip[];
   alerts: AlertItem[];
@@ -113,7 +115,7 @@ type AppStore = {
   setDemoMode: (enabled: boolean) => void;
   setOnline: (online: boolean) => void;
   saveProfile: (profile: Omit<Profile, 'idRef' | 'language'>) => void;
-  setLanguage: (language: 'en' | 'hi') => void;
+  setLanguage: (language: Language) => void;
   setTheme: (theme: AppStore['theme']) => void;
   createTrip: (
     values: Pick<Trip, 'destination' | 'startDate' | 'endDate' | 'tier'> &
@@ -187,11 +189,18 @@ export const useAppStore = create<AppStore>((set, get) => ({
       profile: {
         ...profile,
         idRef: `YS-2026-${Math.floor(1000 + Math.random() * 9000)}`,
-        language: 'en',
+        language: savedLanguage(),
       },
     }),
-  setLanguage: (language) =>
-    set((state) => ({ profile: state.profile ? { ...state.profile, language } : state.profile })),
+  language: savedLanguage(),
+  setLanguage: (language) => {
+    preferences.set(LANGUAGE_KEY, language);
+    void i18n.changeLanguage(language);
+    set((state) => ({
+      language,
+      profile: state.profile ? { ...state.profile, language } : state.profile,
+    }));
+  },
   setTheme: (theme) => {
     preferences.set('theme', theme);
     set({ theme });

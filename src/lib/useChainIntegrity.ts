@@ -5,11 +5,11 @@ import type { IncidentEvent } from './types';
 
 export type ChainIntegrity = 'checking' | 'verified' | 'broken';
 
-export function integrityLabel(events: IncidentEvent[], integrity: ChainIntegrity): string {
-  const count = `${events.length} ${events.length === 1 ? 'event' : 'events'}`;
-  if (integrity === 'checking') return `${count} · checking integrity`;
-  if (integrity === 'broken') return `${count} · integrity check failed`;
-  return `${count} · chain verified`;
+/** i18n key for the integrity summary; the caller supplies `count` for pluralisation. */
+export function integrityKey(integrity: ChainIntegrity): string {
+  if (integrity === 'checking') return 'sos.integrityChecking';
+  if (integrity === 'broken') return 'sos.integrityBroken';
+  return 'sos.integrityVerified';
 }
 
 /** Recomputes the SHA-256 event chain rather than asserting it is intact. */

@@ -1,4 +1,5 @@
 import { Tabs } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Bell, Home, Shield, UserRound, Compass } from 'lucide-react-native';
 import type { AccessibilityState, GestureResponderEvent } from 'react-native';
 import { Pressable, StyleSheet } from 'react-native';
@@ -19,10 +20,11 @@ function ShieldTabButton({
   testID,
 }: TabButtonProps) {
   const c = useAppColors();
+  const { t } = useTranslation();
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel ?? 'Shield'}
+      accessibilityLabel={accessibilityLabel ?? t('tabs.shield')}
       accessibilityState={accessibilityState}
       testID={testID}
       onPress={onPress}
@@ -35,6 +37,7 @@ function ShieldTabButton({
 }
 export default function TabLayout() {
   const c = useAppColors();
+  const { t } = useTranslation();
   return (
     <Tabs
       screenOptions={{
@@ -51,28 +54,37 @@ export default function TabLayout() {
     >
       <Tabs.Screen
         name="home"
-        options={{ title: 'Home', tabBarIcon: ({ color }) => <Home color={color} size={21} /> }}
+        options={{
+          title: t('tabs.home'),
+          tabBarIcon: ({ color }) => <Home color={color} size={21} />,
+        }}
       />
       <Tabs.Screen
         name="trips"
-        options={{ title: 'Trips', tabBarIcon: ({ color }) => <Compass color={color} size={21} /> }}
+        options={{
+          title: t('tabs.trips'),
+          tabBarIcon: ({ color }) => <Compass color={color} size={21} />,
+        }}
       />
       <Tabs.Screen
         name="shield"
         options={{
-          title: 'Shield',
+          title: t('tabs.shield'),
           tabBarButton: (props) => <ShieldTabButton {...props} />,
           tabBarIcon: () => null,
         }}
       />
       <Tabs.Screen
         name="alerts"
-        options={{ title: 'Alerts', tabBarIcon: ({ color }) => <Bell color={color} size={21} /> }}
+        options={{
+          title: t('tabs.alerts'),
+          tabBarIcon: ({ color }) => <Bell color={color} size={21} />,
+        }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profile',
+          title: t('tabs.profile'),
           tabBarIcon: ({ color }) => <UserRound color={color} size={21} />,
         }}
       />

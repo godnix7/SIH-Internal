@@ -44,6 +44,12 @@ This is a development-quality demonstrator. Production requires tested permissio
 
 `react-native-maps` on Android always uses the Google provider and throws `IllegalStateException` at `MapView.onCreate` without an API key. Rather than committing a key to the repository or leaving the trip and SOS screens crashing, `MapZoneLayer` renders a zone summary when `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` is unset, and `app.config.js` injects the key into the manifest when it is set. This follows D-03 and the monitoring pill: degradation is visible and honest, never silent.
 
+## D-13: The monitoring mode is derived, not asserted
+
+Callers set facts — trip active, SOS raised, inside a critical zone, battery low — and `LocationEngine` derives the mode from them. Precedence is `EMERGENCY > HIGH_RISK > LOW_BATTERY > ACTIVE_TRIP > IDLE`: a flat battery must never throttle an active SOS, and a restricted zone is exactly where fixes matter most, so it outranks the battery saver too. `monitoring.ts` subscribes and restarts the OS location subscription whenever the derived sampling plan changes. Battery uses hysteresis (drop at 15%, recover at 20%) so a hovering level cannot flap the mode.
+
+A consequence worth stating: mode transitions describe movement and battery, so they are telemetry. Only the tier that stores a location trail uploads them. `EMERGENCY` is exempt, because an SOS is uploaded on every tier by design.
+
 ## D-12: The integrity line reports a real check
 
 `verifyChain` existed but no screen called it; the SOS and incident screens printed the words "chain verified" unconditionally. The integrity line now recomputes the SHA-256 chain and can read `integrity check failed`. Doing so immediately exposed a genuine defect: `canonicalJson` serialised `undefined` members as a literal while `JSON.stringify` drops them, so a chain never re-verified after being persisted and restored. A tamper-evidence claim that cannot fail is not evidence of anything.

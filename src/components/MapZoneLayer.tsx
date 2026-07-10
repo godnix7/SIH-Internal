@@ -1,5 +1,6 @@
 import MapView, { Marker, Polygon, Polyline } from 'react-native-maps';
 import { StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { formatCoordinates } from '@/src/lib/formatters';
 import { mapsEnabled } from '@/src/lib/maps';
@@ -16,22 +17,23 @@ function zoneColor(zone: Zone, c: ReturnType<typeof useAppColors>): string {
 /** Shown when no Google Maps API key is configured; the zone data is still real. */
 function MapUnavailable({ zones, center }: { zones: Zone[]; center: Coordinates }) {
   const c = useAppColors();
+  const { t } = useTranslation();
   return (
     <View
       style={[styles.wrap, styles.fallback, { backgroundColor: c.card, borderColor: c.hairline }]}
     >
-      <Text style={[type.caption, { color: c.slate }]}>
-        Map unavailable — no Google Maps API key is configured for this build.
-      </Text>
+      <Text style={[type.caption, { color: c.slate }]}>{t('maps.unavailable')}</Text>
       <Text style={[type.body, { color: c.ink }]}>
-        Last known location {formatCoordinates(center.latitude, center.longitude)} · ±
-        {Math.round(center.accuracy)} m
+        {t('maps.lastKnown', {
+          coords: formatCoordinates(center.latitude, center.longitude),
+          accuracy: Math.round(center.accuracy),
+        })}
       </Text>
       {zones.map((zone) => (
         <View key={zone.id} style={styles.legendRow}>
           <View style={[styles.dot, { backgroundColor: zoneColor(zone, c) }]} />
           <Text style={[type.caption, { color: c.slate }]}>
-            {zone.name} · {zone.class}
+            {zone.name} · {t(`zoneClass.${zone.class}`)}
           </Text>
         </View>
       ))}

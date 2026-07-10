@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { MapPin, ShieldCheck, Umbrella } from 'lucide-react-native';
 import { Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { Screen } from '@/src/components/Screen';
 import {
   Button,
@@ -17,6 +18,7 @@ import { space, type } from '@/src/theme/tokens';
 
 export default function HomeScreen() {
   const c = useAppColors();
+  const { t } = useTranslation();
   const { profile, trips, online, sos, addAlert } = useAppStore();
   const trip = activeTrip(trips);
   const state = isSosActive(sos)
@@ -31,9 +33,9 @@ export default function HomeScreen() {
   return (
     <Screen>
       <View style={{ gap: space.xs }}>
-        <Text style={[type.caption, { color: c.slate }]}>Good morning</Text>
+        <Text style={[type.caption, { color: c.slate }]}>{t('home.greeting')}</Text>
         <Text style={[type.display, { color: c.ink }]}>
-          {profile?.name?.split(' ')[0] ?? 'Traveller'}
+          {profile?.name?.split(' ')[0] ?? t('home.fallbackName')}
         </Text>
         <MonitoringStatusPill state={state} onPress={() => router.push('/settings/privacy')} />
       </View>
@@ -44,17 +46,16 @@ export default function HomeScreen() {
             <View style={{ flex: 1, gap: 4 }}>
               <Text style={[type.heading, { color: c.ink }]}>{trip.destination}</Text>
               <Text style={[type.body, { color: c.slate }]}>
-                Protected with{' '}
-                {trip.tier === 'checkins' ? 'check-ins only' : trip.tier.replaceAll('s', ' ')}
+                {t('home.protectedWith', { tier: t(`tiers.${trip.tier}.title`) })}
               </Text>
               <Button
-                label="I’m OK"
+                label={t('common.imOk')}
                 onPress={() =>
                   addAlert({
                     kind: 'checkin',
                     severity: 'info',
-                    title: 'Check-in received',
-                    body: 'You are marked OK. Your next check-in is scheduled automatically.',
+                    title: t('home.checkInTitle'),
+                    body: t('home.checkInBody'),
                   })
                 }
               />
@@ -64,31 +65,31 @@ export default function HomeScreen() {
         </Card>
       ) : (
         <EmptyState
-          title="Plan your next trip"
-          body="Set your destination, dates and the monitoring tier that feels right for you."
-          action={<Button label="Plan a trip" onPress={() => router.push('/trip/new')} />}
+          title={t('home.emptyTitle')}
+          body={t('home.emptyBody')}
+          action={<Button label={t('common.planTrip')} onPress={() => router.push('/trip/new')} />}
         />
       )}
       <View style={{ gap: space.xs }}>
-        <Text style={[type.title, { color: c.ink }]}>Nearby right now</Text>
+        <Text style={[type.title, { color: c.ink }]}>{t('home.nearby')}</Text>
         <Card>
           <ListRow
             icon={<MapPin color={c.sky} />}
-            title="Police aid post"
-            sub="MI Road help desk · 400 m away"
+            title={t('home.policeAidPost')}
+            sub={t('home.policeAidPostSub')}
             onPress={() =>
               addAlert({
                 kind: 'system',
                 severity: 'info',
-                title: 'Aid post saved',
-                body: 'MI Road help desk has been added to your local trip notes.',
+                title: t('home.aidSavedTitle'),
+                body: t('home.aidSavedBody'),
               })
             }
           />
           <ListRow
             icon={<ShieldCheck color={c.amber} />}
-            title="Area advisory"
-            sub="Keep valuables zipped around busy markets after dark."
+            title={t('home.areaAdvisory')}
+            sub={t('home.areaAdvisorySub')}
             onPress={() => router.push('/alerts')}
           />
         </Card>
@@ -97,10 +98,8 @@ export default function HomeScreen() {
         <View style={{ flexDirection: 'row', gap: space.sm, alignItems: 'center' }}>
           <Umbrella color={c.sky} />
           <View>
-            <Text style={[type.heading, { color: c.ink }]}>Light rain later</Text>
-            <Text style={[type.caption, { color: c.slate }]}>
-              Demo forecast · carry a light layer for the evening.
-            </Text>
+            <Text style={[type.heading, { color: c.ink }]}>{t('home.weatherTitle')}</Text>
+            <Text style={[type.caption, { color: c.slate }]}>{t('home.weatherSub')}</Text>
           </View>
         </View>
       </Card>
