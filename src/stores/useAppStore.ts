@@ -1,7 +1,8 @@
 import * as SecureStore from 'expo-secure-store';
 import { create } from 'zustand';
 
-import { remoteConfig } from '@/src/lib/constants';
+import { DEMO_CANCEL_PIN, remoteConfig } from '@/src/lib/constants';
+import { tierLabel } from '@/src/lib/formatters';
 import { hashEvent } from '@/src/lib/hashChain';
 import type {
   AlertItem,
@@ -18,6 +19,8 @@ import { flushOutbox } from '@/src/services/api';
 import { preferences } from '@/src/services/preferences';
 
 const SOS_KEY = 'yatri-shield.active-sos.v1';
+// The event chain can exceed SecureStore's value limit, so it lives in MMKV beside the record.
+const SOS_EVENTS_KEY = 'yatri-shield.active-sos-events.v1';
 
 const zones: Zone[] = [
   {
@@ -141,6 +144,16 @@ async function appendEvent(
   return { ...event, prevHash, hash: await hashEvent(prevHash, event) };
 }
 
+async function persistSos(sos: SOSRecord, incidentEvents: IncidentEvent[]): Promise<void> {
+  await SecureStore.setItemAsync(SOS_KEY, JSON.stringify(sos));
+  preferences.set(SOS_EVENTS_KEY, JSON.stringify(incidentEvents));
+}
+
+async function clearPersistedSos(): Promise<void> {
+  await SecureStore.deleteItemAsync(SOS_KEY);
+  preferences.remove(SOS_EVENTS_KEY);
+}
+
 export const useAppStore = create<AppStore>((set, get) => ({
   hasCompletedOnboarding: preferences.getBoolean('onboarding.completed') ?? false,
   demoMode: preferences.getBoolean('demo.enabled') ?? true,
@@ -161,7 +174,12 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
   setOnline: (online) => {
     set({ online });
-    if (online) void flushOutbox();
+    if (!online) return;
+    void flushOutbox().then(({ sentTypes }) => {
+      const sos = get().sos;
+      if (sos?.status === 'OFFLINE_QUEUED' && sentTypes.includes('sos.triggered'))
+        void get().setSosStatus('SENT');
+    });
   },
   saveProfile: (profile) =>
     set({
@@ -186,12 +204,13 @@ export const useAppStore = create<AppStore>((set, get) => ({
       zones,
       partySize: values.partySize ?? 1,
     };
-    set((state) => ({ trips: [trip, ...state.trips] }));
+    // Enqueue first: if the encrypted store rejects the write, no half-started trip is left behind.
     await outboxQueue.enqueue(
       'trip.started',
       { tripId: trip.id, tier: trip.tier, destination: trip.destination },
       'CHECKIN',
     );
+    set((state) => ({ trips: [trip, ...state.trips] }));
     return trip;
   },
   updateTripTier: async (tripId, tier) => {
@@ -202,7 +221,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       kind: 'system',
       severity: 'info',
       title: 'Your choice was recorded',
-      body: `Monitoring changed to ${tier.replaceAll('s', ' ')} at ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`,
+      body: `Monitoring changed to ${tierLabel(tier)} at ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`,
     });
     await outboxQueue.enqueue('consent.changed', { tripId, tier }, 'CHECKIN');
   },
@@ -227,7 +246,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
     };
     const event = await appendEvent([], 'sos.created', 'you', { type, silent, location });
     set({ sos, incidentEvents: [event] });
-    await SecureStore.setItemAsync(SOS_KEY, JSON.stringify(sos));
+    await persistSos(sos, [event]);
   },
   sendSos: async () => {
     const sos = get().sos;
@@ -263,8 +282,9 @@ export const useAppStore = create<AppStore>((set, get) => ({
           : 'system',
       { status },
     );
-    set((state) => ({ sos: nextSos, incidentEvents: [...state.incidentEvents, event] }));
-    await SecureStore.setItemAsync(SOS_KEY, JSON.stringify(nextSos));
+    const incidentEvents = [...get().incidentEvents, event];
+    set({ sos: nextSos, incidentEvents });
+    await persistSos(nextSos, incidentEvents);
     if (status === 'SENT')
       get().addAlert({
         kind: 'incident',
@@ -274,19 +294,27 @@ export const useAppStore = create<AppStore>((set, get) => ({
       });
   },
   cancelSos: async (pin) => {
-    if (pin !== '1122' || !get().sos) return false;
+    if (pin !== DEMO_CANCEL_PIN || !get().sos) return false;
     await get().setSosStatus('CANCELLED');
+    await clearPersistedSos();
     return true;
   },
   resolveSos: async () => {
     await get().setSosStatus('RESOLVED');
-    await SecureStore.deleteItemAsync(SOS_KEY);
+    await clearPersistedSos();
   },
   restoreSos: async () => {
     const saved = await SecureStore.getItemAsync(SOS_KEY);
     if (!saved) return;
     const sos = JSON.parse(saved) as SOSRecord;
-    if (!['RESOLVED', 'CANCELLED'].includes(sos.status)) set({ sos });
+    if (['RESOLVED', 'CANCELLED'].includes(sos.status)) {
+      await clearPersistedSos();
+      return;
+    }
+    // Restoring the record without its chain would silently restart the hash chain at GENESIS.
+    const savedEvents = preferences.getString(SOS_EVENTS_KEY);
+    const incidentEvents = savedEvents ? (JSON.parse(savedEvents) as IncidentEvent[]) : [];
+    set({ sos, incidentEvents });
   },
 }));
 

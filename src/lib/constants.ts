@@ -34,3 +34,6 @@ export const priorityRank: Record<QueuePriority, number> = {
 export const DEMO_OTP = '000000';
 export const DEMO_SHORTCODE = '78112';
 export const EMERGENCY_NUMBER = '112';
+export const OFFLINE_RETRY_MS = 10_000;
+/** Demo-only. Production must use a user-set PIN behind platform authentication (DECISIONS D-04). */
+export const DEMO_CANCEL_PIN = '1122';

@@ -1,6 +1,13 @@
-import { formatCoordinates, formatCountdown, formatDistance } from '../formatters';
+import { formatCoordinates, formatCountdown, formatDistance, tierLabel } from '../formatters';
 
 describe('formatters', () => {
+  it('names every consent tier in the words the consent screen uses', () => {
+    expect(tierLabel('off')).toBe('Off');
+    expect(tierLabel('checkins')).toBe('Check-ins only');
+    expect(tierLabel('zones')).toBe('Zone alerts');
+    expect(tierLabel('full')).toBe('Full monitoring');
+  });
+
   it('formats countdowns without negative time', () => {
     expect(formatCountdown(5_000, 0)).toBe('0:05');
     expect(formatCountdown(0, 5_000)).toBe('0:00');

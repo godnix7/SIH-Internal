@@ -1,3 +1,5 @@
+import type { ConsentTier } from './types';
+
 export function formatCountdown(target: number, now = Date.now()): string {
   const seconds = Math.max(0, Math.ceil((target - now) / 1000));
   const minutes = Math.floor(seconds / 60);
@@ -14,4 +16,15 @@ export function formatCoordinates(latitude: number, longitude: number): string {
 
 export function formatDistance(meters: number): string {
   return meters < 1000 ? `${Math.round(meters)} m` : `${(meters / 1000).toFixed(1)} km`;
+}
+
+const tierLabels: Record<ConsentTier, string> = {
+  off: 'Off',
+  checkins: 'Check-ins only',
+  zones: 'Zone alerts',
+  full: 'Full monitoring',
+};
+
+export function tierLabel(tier: ConsentTier): string {
+  return tierLabels[tier];
 }

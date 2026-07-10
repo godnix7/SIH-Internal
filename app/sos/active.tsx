@@ -6,7 +6,9 @@ import { ShieldAlert } from 'lucide-react-native';
 import { MapZoneLayer } from '@/src/components/MapZoneLayer';
 import { Screen } from '@/src/components/Screen';
 import { Button, Card, OfflineBar, PinPad, TimelineItem, useAppColors } from '@/src/components/ui';
-import { DEMO_SHORTCODE, EMERGENCY_NUMBER } from '@/src/lib/constants';
+import { DEMO_SHORTCODE, EMERGENCY_NUMBER, OFFLINE_RETRY_MS } from '@/src/lib/constants';
+import { integrityLabel, useChainIntegrity } from '@/src/lib/useChainIntegrity';
+import { flushOutbox } from '@/src/services/api';
 import { activeTrip, useAppStore } from '@/src/stores/useAppStore';
 import { space, type } from '@/src/theme/tokens';
 
@@ -18,6 +20,7 @@ export default function SosActiveScreen() {
   const [cancelOpen, setCancelOpen] = useState(false);
   const [now, setNow] = useState<number | undefined>();
   const trip = activeTrip(trips);
+  const integrity = useChainIntegrity(incidentEvents);
   const secondsLeft = useMemo(
     () =>
       sos?.status === 'COUNTDOWN'
@@ -37,6 +40,16 @@ export default function SosActiveScreen() {
   useEffect(() => {
     if (sos?.status === 'COUNTDOWN' && secondsLeft === 0) void sendSos();
   }, [secondsLeft, sendSos, sos?.status]);
+  // Backs the "trying every 10 s" promise shown on the offline card.
+  useEffect(() => {
+    if (sos?.status !== 'OFFLINE_QUEUED') return;
+    const timer = setInterval(() => {
+      void flushOutbox().then(({ sentTypes }) => {
+        if (sentTypes.includes('sos.triggered')) void setSosStatus('SENT');
+      });
+    }, OFFLINE_RETRY_MS);
+    return () => clearInterval(timer);
+  }, [setSosStatus, sos?.status]);
   if (!sos) return null;
   if (sos.status === 'COUNTDOWN')
     return (
@@ -140,8 +153,8 @@ export default function SosActiveScreen() {
         {incidentEvents.map((event) => (
           <TimelineItem key={event.id} event={event} />
         ))}
-        <Text style={[type.caption, { color: c.slate }]}>
-          {incidentEvents.length} events · chain verified
+        <Text style={[type.caption, { color: integrity === 'broken' ? c.signal : c.slate }]}>
+          {integrityLabel(incidentEvents, integrity)}
         </Text>
       </Card>
       {['SENT', 'ACKNOWLEDGED', 'RESPONDER_ENROUTE'].includes(sos.status) && (

@@ -11,6 +11,7 @@ import {
   Toast,
   useAppColors,
 } from '@/src/components/ui';
+import { tierLabel } from '@/src/lib/formatters';
 import type { ConsentTier } from '@/src/lib/types';
 import { requestTripPermissions, startMonitoring } from '@/src/services/monitoring';
 import { useAppStore } from '@/src/stores/useAppStore';
@@ -42,19 +43,35 @@ export default function NewTrip() {
     setPermissionBusy(true);
     setPermissionNotice('Waiting for your Android permission choice…');
     try {
-      const permissions = await requestTripPermissions(tier);
+      let permissions;
+      try {
+        permissions = await requestTripPermissions(tier);
+      } catch {
+        setPermissionNotice(
+          'Android could not complete the permission request. Your trip has not started—please try again or choose Check-ins only.',
+        );
+        return;
+      }
       const needsBackgroundLocation = tier === 'zones' || tier === 'full';
       const monitoringLimited =
         needsBackgroundLocation && (!permissions.foreground || !permissions.background);
-      const trip = await createTrip({
-        destination,
-        startDate: dates.start,
-        endDate: dates.end,
-        tier,
-        trek: trek ? 'Sahastra Tal' : undefined,
-        partySize: trek ? 4 : 1,
-        monitoringLimited,
-      });
+      let trip;
+      try {
+        trip = await createTrip({
+          destination,
+          startDate: dates.start,
+          endDate: dates.end,
+          tier,
+          trek: trek ? 'Sahastra Tal' : undefined,
+          partySize: trek ? 4 : 1,
+          monitoringLimited,
+        });
+      } catch {
+        setPermissionNotice(
+          'Your trip could not be saved to this phone’s encrypted store, so it has not started. Nothing was sent. Please try again.',
+        );
+        return;
+      }
 
       if (!monitoringLimited) {
         try {
@@ -85,10 +102,6 @@ export default function NewTrip() {
       }
       setToast(true);
       setTimeout(() => router.replace(`/trip/${trip.id}`), 650);
-    } catch {
-      setPermissionNotice(
-        'Android could not complete the permission request. Your trip has not started—please try again or choose Check-ins only.',
-      );
     } finally {
       setPermissionBusy(false);
     }
@@ -171,9 +184,7 @@ export default function NewTrip() {
           <Text style={[type.body, { color: c.slate }]}>
             {destination} · {dates.start} to {dates.end}
           </Text>
-          <Text style={[type.body, { color: c.slate }]}>
-            Monitoring: {tier === 'checkins' ? 'Check-ins only' : tier}
-          </Text>
+          <Text style={[type.body, { color: c.slate }]}>Monitoring: {tierLabel(tier)}</Text>
           <Text style={[type.caption, { color: c.slate }]}>
             Your zone pack downloads locally. A missing zone pack is shown as unavailable; it never
             silently changes your consent choice.
