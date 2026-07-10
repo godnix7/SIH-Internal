@@ -1,5 +1,7 @@
 export type ConsentTier = 'off' | 'checkins' | 'zones' | 'full';
 export type MonitoringMode = 'IDLE' | 'ACTIVE_TRIP' | 'HIGH_RISK' | 'EMERGENCY' | 'LOW_BATTERY';
+/** Requested GPS accuracy per monitoring mode; mapped to Location.Accuracy at the OS boundary. */
+export type ModeAccuracy = 'none' | 'low' | 'balanced' | 'high' | 'highest';
 export type SOSStatus =
   | 'IDLE'
   | 'COUNTDOWN'

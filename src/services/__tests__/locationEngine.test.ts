@@ -98,3 +98,145 @@ describe('LocationEngine geofence confirmation', () => {
     expect(mockEnqueue).not.toHaveBeenCalled();
   });
 });
+
+describe('LocationEngine mode table', () => {
+  beforeEach(() => mockEnqueue.mockClear());
+
+  async function activeEngine(tier: 'full' | 'zones' | 'checkins' | 'off' = 'full') {
+    const engine = new LocationEngine();
+    engine.setTier(tier);
+    await engine.setTripActive(true);
+    return engine;
+  }
+
+  it('is IDLE until a trip starts and returns to IDLE when it ends', async () => {
+    const engine = new LocationEngine();
+    engine.setTier('full');
+    expect(engine.getState().mode).toBe('IDLE');
+    await engine.setTripActive(true);
+    expect(engine.getState().mode).toBe('ACTIVE_TRIP');
+    await engine.setTripActive(false);
+    expect(engine.getState().mode).toBe('IDLE');
+  });
+
+  it('drives the documented interval and accuracy for each mode', async () => {
+    const engine = await activeEngine();
+    expect(engine.samplingPlan()).toEqual({ intervalSeconds: 60, accuracy: 'balanced' });
+
+    await engine.setBatteryLevel(0.1, false);
+    expect(engine.samplingPlan()).toEqual({ intervalSeconds: 240, accuracy: 'low' });
+
+    await engine.setEmergency(true);
+    expect(engine.samplingPlan()).toEqual({ intervalSeconds: 3, accuracy: 'highest' });
+  });
+
+  it('lets an emergency outrank a low battery', async () => {
+    const engine = await activeEngine();
+    await engine.setBatteryLevel(0.05, false);
+    expect(engine.getState().mode).toBe('LOW_BATTERY');
+    await engine.setEmergency(true);
+    expect(engine.getState().mode).toBe('EMERGENCY');
+    await engine.setEmergency(false);
+    expect(engine.getState().mode).toBe('LOW_BATTERY');
+  });
+
+  it('applies battery hysteresis so a hovering level cannot flap the mode', async () => {
+    const engine = await activeEngine();
+    await engine.setBatteryLevel(0.14, false);
+    expect(engine.getState().mode).toBe('LOW_BATTERY');
+    await engine.setBatteryLevel(0.17, false); // above lowLevel, below recoveredLevel
+    expect(engine.getState().mode).toBe('LOW_BATTERY');
+    await engine.setBatteryLevel(0.25, false);
+    expect(engine.getState().mode).toBe('ACTIVE_TRIP');
+  });
+
+  it('leaves LOW_BATTERY as soon as the phone is charging', async () => {
+    const engine = await activeEngine();
+    await engine.setBatteryLevel(0.05, false);
+    expect(engine.getState().mode).toBe('LOW_BATTERY');
+    await engine.setBatteryLevel(0.05, true);
+    expect(engine.getState().mode).toBe('ACTIVE_TRIP');
+  });
+
+  it('enters HIGH_RISK inside a critical zone and leaves it on exit', async () => {
+    const engine = await activeEngine('zones');
+    await engine.ingestFix(fix(0.5, 0.5, 10), [restricted], true);
+    await engine.ingestFix(fix(0.5, 0.5, 10), [restricted], true);
+    expect(engine.getState().mode).toBe('HIGH_RISK');
+    expect(engine.samplingPlan()).toEqual({ intervalSeconds: 20, accuracy: 'high' });
+
+    await engine.ingestFix(fix(5, 5, 10), [restricted], true);
+    expect(engine.getState().mode).toBe('ACTIVE_TRIP');
+  });
+
+  it('keeps a critical zone above the battery saver', async () => {
+    const engine = await activeEngine('zones');
+    await engine.setBatteryLevel(0.05, false);
+    await engine.ingestFix(fix(0.5, 0.5, 10), [restricted], true);
+    expect(engine.getState().mode).toBe('HIGH_RISK');
+  });
+});
+
+describe('LocationEngine motion gating', () => {
+  beforeEach(() => {
+    mockEnqueue.mockClear();
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2026-07-10T00:00:00Z'));
+  });
+  afterEach(() => jest.useRealTimers());
+
+  it('stretches GPS to 5 minutes after ten stationary minutes, and restores it on motion', async () => {
+    const engine = new LocationEngine();
+    engine.setTier('full');
+    await engine.setTripActive(true);
+
+    engine.setMoving(false);
+    expect(engine.samplingIntervalSeconds()).toBe(60);
+
+    jest.advanceTimersByTime(10 * 60_000);
+    expect(engine.samplingIntervalSeconds()).toBe(300);
+
+    engine.setMoving(true);
+    expect(engine.samplingIntervalSeconds()).toBe(60);
+  });
+
+  it('does not stretch GPS while stationary in EMERGENCY', async () => {
+    const engine = new LocationEngine();
+    engine.setTier('full');
+    await engine.setTripActive(true);
+    engine.setMoving(false);
+    jest.advanceTimersByTime(10 * 60_000);
+    await engine.setEmergency(true);
+    expect(engine.samplingIntervalSeconds()).toBe(3);
+  });
+});
+
+describe('LocationEngine mode-transition privacy', () => {
+  beforeEach(() => mockEnqueue.mockClear());
+
+  const transitions = () =>
+    mockEnqueue.mock.calls.filter(([type]) => type === 'monitoring.mode_transition');
+
+  it('uploads mode transitions only on the tier that stores a location trail', async () => {
+    const full = new LocationEngine();
+    full.setTier('full');
+    await full.setTripActive(true);
+    expect(transitions()).toHaveLength(1);
+
+    mockEnqueue.mockClear();
+    for (const tier of ['off', 'checkins', 'zones'] as const) {
+      const engine = new LocationEngine();
+      engine.setTier(tier);
+      await engine.setTripActive(true);
+    }
+    expect(transitions()).toHaveLength(0);
+  });
+
+  it('uploads the EMERGENCY transition even when the tier is Off', async () => {
+    const engine = new LocationEngine();
+    engine.setTier('off');
+    await engine.setEmergency(true);
+    expect(transitions()).toHaveLength(1);
+    expect(transitions()[0][1]).toMatchObject({ mode: 'EMERGENCY' });
+  });
+});

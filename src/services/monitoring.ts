@@ -1,9 +1,12 @@
+import * as Battery from 'expo-battery';
 import * as Location from 'expo-location';
-import * as TaskManager from 'expo-task-manager';
 import * as Notifications from 'expo-notifications';
+import { Accelerometer } from 'expo-sensors';
+import * as TaskManager from 'expo-task-manager';
 
+import { remoteConfig } from '@/src/lib/constants';
 import type { ConsentTier, Trip } from '@/src/lib/types';
-import { locationEngine } from './locationEngine';
+import { locationEngine, type SamplingPlan } from './locationEngine';
 
 const TASK_NAME = 'yatri-shield-location-task';
 
@@ -21,12 +24,22 @@ TaskManager.defineTask(TASK_NAME, async ({ data, error }) => {
         timestamp: location.timestamp,
       },
       trip.zones,
-      true,
     );
   }
 });
 
 let activeMonitoringTrip: Trip | undefined;
+let subscriptions: { remove: () => void }[] = [];
+let unsubscribeEngine: (() => void) | undefined;
+let appliedPlan: SamplingPlan | undefined;
+
+const ACCURACY_BY_MODE: Record<SamplingPlan['accuracy'], Location.LocationAccuracy> = {
+  none: Location.Accuracy.Lowest,
+  low: Location.Accuracy.Low,
+  balanced: Location.Accuracy.Balanced,
+  high: Location.Accuracy.High,
+  highest: Location.Accuracy.BestForNavigation,
+};
 
 export async function requestTripPermissions(
   tier: ConsentTier,
@@ -49,15 +62,20 @@ export async function requestTripPermissions(
   };
 }
 
-export async function startMonitoring(trip: Trip): Promise<void> {
-  activeMonitoringTrip = trip;
-  locationEngine.setTier(trip.tier);
-  if (trip.tier === 'off' || trip.tier === 'checkins') return;
-  const enabled = await Location.hasStartedLocationUpdatesAsync(TASK_NAME);
-  if (enabled) await Location.stopLocationUpdatesAsync(TASK_NAME);
+function samePlan(a: SamplingPlan | undefined, b: SamplingPlan): boolean {
+  return a?.intervalSeconds === b.intervalSeconds && a?.accuracy === b.accuracy;
+}
+
+/** Restarts the OS subscription whenever the engine's mode changes what it should request. */
+async function applyPlan(trip: Trip): Promise<void> {
+  const plan = locationEngine.samplingPlan();
+  if (plan.intervalSeconds <= 0 || samePlan(appliedPlan, plan)) return;
+  appliedPlan = plan;
+  if (await Location.hasStartedLocationUpdatesAsync(TASK_NAME))
+    await Location.stopLocationUpdatesAsync(TASK_NAME);
   await Location.startLocationUpdatesAsync(TASK_NAME, {
-    accuracy: trip.tier === 'full' ? Location.Accuracy.Balanced : Location.Accuracy.Low,
-    timeInterval: 60_000,
+    accuracy: ACCURACY_BY_MODE[plan.accuracy],
+    timeInterval: plan.intervalSeconds * 1_000,
     distanceInterval: 30,
     pausesUpdatesAutomatically: false,
     activityType: Location.ActivityType.Other,
@@ -68,12 +86,58 @@ export async function startMonitoring(trip: Trip): Promise<void> {
       notificationColor: '#1F6F54',
     },
   });
-  await locationEngine.transition('ACTIVE_TRIP', 'trip_started');
+}
+
+function startMotionGating(): void {
+  const { stillnessToleranceG, sampleIntervalMs } = remoteConfig.motion;
+  Accelerometer.setUpdateInterval(sampleIntervalMs);
+  subscriptions.push(
+    Accelerometer.addListener(({ x, y, z }) => {
+      // At rest the magnitude sits at ~1 g regardless of orientation.
+      const magnitude = Math.sqrt(x * x + y * y + z * z);
+      locationEngine.setMoving(Math.abs(magnitude - 1) > stillnessToleranceG);
+    }),
+  );
+}
+
+/** Reads the live power state each time: charging status must never be captured once. */
+async function pushBatteryState(): Promise<void> {
+  const state = await Battery.getPowerStateAsync();
+  await locationEngine.setBatteryLevel(
+    state.batteryLevel,
+    state.batteryState === Battery.BatteryState.CHARGING,
+  );
+}
+
+async function startBatteryWatch(): Promise<void> {
+  await pushBatteryState();
+  subscriptions.push(Battery.addBatteryLevelListener(() => void pushBatteryState()));
+  subscriptions.push(Battery.addBatteryStateListener(() => void pushBatteryState()));
+}
+
+export async function startMonitoring(trip: Trip): Promise<void> {
+  activeMonitoringTrip = trip;
+  locationEngine.setTier(trip.tier);
+  if (trip.tier === 'off' || trip.tier === 'checkins') return;
+  appliedPlan = undefined;
+  await locationEngine.setTripActive(true);
+  await applyPlan(trip);
+  startMotionGating();
+  await startBatteryWatch();
+  // The engine changes mode on its own (risk, battery, SOS, stillness); follow it.
+  unsubscribeEngine = locationEngine.subscribe(() => {
+    if (activeMonitoringTrip) void applyPlan(activeMonitoringTrip);
+  });
 }
 
 export async function stopMonitoring(): Promise<void> {
   activeMonitoringTrip = undefined;
+  unsubscribeEngine?.();
+  unsubscribeEngine = undefined;
+  subscriptions.forEach((subscription) => subscription.remove());
+  subscriptions = [];
+  appliedPlan = undefined;
   if (await Location.hasStartedLocationUpdatesAsync(TASK_NAME))
     await Location.stopLocationUpdatesAsync(TASK_NAME);
-  await locationEngine.transition('IDLE', 'trip_ended');
+  await locationEngine.setTripActive(false);
 }

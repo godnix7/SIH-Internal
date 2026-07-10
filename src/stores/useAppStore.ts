@@ -16,6 +16,7 @@ import type {
 } from '@/src/lib/types';
 import { outboxQueue } from '@/src/services/outboxQueue';
 import { flushOutbox } from '@/src/services/api';
+import { locationEngine } from '@/src/services/locationEngine';
 import { preferences } from '@/src/services/preferences';
 
 const SOS_KEY = 'yatri-shield.active-sos.v1';
@@ -247,6 +248,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
     const event = await appendEvent([], 'sos.created', 'you', { type, silent, location });
     set({ sos, incidentEvents: [event] });
     await persistSos(sos, [event]);
+    // EMERGENCY outranks the battery saver, so this raises the sampling rate now.
+    await locationEngine.setEmergency(true);
   },
   sendSos: async () => {
     const sos = get().sos;
@@ -297,11 +300,13 @@ export const useAppStore = create<AppStore>((set, get) => ({
     if (pin !== DEMO_CANCEL_PIN || !get().sos) return false;
     await get().setSosStatus('CANCELLED');
     await clearPersistedSos();
+    await locationEngine.setEmergency(false);
     return true;
   },
   resolveSos: async () => {
     await get().setSosStatus('RESOLVED');
     await clearPersistedSos();
+    await locationEngine.setEmergency(false);
   },
   restoreSos: async () => {
     const saved = await SecureStore.getItemAsync(SOS_KEY);
@@ -311,6 +316,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
       await clearPersistedSos();
       return;
     }
+    // A relaunch mid-SOS must come back in EMERGENCY, not ACTIVE_TRIP.
+    await locationEngine.setEmergency(true);
     // Restoring the record without its chain would silently restart the hash chain at GENESIS.
     const savedEvents = preferences.getString(SOS_EVENTS_KEY);
     const incidentEvents = savedEvents ? (JSON.parse(savedEvents) as IncidentEvent[]) : [];
@@ -320,6 +327,11 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
 export function activeTrip(trips: Trip[]): Trip | undefined {
   return trips.find((trip) => trip.status === 'active' || trip.status === 'paused');
+}
+
+/** A resolved or cancelled SOS stays in the store for its timeline; it is not live. */
+export function isSosActive(sos?: SOSRecord): boolean {
+  return sos !== undefined && sos.status !== 'RESOLVED' && sos.status !== 'CANCELLED';
 }
 
 export { zones, remoteConfig };

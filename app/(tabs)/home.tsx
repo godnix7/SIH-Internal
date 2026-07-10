@@ -12,14 +12,14 @@ import {
   OfflineBar,
   useAppColors,
 } from '@/src/components/ui';
-import { activeTrip, useAppStore } from '@/src/stores/useAppStore';
+import { activeTrip, isSosActive, useAppStore } from '@/src/stores/useAppStore';
 import { space, type } from '@/src/theme/tokens';
 
 export default function HomeScreen() {
   const c = useAppColors();
   const { profile, trips, online, sos, addAlert } = useAppStore();
   const trip = activeTrip(trips);
-  const state = sos
+  const state = isSosActive(sos)
     ? 'emergency'
     : trip?.status === 'paused'
       ? 'paused'

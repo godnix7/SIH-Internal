@@ -18,7 +18,7 @@ import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { useAppStore } from '@/src/stores/useAppStore';
+import { isSosActive, useAppStore } from '@/src/stores/useAppStore';
 import { connectDemoRealtime, type RemoteIncident } from '@/src/services/realtime';
 
 const client = new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 30_000 } } });
@@ -27,7 +27,7 @@ function SafetyRestorer() {
   const restoreSos = useAppStore((state) => state.restoreSos);
   useEffect(() => {
     void restoreSos().then(() => {
-      if (useAppStore.getState().sos) router.replace('/sos/active');
+      if (isSosActive(useAppStore.getState().sos)) router.replace('/sos/active');
     });
   }, [restoreSos]);
   return null;
