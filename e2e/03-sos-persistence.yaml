@@ -1,0 +1,11 @@
+appId: in.yatrishield.app
+---
+- launchApp
+- tapOn: 'Shield'
+- longPressOn:
+    text: 'SOS'
+    duration: 1600
+- assertVisible: 'Sending SOS'
+- killApp
+- launchApp
+- assertVisible: 'Sending SOS'

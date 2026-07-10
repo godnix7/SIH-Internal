@@ -1,0 +1,21 @@
+appId: in.yatrishield.app
+---
+- launchApp:
+    clearState: true
+- tapOn: 'Get started'
+- tapOn: 'Next'
+- tapOn: 'Next'
+- tapOn: 'Set up my ID'
+- tapOn: 'Mobile number'
+- inputText: '9876543210'
+- tapOn: 'Send code'
+- tapOn: '6-digit code'
+- inputText: '000000'
+- tapOn: 'Verify and continue'
+- tapOn: 'Name as on your document'
+- inputText: 'Ananya Sharma'
+- tapOn: 'Home city'
+- inputText: 'Bengaluru'
+- tapOn: 'Verify and issue ID'
+- tapOn: 'Add it to a trip'
+- assertVisible: 'Plan a trip'

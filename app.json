@@ -1,0 +1,56 @@
+{
+  "expo": {
+    "name": "Yatri Shield",
+    "slug": "yatri-shield",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "yatrishield",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "in.yatrishield.app",
+      "infoPlist": {
+        "UIBackgroundModes": ["location", "remote-notification"],
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Yatri Shield uses your location during an active trip to monitor the safety level you choose.",
+        "NSLocationWhenInUseUsageDescription": "Yatri Shield uses your location while you monitor an active trip.",
+        "NSCameraUsageDescription": "Use your camera to scan an ID or attach incident evidence."
+      }
+    },
+    "android": {
+      "package": "in.yatrishield.app",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION",
+        "POST_NOTIFICATIONS",
+        "SCHEDULE_EXACT_ALARM",
+        "CAMERA",
+        "VIBRATE"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      ["expo-dev-client", { "launchMode": "most-recent" }],
+      [
+        "expo-location",
+        { "isAndroidBackgroundLocationEnabled": true, "isIosBackgroundLocationEnabled": true }
+      ],
+      ["expo-notifications", { "color": "#1F6F54" }],
+      ["expo-sqlite", { "enableFTS": true, "useSQLCipher": true }],
+      "./plugins/withSqlCipherRuntime",
+      "expo-secure-store",
+      [
+        "expo-camera",
+        { "cameraPermission": "Allow Yatri Shield to use your camera for ID and evidence capture." }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "appEnvironment": "demo"
+    }
+  }
+}

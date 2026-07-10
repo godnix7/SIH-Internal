@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Yatri Shield · Demo operator dashboard</title>
+    <link rel="stylesheet" href="/leaflet/leaflet.css" />
+    <style>
+      :root {
+        --ink: #16202b;
+        --paper: #faf7f2;
+        --card: #fff;
+        --slate: #5b6b7b;
+        --line: #e6e1d8;
+        --trail: #1f6f54;
+        --signal: #c2402a;
+        --sky: #2c5f8a;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        color: var(--ink);
+        background: var(--paper);
+        font:
+          15px/1.45 Inter,
+          system-ui,
+          sans-serif;
+      }
+      header {
+        padding: 20px 28px;
+        background: var(--ink);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      h1 {
+        margin: 0;
+        font:
+          600 26px Georgia,
+          serif;
+      }
+      .watermark {
+        background: #c2402a;
+        padding: 5px 9px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        font-size: 11px;
+      }
+      main {
+        display: grid;
+        grid-template-columns: minmax(280px, 38%) 1fr;
+        gap: 16px;
+        padding: 16px;
+        height: calc(100vh - 76px);
+      }
+      #queue {
+        overflow: auto;
+      }
+      #map {
+        height: 100%;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: #e8eee7;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 14px;
+        margin-bottom: 10px;
+      }
+      .muted {
+        color: var(--slate);
+        font-size: 13px;
+      }
+      .critical {
+        color: var(--signal);
+        font-weight: 700;
+      }
+      button {
+        min-height: 38px;
+        border-radius: 8px;
+        border: 1px solid var(--line);
+        background: #fff;
+        color: var(--ink);
+        font-weight: 650;
+        padding: 0 10px;
+        cursor: pointer;
+        margin: 8px 6px 0 0;
+      }
+      button.primary {
+        background: var(--trail);
+        color: #fff;
+        border-color: var(--trail);
+      }
+      button.danger {
+        background: var(--signal);
+        color: #fff;
+        border-color: var(--signal);
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div>
+        <h1>Yatri Shield operator desk</h1>
+        <div class="muted" style="color: #d7e1e8">
+          Local mock service · Operator: SI Dorjee · Unit: UK-12
+        </div>
+      </div>
+      <div class="watermark">DEMO DATA</div>
+    </header>
+    <main>
+      <section id="queue">
+        <div class="card">
+          <strong>Live incident queue</strong>
+          <p class="muted">
+            This dashboard is for the local demo. It does not contact police, 112, or any real
+            responder.
+          </p>
+        </div>
+      </section>
+      <section id="map"></section>
+    </main>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/leaflet/leaflet.js"></script>
+    <script>
+      const map = L.map('map', { zoomControl: false }).setView([30.7351, 78.4429], 5);
+      L.control.zoom({ position: 'bottomright' }).addTo(map);
+      let markers = [];
+      const queue = document.querySelector('#queue');
+      function time(v) {
+        return new Date(v).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
+      function render(incidents) {
+        markers.forEach((m) => m.remove());
+        markers = [];
+        queue.querySelectorAll('.incident').forEach((x) => x.remove());
+        incidents.forEach((i) => {
+          const el = document.createElement('article');
+          el.className = 'card incident';
+          const loc = i.location
+            ? `${i.location.latitude?.toFixed?.(4) ?? '—'}, ${i.location.longitude?.toFixed?.(4) ?? '—'}`
+            : 'Last location unavailable';
+          el.innerHTML = `<div class="critical">${i.type.toUpperCase()} · ${i.status.replace('_', ' ')}</div><strong>${i.id}</strong><div class="muted">${loc} · received ${time(i.createdAt)}</div><button data-a="acknowledge">Acknowledge</button><button data-a="dispatch" class="primary">Dispatch UK-12</button><button data-a="resolve">Resolve</button>`;
+          el.querySelectorAll('button').forEach(
+            (b) =>
+              (b.onclick = () => fetch(`/incidents/${i.id}/${b.dataset.a}`, { method: 'POST' })),
+          );
+          queue.append(el);
+          if (i.location?.latitude) {
+            const marker = L.circleMarker([i.location.latitude, i.location.longitude], {
+              radius: 9,
+              color: '#C2402A',
+              fillOpacity: 0.75,
+            })
+              .addTo(map)
+              .bindPopup(`${i.type} · ${i.status}`);
+            markers.push(marker);
+            map.setView(marker.getLatLng(), 12);
+          }
+        });
+      }
+      fetch('/api/state')
+        .then((r) => r.json())
+        .then((s) => render(s.incidents));
+      const socket = io();
+      socket.on('state', (s) => render(s.incidents));
+      socket.on('incident:update', () =>
+        fetch('/api/state')
+          .then((r) => r.json())
+          .then((s) => render(s.incidents)),
+      );
+    </script>
+  </body>
+</html>

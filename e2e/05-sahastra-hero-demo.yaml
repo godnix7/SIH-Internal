@@ -1,0 +1,11 @@
+appId: in.yatrishield.app
+---
+- launchApp
+- tapOn: 'Profile'
+- tapOn: 'Privacy centre'
+- tapOn: 'Demo Lab'
+- tapOn: 'Hero demo · Sahastra Tal at 8×'
+- assertVisible: 'Sahastra Tal, Uttarakhand'
+- waitForAnimationToEnd
+- tapOn: 'Alerts'
+- assertVisible: 'Demo network loss'

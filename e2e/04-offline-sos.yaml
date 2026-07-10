@@ -1,0 +1,11 @@
+appId: in.yatrishield.app
+---
+- launchApp
+- setAirplaneMode: true
+- tapOn: 'Shield'
+- longPressOn:
+    text: 'SOS'
+    duration: 1600
+- waitForAnimationToEnd
+- assertVisible: 'No network — SOS saved. Trying every 10 s. Send by SMS instead?'
+- setAirplaneMode: false

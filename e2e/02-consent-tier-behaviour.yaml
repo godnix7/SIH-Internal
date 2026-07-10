@@ -1,0 +1,14 @@
+appId: in.yatrishield.app
+---
+- launchApp
+- tapOn: 'Trips'
+- tapOn: 'Create a trip'
+- tapOn: 'Continue'
+- tapOn: 'Continue'
+- tapOn: 'Continue'
+- tapOn: 'Continue'
+- tapOn: 'Full monitoring'
+- assertVisible: 'Location trail: Yes'
+- tapOn: 'Continue'
+- tapOn: 'Start protecting this trip'
+- assertVisible: 'Before you choose full monitoring'
