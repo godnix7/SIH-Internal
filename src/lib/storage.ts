@@ -11,6 +11,7 @@ export const storage = {
       await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, refresh);
       await SecureStore.setItemAsync(SOS_TOKEN_KEY, sos);
     } catch (e) {
+      // eslint-disable-next-line no-console
       console.error('Failed to save tokens', e);
     }
   },
@@ -18,7 +19,7 @@ export const storage = {
   async getAccessToken() {
     try {
       return await SecureStore.getItemAsync(ACCESS_TOKEN_KEY);
-    } catch (e) {
+    } catch {
       return null;
     }
   },
@@ -26,7 +27,7 @@ export const storage = {
   async getRefreshToken() {
     try {
       return await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
-    } catch (e) {
+    } catch {
       return null;
     }
   },
@@ -34,7 +35,7 @@ export const storage = {
   async getSosToken() {
     try {
       return await SecureStore.getItemAsync(SOS_TOKEN_KEY);
-    } catch (e) {
+    } catch {
       return null;
     }
   },
@@ -45,6 +46,7 @@ export const storage = {
       await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
       await SecureStore.deleteItemAsync(SOS_TOKEN_KEY);
     } catch (e) {
+      // eslint-disable-next-line no-console
       console.error('Failed to clear tokens', e);
     }
   },

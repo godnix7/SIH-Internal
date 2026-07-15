@@ -228,13 +228,13 @@ export const useAppStore = create<AppStore>((set, get) => ({
         zones, // we could also call zoneApi.getZonePack() here or lazily
         partySize: values.partySize ?? 1,
       };
-      
+
       // Attempt to fetch fresh zones if online
       if (get().online) {
         try {
           const freshZones = await zoneApi.getZonePack();
           trip.zones = freshZones.length > 0 ? freshZones : zones;
-        } catch (err) {
+        } catch {
           // fallback to cached/initial zones
         }
       }
@@ -247,6 +247,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       set((state) => ({ trips: [trip, ...state.trips] }));
       return trip;
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Failed to create trip', error);
       throw error;
     }
@@ -267,6 +268,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       });
       await outboxQueue.enqueue('consent.changed', { tripId, tier }, 'CHECKIN');
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Failed to update trip tier', error);
     }
   },
@@ -276,9 +278,12 @@ export const useAppStore = create<AppStore>((set, get) => ({
         await tripApi.endTrip(tripId);
       }
       set((state) => ({
-        trips: state.trips.map((trip) => (trip.id === tripId ? { ...trip, status: 'ended' } : trip)),
+        trips: state.trips.map((trip) =>
+          trip.id === tripId ? { ...trip, status: 'ended' } : trip,
+        ),
       }));
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Failed to end trip', error);
     }
   },

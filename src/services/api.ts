@@ -114,14 +114,23 @@ export const tripApi = {
   endTrip: async (tripId: string) => {
     const res = await api.post(`/trips/${tripId}/end`);
     return res.data;
-  }
+  },
 };
 
 export const zoneApi = {
   getZonePack: async () => {
     const res = await api.get('/zones/pack');
     return res.data;
-  }
+  },
+};
+
+export const locationApi = {
+  uploadBatch: async (batchId: string, data: any) => {
+    const res = await api.post('/locations/batch', data, {
+      headers: { 'Idempotency-Key': batchId },
+    });
+    return res.data;
+  },
 };
 
 export type FlushResult = { sent: number; failed: number; sentTypes: string[] };
@@ -131,15 +140,58 @@ export async function flushOutbox(): Promise<FlushResult> {
   const sentTypes: string[] = [];
   let sent = 0;
   let failed = 0;
-  for (const item of due) {
-    try {
-      const endpoint = item.type === 'location' ? '/location' : '/events';
-      const bodyPayload = item.type === 'location' ? item.payload : item;
 
-      await api.post(endpoint, bodyPayload, {
+  // Group locations
+  const locations = due.filter((i) => i.type === 'location');
+  const otherEvents = due.filter((i) => i.type !== 'location');
+
+  if (locations.length > 0) {
+    // Dynamic import to avoid circular dependency if useAppStore imports api
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { useAppStore } = require('../stores/useAppStore');
+    const state = useAppStore.getState();
+    const activeTrip = state.trips.find((t: any) => t.status === 'active');
+
+    if (activeTrip) {
+      try {
+        const batchId = locations[0].id; // Use first item's ID as idempotency key
+        const points = locations.map((loc) => ({
+          lat: loc.payload.lat,
+          lon: loc.payload.lng, // map lng to lon
+          accM: 10, // dummy acc for MVP unless passed
+          sampledAt: loc.payload.timestamp,
+        }));
+
+        await locationApi.uploadBatch(batchId, {
+          tripId: activeTrip.id,
+          points,
+        });
+
+        for (const loc of locations) {
+          await outboxQueue.acknowledge(loc.id);
+          sentTypes.push('location');
+          sent += 1;
+        }
+      } catch {
+        for (const loc of locations) {
+          await outboxQueue.retry(loc);
+          failed += 1;
+        }
+      }
+    } else {
+      // If no active trip, just acknowledge to clear them
+      for (const loc of locations) {
+        await outboxQueue.acknowledge(loc.id);
+        sent += 1;
+      }
+    }
+  }
+
+  for (const item of otherEvents) {
+    try {
+      await api.post('/events', item, {
         headers: { 'Idempotency-Key': item.id },
       });
-
       await outboxQueue.acknowledge(item.id);
       sentTypes.push(item.type);
       sent += 1;

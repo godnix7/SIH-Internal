@@ -18,6 +18,7 @@ export default function Phone() {
       await api.post('/auth/register', { phone });
       router.push({ pathname: '/otp', params: { phone } });
     } catch (e) {
+      // eslint-disable-next-line no-console
       console.error(e);
       alert('Failed to send OTP. Please try again.');
     } finally {

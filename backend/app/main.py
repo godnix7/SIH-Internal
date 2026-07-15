@@ -8,16 +8,29 @@ from app.common.errors import AppError, InternalError
 from app.api.v1.auth import router as auth_router
 from app.api.v1.trips import router as trips_router
 from app.api.v1.zones import router as zones_router
+from app.api.v1.locations import router as locations_router
+from app.core.redis import init_redis, close_redis
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    await init_redis()
+    yield
+    # Shutdown
+    await close_redis()
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
-    openapi_url=f"{settings.API_V1_STR}/openapi.json"
+    openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    lifespan=lifespan
 )
 
 app.include_router(auth_router, prefix=settings.API_V1_STR)
 app.include_router(trips_router, prefix=f"{settings.API_V1_STR}/trips", tags=["trips"])
 app.include_router(zones_router, prefix=f"{settings.API_V1_STR}/zones", tags=["zones"])
+app.include_router(locations_router, prefix=f"{settings.API_V1_STR}/locations", tags=["locations"])
 
 # --- Global Exception Handlers ---
 
