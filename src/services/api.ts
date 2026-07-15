@@ -245,15 +245,36 @@ export async function flushOutbox(): Promise<FlushResult> {
 
   for (const item of otherEvents) {
     try {
-      await api.post('/events', item, {
-        headers: { 'Idempotency-Key': item.id },
-      });
+      if (item.type === 'sos') {
+        await sosApi.triggerSos(item.payload, item.id);
+      } else {
+        await api.post('/events', item, {
+          headers: { 'Idempotency-Key': item.id },
+        });
+      }
       await outboxQueue.acknowledge(item.id);
       sentTypes.push(item.type);
       sent += 1;
     } catch {
       await outboxQueue.retry(item);
       failed += 1;
+
+      // Phase 8: Offline SMS Fallback for SOS
+      if (item.type === 'sos') {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const SMS = require('expo-sms');
+        const isAvailable = await SMS.isAvailableAsync();
+        if (isAvailable) {
+          const lat = (item.payload as any).location?.lat || 0;
+          const lon = (item.payload as any).location?.lon || 0;
+          const acc = (item.payload as any).location?.accM || 0;
+          const ts = (item.payload as any).location?.ts || new Date().toISOString();
+
+          const payload = `SOS|v1|${item.id}|${lat}|${lon}|${acc}|${new Date(ts).getTime()}`;
+          // The government emergency shortcode
+          await SMS.sendSMSAsync(['112'], payload);
+        }
+      }
     }
   }
   return { sent, failed, sentTypes };

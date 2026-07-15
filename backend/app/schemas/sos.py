@@ -48,3 +48,8 @@ class IncidentResponse(BaseModel):
     createdAt: datetime
     updatedAt: datetime
     events: List[IncidentEventSchema] = []
+
+class SmsIngestRequest(BaseModel):
+    sender_phone: str
+    payload: str
+
