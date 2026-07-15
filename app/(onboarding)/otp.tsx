@@ -38,6 +38,7 @@ export default function OTP() {
         router.replace('/');
       }
     } catch (e) {
+      // eslint-disable-next-line no-console
       console.error(e);
       alert('Invalid OTP. Please try again.');
     } finally {

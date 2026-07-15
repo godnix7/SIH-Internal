@@ -17,7 +17,7 @@ import type {
   Zone,
 } from '@/src/lib/types';
 import { outboxQueue } from '@/src/services/outboxQueue';
-import { flushOutbox } from '@/src/services/api';
+import { flushOutbox, tripApi, zoneApi } from '@/src/services/api';
 import { locationEngine } from '@/src/services/locationEngine';
 import { preferences } from '@/src/services/preferences';
 
@@ -218,39 +218,70 @@ export const useAppStore = create<AppStore>((set, get) => ({
     set({ theme });
   },
   createTrip: async (values) => {
-    const trip: Trip = {
-      id: uniqueId('trip'),
-      ...values,
-      status: 'active',
-      nextCheckInAt: Date.now() + 4 * 60 * 60_000,
-      zones,
-      partySize: values.partySize ?? 1,
-    };
-    // Enqueue first: if the encrypted store rejects the write, no half-started trip is left behind.
-    await outboxQueue.enqueue(
-      'trip.started',
-      { tripId: trip.id, tier: trip.tier, destination: trip.destination },
-      'CHECKIN',
-    );
-    set((state) => ({ trips: [trip, ...state.trips] }));
-    return trip;
+    try {
+      const backendTrip = await tripApi.createTrip(values);
+      const trip: Trip = {
+        id: backendTrip.id,
+        ...values,
+        status: backendTrip.status,
+        nextCheckInAt: Date.now() + 4 * 60 * 60_000,
+        zones, // we could also call zoneApi.getZonePack() here or lazily
+        partySize: values.partySize ?? 1,
+      };
+      
+      // Attempt to fetch fresh zones if online
+      if (get().online) {
+        try {
+          const freshZones = await zoneApi.getZonePack();
+          trip.zones = freshZones.length > 0 ? freshZones : zones;
+        } catch (err) {
+          // fallback to cached/initial zones
+        }
+      }
+
+      await outboxQueue.enqueue(
+        'trip.started',
+        { tripId: trip.id, tier: trip.tier, destination: trip.destination },
+        'CHECKIN',
+      );
+      set((state) => ({ trips: [trip, ...state.trips] }));
+      return trip;
+    } catch (error) {
+      console.error('Failed to create trip', error);
+      throw error;
+    }
   },
   updateTripTier: async (tripId, tier) => {
-    set((state) => ({
-      trips: state.trips.map((trip) => (trip.id === tripId ? { ...trip, tier } : trip)),
-    }));
-    get().addAlert({
-      kind: 'system',
-      severity: 'info',
-      title: 'Your choice was recorded',
-      body: `Monitoring changed to ${tierLabel(tier)} at ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`,
-    });
-    await outboxQueue.enqueue('consent.changed', { tripId, tier }, 'CHECKIN');
+    try {
+      if (get().online) {
+        await tripApi.updateTier(tripId, tier);
+      }
+      set((state) => ({
+        trips: state.trips.map((trip) => (trip.id === tripId ? { ...trip, tier } : trip)),
+      }));
+      get().addAlert({
+        kind: 'system',
+        severity: 'info',
+        title: 'Your choice was recorded',
+        body: `Monitoring changed to ${tierLabel(tier)} at ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`,
+      });
+      await outboxQueue.enqueue('consent.changed', { tripId, tier }, 'CHECKIN');
+    } catch (error) {
+      console.error('Failed to update trip tier', error);
+    }
   },
-  endTrip: (tripId) =>
-    set((state) => ({
-      trips: state.trips.map((trip) => (trip.id === tripId ? { ...trip, status: 'ended' } : trip)),
-    })),
+  endTrip: async (tripId) => {
+    try {
+      if (get().online) {
+        await tripApi.endTrip(tripId);
+      }
+      set((state) => ({
+        trips: state.trips.map((trip) => (trip.id === tripId ? { ...trip, status: 'ended' } : trip)),
+      }));
+    } catch (error) {
+      console.error('Failed to end trip', error);
+    }
+  },
   addAlert: (alert) =>
     set((state) => ({
       alerts: [{ ...alert, id: uniqueId('alert'), createdAt: Date.now() }, ...state.alerts],

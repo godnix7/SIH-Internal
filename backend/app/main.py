@@ -6,6 +6,8 @@ from app.config import settings
 from app.common.errors import AppError, InternalError
 
 from app.api.v1.auth import router as auth_router
+from app.api.v1.trips import router as trips_router
+from app.api.v1.zones import router as zones_router
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -14,6 +16,8 @@ app = FastAPI(
 )
 
 app.include_router(auth_router, prefix=settings.API_V1_STR)
+app.include_router(trips_router, prefix=f"{settings.API_V1_STR}/trips", tags=["trips"])
+app.include_router(zones_router, prefix=f"{settings.API_V1_STR}/zones", tags=["zones"])
 
 # --- Global Exception Handlers ---
 

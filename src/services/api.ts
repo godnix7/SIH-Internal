@@ -12,10 +12,10 @@ export const api = axios.create({
 });
 
 let isRefreshing = false;
-let failedQueue: Array<{
+let failedQueue: {
   resolve: (token: string) => void;
   reject: (error: any) => void;
-}> = [];
+}[] = [];
 
 const processQueue = (error: any, token: string | null = null) => {
   failedQueue.forEach((prom) => {
@@ -97,6 +97,32 @@ api.interceptors.response.use(
     return Promise.reject(error);
   },
 );
+
+export const tripApi = {
+  createTrip: async (data: any) => {
+    const res = await api.post('/trips', data);
+    return res.data;
+  },
+  startTrip: async (tripId: string) => {
+    const res = await api.post(`/trips/${tripId}/start`);
+    return res.data;
+  },
+  updateTier: async (tripId: string, tier: string) => {
+    const res = await api.put(`/trips/${tripId}/tier`, { consent_tier: tier });
+    return res.data;
+  },
+  endTrip: async (tripId: string) => {
+    const res = await api.post(`/trips/${tripId}/end`);
+    return res.data;
+  }
+};
+
+export const zoneApi = {
+  getZonePack: async () => {
+    const res = await api.get('/zones/pack');
+    return res.data;
+  }
+};
 
 export type FlushResult = { sent: number; failed: number; sentTypes: string[] };
 
