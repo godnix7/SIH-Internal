@@ -1,6 +1,6 @@
 import uuid
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException, Header, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
@@ -10,12 +10,14 @@ from app.models.auth import User
 from app.models.sos import SOSAlert
 from app.models.incident import Incident, IncidentEvent
 from app.schemas.sos import SOSCreateRequest, SOSResponse, SOSCancelRequest, SOSAcknowledgeRequest
+from app.services.notification import notify_emergency_contacts
 
 router = APIRouter()
 
 @router.post("", response_model=SOSResponse, status_code=202)
 async def trigger_sos(
     req: SOSCreateRequest,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
@@ -93,6 +95,9 @@ async def trigger_sos(
     db.add(event)
     
     await db.commit()
+    
+    # 5. Dispatch background notifications
+    background_tasks.add_task(notify_emergency_contacts, current_user.id, incident.id)
     
     return SOSResponse(
         sosId=sos_alert.id,
