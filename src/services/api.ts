@@ -176,6 +176,19 @@ export const userApi = {
   },
 };
 
+export const sosApi = {
+  triggerSos: async (data: any, idempotencyKey: string) => {
+    const res = await api.post('/sos', data, {
+      headers: { 'Idempotency-Key': idempotencyKey },
+    });
+    return res.data;
+  },
+  cancelSos: async (sosId: string, data: any) => {
+    const res = await api.post(`/sos/${sosId}/cancel`, data);
+    return res.data;
+  },
+};
+
 export type FlushResult = { sent: number; failed: number; sentTypes: string[] };
 
 export async function flushOutbox(): Promise<FlushResult> {
