@@ -133,6 +133,49 @@ export const locationApi = {
   },
 };
 
+export const identityApi = {
+  submitKyc: async (data: {
+    type: string;
+    digilockerToken?: string;
+    mrzData?: string;
+    photoBase64?: string;
+  }) => {
+    const res = await api.post('/identity/verify', data);
+    return res.data;
+  },
+};
+
+export const userApi = {
+  getProfile: async () => {
+    const res = await api.get('/users/me');
+    return res.data;
+  },
+  getDigitalId: async () => {
+    const res = await api.get('/users/me/id');
+    return res.data;
+  },
+  getMedicalCard: async () => {
+    const res = await api.get('/users/me/medical');
+    return res.data;
+  },
+  updateMedicalCard: async (data: any) => {
+    const res = await api.patch('/users/me/medical', data);
+    return res.data;
+  },
+  getEmergencyContacts: async () => {
+    const res = await api.get('/users/me/contacts');
+    return res.data;
+  },
+  createEmergencyContact: async (data: any) => {
+    const res = await api.post('/users/me/contacts', data);
+    return res.data;
+  },
+  deleteEmergencyContact: async (id: string) => {
+    const res = await api.delete(`/users/me/contacts/${id}`);
+    return res.data;
+  },
+};
+
 export type FlushResult = { sent: number; failed: number; sentTypes: string[] };
 
 export async function flushOutbox(): Promise<FlushResult> {

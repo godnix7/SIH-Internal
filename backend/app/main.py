@@ -9,6 +9,8 @@ from app.api.v1.auth import router as auth_router
 from app.api.v1.trips import router as trips_router
 from app.api.v1.zones import router as zones_router
 from app.api.v1.locations import router as locations_router
+from app.api.v1.identity import router as identity_router
+from app.api.v1.users import router as users_router
 from app.core.redis import init_redis, close_redis
 from contextlib import asynccontextmanager
 
@@ -31,6 +33,8 @@ app.include_router(auth_router, prefix=settings.API_V1_STR)
 app.include_router(trips_router, prefix=f"{settings.API_V1_STR}/trips", tags=["trips"])
 app.include_router(zones_router, prefix=f"{settings.API_V1_STR}/zones", tags=["zones"])
 app.include_router(locations_router, prefix=f"{settings.API_V1_STR}/locations", tags=["locations"])
+app.include_router(identity_router, prefix=f"{settings.API_V1_STR}/identity", tags=["identity"])
+app.include_router(users_router, prefix=f"{settings.API_V1_STR}/users", tags=["users"])
 
 # --- Global Exception Handlers ---
 
