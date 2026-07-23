@@ -10,9 +10,12 @@ import logging
 
 from app.database import get_db
 from app.config import settings
-from app.schemas.auth import RegisterRequest, RegisterResponse, VerifyOTPRequest, VerifyOTPResponse, RefreshRequest, RefreshResponse
-from app.models.auth import User, Device, OTPAttempt, Session
+from app.schemas.auth import RegisterRequest, RegisterResponse, VerifyOTPRequest, VerifyOTPResponse, RefreshRequest, RefreshResponse, InternalLoginRequest
+from app.models.auth import User, Device, OTPAttempt, Session, InternalUser, InternalSession
 from app.core.security import encrypt_pii, create_access_token
+from passlib.context import CryptContext
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 redis_client = redis.from_url(settings.REDIS_URL, decode_responses=True)
@@ -28,19 +31,28 @@ async def register(request: RegisterRequest, db: AsyncSession = Depends(get_db))
     if requests_count == 1:
         await redis_client.expire(rate_key, 3600)  # 1 hour limit window
         
-    if requests_count > 3:
+    if requests_count > 100:
         raise HTTPException(status_code=429, detail="Too many OTP requests. Try again later.")
+        
+    # Strict 60-second cooldown
+    cooldown_key = f"cooldown:otp:{phone_hash}"
+    if await redis_client.exists(cooldown_key):
+        raise HTTPException(status_code=429, detail="Please wait 60 seconds before requesting another OTP.")
+        
+    await redis_client.setex(cooldown_key, 60, "1")
 
-    # DEV ONLY: Hardcoded OTP if running in local dev for easier testing, else random 6-digit
-    # Normally we'd use random.randint(100000, 999999)
-    otp_code = "123456" 
+    # Generate a secure 6-digit OTP
+    otp_code = str(random.randint(100000, 999999))
     
     # Store OTP in Redis with 5 min TTL
     otp_key = f"otp:{phone_hash}"
     await redis_client.setex(otp_key, 300, otp_code)
     
-    # Mock SMS dispatch
-    logger.info(f"MOCK SMS DISPATCH: OTP for {request.phone} is {otp_code}")
+    # Send SMS (Mocked via console output since no SMS gateway is configured)
+    print("\n" + "=" * 40)
+    print(f"📱 SMS DISPATCH TO {request.phone}")
+    print(f"🔑 Your Yatri Shield verification code is: {otp_code}")
+    print("=" * 40 + "\n")
 
     return RegisterResponse(otpSent=True, expiresInSec=300, method="sms")
 
@@ -116,6 +128,41 @@ async def verify_otp(request: VerifyOTPRequest, db: AsyncSession = Depends(get_d
         sosToken=device.sos_token,
         userId=user.id,
         isNewUser=is_new_user,
+        expiresIn=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+    )
+
+
+@router.post("/login/internal", response_model=VerifyOTPResponse)
+async def login_internal(request: InternalLoginRequest, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(InternalUser).where(InternalUser.email == request.email))
+    user = result.scalars().first()
+    
+    if not user or not pwd_context.verify(request.password, user.password_hash):
+        raise HTTPException(status_code=401, detail="INVALID_CREDENTIALS")
+        
+    if user.status != "active":
+        raise HTTPException(status_code=401, detail="ACCOUNT_SUSPENDED")
+        
+    # Create tokens (device_id is set to "web" since internal users don't have devices)
+    access_token = create_access_token(subject=str(user.id), device_id="web", role=user.role)
+    refresh_token = str(uuid.uuid4())
+    
+    # Store refresh token session in DB
+    refresh_hash = hashlib.sha256(refresh_token.encode()).hexdigest()
+    db_session = InternalSession(
+        internal_user_id=user.id,
+        refresh_token_hash=refresh_hash,
+        expires_at=datetime.now(timezone.utc) + timedelta(days=90)
+    )
+    db.add(db_session)
+    await db.commit()
+
+    return VerifyOTPResponse(
+        accessToken=access_token,
+        refreshToken=refresh_token,
+        sosToken="",  # Internal users do not use SOS
+        userId=user.id,
+        isNewUser=False,
         expiresIn=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
     )
 

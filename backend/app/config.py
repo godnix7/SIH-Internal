@@ -3,7 +3,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Yatri Shield API"
     VERSION: str = "1.0.0"
-    API_V1_STR: str = "/v1"
+    API_V1_STR: str = "/api/v1"
+    API_BASE_URL: str = "https://api.yatrishield.gov.in"
     
     # Database
     POSTGRES_USER: str = "yatrishield"
@@ -27,6 +28,15 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "CHANGE_ME_IN_PRODUCTION_extremely_secret_key_for_jwt"
     ALGORITHM: str = "HS256" # For dev. Prod uses ES256
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
+    SUPER_ADMIN_EMAIL: str = "admin@yatrishield.gov.in"
+    
+    # Twilio
+    TWILIO_ACCOUNT_SID: str = "mock_sid"
+    TWILIO_AUTH_TOKEN: str = "mock_token"
+    TWILIO_PHONE_NUMBER: str = "+1234567890"
+    
+    # SMS Cryptography
+    SMS_ENCRYPTION_KEY: str = "0123456789abcdef0123456789abcdef"
     
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
 

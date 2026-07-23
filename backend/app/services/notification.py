@@ -3,10 +3,12 @@ import logging
 from typing import Dict, Any, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from twilio.rest import Client
 
 from app.models.identity import EmergencyContact
 from app.models.auth import Device, User
 from app.core.security import decrypt_pii
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +77,7 @@ async def notify_emergency_contacts(user_id: uuid.UUID, incident_id: uuid.UUID):
         
         for contact in contacts:
             contact_phone = decrypt_pii(contact.phone_enc)
+            # 1. Send Encrypted SMS
             await send_sms(
                 phone_hash="hash_not_needed_for_mock",
                 phone_plaintext=contact_phone,
@@ -84,3 +87,36 @@ async def notify_emergency_contacts(user_id: uuid.UUID, incident_id: uuid.UUID):
                     "link": incident_link
                 }
             )
+            # 2. Initiate AI Voice Operator Call
+            await initiate_emergency_call(contact_phone, incident_id)
+
+async def initiate_emergency_call(phone_plaintext: str, incident_id: uuid.UUID):
+    """
+    Sends an outbound call request to Twilio.
+    Twilio will hit our /api/v1/voice/outbound/{incident_id} webhook.
+    """
+    import asyncio
+    
+    logger.info(f"[VOICE AI] Initiating automated outbound call to {phone_plaintext} for incident {incident_id}")
+    
+    max_retries = 3
+    base_delay = 2 # seconds
+    
+    for attempt in range(max_retries):
+        try:
+            client = Client(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
+            
+            # Real call initiation
+            call = client.calls.create(
+                url=f"{settings.API_BASE_URL}/api/v1/voice/outbound/{incident_id}",
+                to=phone_plaintext,
+                from_=settings.TWILIO_PHONE_NUMBER
+            )
+            logger.info(f"[VOICE AI] Twilio call created. SID: {call.sid}")
+            return # Success, exit retry loop
+        except Exception as e:
+            logger.error(f"[VOICE AI] Attempt {attempt + 1}/{max_retries} failed to initiate Twilio call: {e}")
+            if attempt < max_retries - 1:
+                await asyncio.sleep(base_delay ** (attempt + 1))
+            else:
+                logger.error(f"[VOICE AI] Max retries exhausted. Twilio call dropped for incident {incident_id}.")

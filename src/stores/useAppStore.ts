@@ -25,62 +25,7 @@ const SOS_KEY = 'yatri-shield.active-sos.v1';
 // The event chain can exceed SecureStore's value limit, so it lives in MMKV beside the record.
 const SOS_EVENTS_KEY = 'yatri-shield.active-sos-events.v1';
 
-const zones: Zone[] = [
-  {
-    id: 'jaipur-advisory',
-    class: 'advisory',
-    name: 'Chandni Chowk after dark',
-    version: 1,
-    bufferM: 40,
-    message:
-      'Heads up: pickpocketing is reported around Chandni Chowk after dark. Keep valuables zipped. Nearest police aid post: 400 m.',
-    polygon: [
-      [
-        [75.8245, 26.9248],
-        [75.8264, 26.9248],
-        [75.8264, 26.9265],
-        [75.8245, 26.9265],
-        [75.8245, 26.9248],
-      ],
-    ],
-  },
-  {
-    id: 'sikkim-restricted',
-    class: 'restricted',
-    name: 'Sikkim border buffer',
-    version: 3,
-    bufferM: 200,
-    message:
-      'You have entered a restricted area. Turn back to exit the boundary. Authorities are notified only after a reliable, confirmed entry.',
-    polygon: [
-      [
-        [88.7132, 27.7772],
-        [88.7145, 27.7772],
-        [88.7145, 27.7782],
-        [88.7132, 27.7782],
-        [88.7132, 27.7772],
-      ],
-    ],
-  },
-  {
-    id: 'sahastra-corridor',
-    class: 'corridor',
-    name: 'Sahastra Tal corridor',
-    version: 2,
-    bufferM: 100,
-    message:
-      'You are off the planned trek corridor. Return to the marked route or check in with your group leader.',
-    polygon: [
-      [
-        [78.552, 30.857],
-        [78.568, 30.857],
-        [78.568, 30.864],
-        [78.552, 30.864],
-        [78.552, 30.857],
-      ],
-    ],
-  },
-];
+const zones: Zone[] = []; // In production, these are fetched from the backend via zoneApi
 
 const initialAlerts: AlertItem[] = [
   {
@@ -113,6 +58,11 @@ type AppStore = {
   theme: 'system' | 'light' | 'dark';
   isAuthenticated: boolean;
   userId?: string;
+  verificationPrompt?: { countdown: number, vector: any };
+  isWearableConnected: boolean;
+  setWearableConnected: (connected: boolean) => void;
+  showVerificationPrompt: (countdown: number, vector: any) => void;
+  clearVerificationPrompt: () => void;
   hydrateAuth: () => Promise<void>;
   login: (userId: string) => void;
   logout: () => Promise<void>;
@@ -164,6 +114,11 @@ async function clearPersistedSos(): Promise<void> {
 export const useAppStore = create<AppStore>((set, get) => ({
   isAuthenticated: false,
   userId: undefined,
+  verificationPrompt: undefined,
+  isWearableConnected: false,
+  setWearableConnected: (connected) => set({ isWearableConnected: connected }),
+  showVerificationPrompt: (countdown, vector) => set({ verificationPrompt: { countdown, vector } }),
+  clearVerificationPrompt: () => set({ verificationPrompt: undefined }),
   hydrateAuth: async () => {
     const token = await storage.getAccessToken();
     if (token) {

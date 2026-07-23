@@ -7,6 +7,9 @@ from geoalchemy2 import Geometry
 from app.database import Base
 from app.models.auth import User  # Ensure User is imported for relationships if needed later
 
+# Import here to avoid circular imports if needed, or rely on string references.
+# from app.models.risk import TripRisk, RiskEvent
+
 class Trip(Base):
     __tablename__ = "trips"
     __table_args__ = {"schema": "trips"}
@@ -28,7 +31,8 @@ class Trip(Base):
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     receipts = relationship("ConsentReceipt", back_populates="trip")
-
+    risk_profile = relationship("TripRisk", back_populates="trip", uselist=False, cascade="all, delete-orphan")
+    risk_events = relationship("RiskEvent", back_populates="trip", cascade="all, delete-orphan")
 
 class ConsentReceipt(Base):
     __tablename__ = "consent_receipts"

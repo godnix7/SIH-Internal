@@ -12,7 +12,7 @@ export default function TripsScreen() {
       {trips.length === 0 ? (
         <EmptyState
           title="No trips yet"
-          body="Your first trip takes less than a minute to set up in demo mode."
+          body="Your first trip takes less than a minute to set up."
           action={<Button label="Create a trip" onPress={() => router.push('/trip/new')} />}
         />
       ) : (

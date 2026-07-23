@@ -2,7 +2,16 @@
 
 Yatri Shield is an offline-first tourist safety demonstration for India. It supports consent-tiered trips, local zone checks, missed-check-in context, a persistent SOS state machine, and a local operator dashboard. It complements - and never replaces - emergency number **112**.
 
+> **Note**: For a complete, living list of all features currently implemented in the frontend and backend, please see the [Implemented Features Report](docs/IMPLEMENTED_FEATURES.md).
+
 ## What is included
+
+### Project Structure
+- `app/`: Frontend React Native (Expo) application.
+- `backend/`: FastAPI + PostgreSQL backend services.
+- `docs/`: Comprehensive project architecture and feature documentation.
+
+### Features
 
 - Expo SDK 57 / TypeScript / Expo Router custom-dev-client application.
 - Zustand UI state, TanStack Query provider, MMKV preferences, SecureStore-held SQLCipher queue key, and SQLite outbox with SOS priority.

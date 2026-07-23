@@ -1,36 +1,36 @@
 import { Platform } from 'react-native';
 
 export const light = {
-  primary: '#1A73E8',
-  primaryContainer: '#D3E3FD',
-  surface: '#FFFFFF',
-  surfaceVariant: '#F5F5F5',
-  onSurface: '#1C1B1F',
-  onSurfaceVariant: '#49454F',
-  error: '#B3261E',
-  errorContainer: '#F9DEDC',
-  success: '#1B873B',
-  warning: '#E37400',
-  critical: '#DC2626',
-  monitoringActive: '#1A73E8',
-  monitoringEmergency: '#DC2626',
+  primary: '#1F6F54', // old trail
+  primaryContainer: '#14503C', // old trailDeep
+  surface: '#FAF7F2', // old paper
+  surfaceVariant: '#FFFFFF', // old card
+  onSurface: '#16202B', // old ink
+  onSurfaceVariant: '#5B6B7B', // old slate
+  error: '#C2402A', // old signal
+  errorContainer: '#9A3120', // old signalDeep
+  success: '#1F6F54',
+  warning: '#B7791F', // old amber
+  critical: '#C2402A',
+  monitoringActive: '#2C5F8A', // old sky
+  monitoringEmergency: '#C2402A',
 };
 
 export const dark: typeof light = {
   ...light,
-  primary: '#8AB4F8',
-  primaryContainer: '#004A77',
-  surface: '#1C1B1F',
-  surfaceVariant: '#2C2C2E',
-  onSurface: '#E6E1E5',
-  onSurfaceVariant: '#CAC4D0',
-  error: '#F2B8B5',
-  errorContainer: '#8C1D18',
-  success: '#6DD58C',
-  warning: '#FFB74D',
-  critical: '#FF6B6B',
-  monitoringActive: '#8AB4F8',
-  monitoringEmergency: '#FF6B6B',
+  primary: '#1F6F54',
+  primaryContainer: '#14503C',
+  surface: '#0E1620', // dark paper
+  surfaceVariant: '#16202B', // dark card
+  onSurface: '#F2EEE7', // dark ink
+  onSurfaceVariant: '#B9C1C9', // dark slate
+  error: '#C2402A',
+  errorContainer: '#9A3120',
+  success: '#1F6F54',
+  warning: '#B7791F',
+  critical: '#C2402A',
+  monitoringActive: '#2C5F8A',
+  monitoringEmergency: '#C2402A',
 };
 
 export type Colors = typeof light;
@@ -40,16 +40,16 @@ export const space = { xxs: 4, xs: 8, sm: 12, md: 16, lg: 24, xl: 32, xxl: 48 } 
 export const radius = { small: 8, medium: 12, large: 16, full: 9999 } as const;
 
 export const type = {
-  display: { fontFamily: 'Inter_600SemiBold', fontSize: 32, lineHeight: 40 },
-  headline: { fontFamily: 'Inter_600SemiBold', fontSize: 24, lineHeight: 32 },
-  title: { fontFamily: 'Inter_500Medium', fontSize: 20, lineHeight: 28 },
+  display: { fontFamily: 'Fraunces_600SemiBold', fontSize: 32, lineHeight: 38 },
+  headline: { fontFamily: 'Fraunces_600SemiBold', fontSize: 24, lineHeight: 32 },
+  title: { fontFamily: 'Fraunces_500Medium', fontSize: 22, lineHeight: 28 },
   subtitle: { fontFamily: 'Inter_500Medium', fontSize: 16, lineHeight: 24 },
-  body: { fontFamily: 'Inter_400Regular', fontSize: 14, lineHeight: 20 },
-  caption: { fontFamily: 'Inter_500Medium', fontSize: 12, lineHeight: 16 },
+  body: { fontFamily: 'Inter_400Regular', fontSize: 15, lineHeight: 22 },
+  caption: { fontFamily: 'Inter_500Medium', fontSize: 13, lineHeight: 18 },
   mono: {
     fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 13,
+    lineHeight: 18,
   },
 } as const;
 

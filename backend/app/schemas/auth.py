@@ -5,6 +5,12 @@ class RegisterRequest(BaseModel):
     phone: str = Field(..., description="E.164 formatted phone number")
     countryCode: str = Field(default="IN")
 
+class InternalLoginRequest(BaseModel):
+    email: str
+    password: str
+    deviceFingerprint: str
+    platform: str
+
 class RegisterResponse(BaseModel):
     otpSent: bool
     expiresInSec: int

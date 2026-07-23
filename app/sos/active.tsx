@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Linking, Text, View } from 'react-native';
+import { Alert, Linking, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { router } from 'expo-router';
 import { ShieldAlert } from 'lucide-react-native';
@@ -26,6 +26,9 @@ export default function SosActiveScreen() {
   const [pin, setPin] = useState('');
   const [cancelOpen, setCancelOpen] = useState(false);
   const [now, setNow] = useState<number | undefined>();
+  const [cancelling, setCancelling] = useState(false);
+  const [resolving, setResolving] = useState(false);
+  const [pinError, setPinError] = useState(false);
   const trip = activeTrip(trips);
   const integrity = useChainIntegrity(incidentEvents);
   const secondsLeft = useMemo(
@@ -57,7 +60,55 @@ export default function SosActiveScreen() {
     }, OFFLINE_RETRY_MS);
     return () => clearInterval(timer);
   }, [setSosStatus, sos?.status]);
+
   if (!sos) return null;
+
+  // Handle cancel with PIN — with error feedback
+  const handleCancelWithPin = async () => {
+    if (cancelling) return;
+    setCancelling(true);
+    setPinError(false);
+    try {
+      const ok = await cancelSos(pin);
+      if (ok) {
+        router.replace('/shield');
+      } else {
+        setPinError(true);
+        setPin('');
+      }
+    } catch {
+      Alert.alert('Error', 'Failed to cancel SOS. Please try again.');
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+  // Handle resolve with confirmation
+  const handleResolve = () => {
+    Alert.alert(
+      'Resolve Emergency',
+      'Are you sure the emergency is resolved? This will end the active SOS and stop emergency tracking.',
+      [
+        { text: 'Keep Active', style: 'cancel' },
+        {
+          text: 'Resolve',
+          style: 'destructive',
+          onPress: async () => {
+            setResolving(true);
+            try {
+              await resolveSos();
+              router.replace('/home');
+            } catch {
+              Alert.alert('Error', 'Failed to resolve SOS. Please try again or call 112.');
+            } finally {
+              setResolving(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   if (sos.status === 'COUNTDOWN')
     return (
       <Screen scroll={false}>
@@ -82,23 +133,31 @@ export default function SosActiveScreen() {
           <Button label={t('sos.cancel')} variant="secondary" onPress={() => setCancelOpen(true)} />
           {cancelOpen && (
             <Card>
-              <PinPad value={pin} onChange={setPin} />
+              <PinPad value={pin} onChange={(val) => { setPin(val); setPinError(false); }} />
+              {pinError && (
+                <Text style={[type.caption, { color: c.critical }]}>
+                  Incorrect PIN. Please try again.
+                </Text>
+              )}
               <Text style={[type.caption, { color: c.onSurfaceVariant }]}>
                 {t('sos.pinHint', { pin: SOS_CANCEL_PIN })}
               </Text>
               <Button
-                label={t('sos.cancelButton')}
+                label={cancelling ? 'Cancelling…' : t('sos.cancelButton')}
                 variant="destructive"
-                onPress={() => void cancelSos(pin).then((ok) => ok && router.replace('/shield'))}
+                disabled={cancelling || pin.length < 4}
+                onPress={handleCancelWithPin}
               />
             </Card>
           )}
         </View>
       </Screen>
     );
+
   const offline = sos.status === 'OFFLINE_QUEUED';
   const statusText = t(`sos.statuses.${sos.status}`, { defaultValue: sos.status });
   const sms = `SOS ${sos.id} ${sos.location ? `${sos.location.latitude.toFixed(4)},${sos.location.longitude.toFixed(4)} ±${Math.round(sos.location.accuracy)}m` : 'last location unavailable'} ${new Date(sos.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+
   return (
     <Screen
       title={sos.silent ? t('sos.decoyTitle') : t('sos.activeTitle')}
@@ -139,13 +198,7 @@ export default function SosActiveScreen() {
             accessibilityHint={t('sos.callHint')}
           />
         </View>
-        <View style={{ flex: 1 }}>
-          <Button
-            label={t('sos.updateStatus')}
-            variant="ghost"
-            onPress={() => void setSosStatus('ACKNOWLEDGED')}
-          />
-        </View>
+        {/* Removed debug "Update Status" button — status should only come from the operator */}
       </View>
       <Card>
         <Text style={[type.subtitle, { color: c.onSurface }]}>{t('sos.timeline')}</Text>
@@ -170,23 +223,27 @@ export default function SosActiveScreen() {
       )}
       {cancelOpen && (
         <Card>
-          <PinPad value={pin} onChange={setPin} />
+          <PinPad value={pin} onChange={(val) => { setPin(val); setPinError(false); }} />
+          {pinError && (
+            <Text style={[type.caption, { color: c.critical }]}>
+              Incorrect PIN. Please try again.
+            </Text>
+          )}
           <Button
-            label={t('sos.cancelButton')}
+            label={cancelling ? 'Cancelling…' : t('sos.cancelButton')}
             variant="destructive"
-            onPress={() =>
-              void cancelSos(pin).then((ok) => {
-                if (ok) router.replace('/shield');
-              })
-            }
+            disabled={cancelling || pin.length < 4}
+            onPress={handleCancelWithPin}
           />
         </Card>
       )}
       {sos.status === 'RESPONDER_ENROUTE' && (
         <Button
-          label={t('sos.resolve')}
+          label={resolving ? 'Resolving…' : t('sos.resolve')}
           variant="secondary"
-          onPress={() => void resolveSos().then(() => router.replace('/home'))}
+          disabled={resolving}
+          loading={resolving}
+          onPress={handleResolve}
         />
       )}
     </Screen>

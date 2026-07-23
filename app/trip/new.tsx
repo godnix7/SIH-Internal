@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { router } from 'expo-router';
-import { Text, View } from 'react-native';
+import { Text, View, Alert } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { Screen } from '@/src/components/Screen';
@@ -104,6 +104,24 @@ export default function NewTrip() {
     }
   };
   const proceed = () => {
+    if (step === 2) {
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (!dateRegex.test(dates.start) || !dateRegex.test(dates.end)) {
+        Alert.alert('Invalid Date Format', 'Please enter dates in YYYY-MM-DD format (e.g. 2026-07-12).');
+        return;
+      }
+      const startTime = Date.parse(dates.start);
+      const endTime = Date.parse(dates.end);
+      if (isNaN(startTime) || isNaN(endTime)) {
+        Alert.alert('Invalid Date', 'One of the entered dates is invalid. Please check the values.');
+        return;
+      }
+      if (endTime < startTime) {
+        Alert.alert('Invalid Date Range', 'The end date cannot be before the start date.');
+        return;
+      }
+    }
+
     if (step < 6) setStep((value) => value + 1);
     else if (tier === 'zones' || tier === 'full') setPrimer(true);
     else void requestPermissionsAndStart();

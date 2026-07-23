@@ -4,32 +4,65 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Header, HTTPException, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from datetime import datetime
 
 from app.database import get_db
 from app.core.middleware import get_current_user
 from app.core.redis import get_redis
-from app.models.auth import User
-from app.models.trip import Trip
 from app.models.location import LocationPoint
-from app.schemas.location import LocationBatchInput, LocationBatchResponse, LastFixResponse
+from app.models.trip import Trip
+from app.models.zone import Zone
+from app.models.auth import User
+from app.schemas.location import LocationBatchInput, LocationBatchResponse, LastFixResponse, LocationPointInput
+from app.services import risk_engine
+from sqlalchemy import text
 import redis.asyncio as redis
 
 router = APIRouter()
 
-async def evaluate_risk(trip_id: uuid.UUID, db: AsyncSession):
+async def evaluate_risk(trip_id: uuid.UUID, latest_point: LocationPointInput, db: AsyncSession):
     """
-    Basic background task to evaluate risk based on the latest location batch.
-    In MVP, checks if battery is critically low or if they missed checkin.
+    Evaluates real-time risk factors based on the latest incoming location ping.
+    Detects BATTERY_CRITICAL, EXTREME_VELOCITY, and MISSED_CHECKIN.
     """
-    # Just an MVP example of async risk engine rule
     result = await db.execute(select(Trip).where(Trip.id == trip_id))
     trip = result.scalars().first()
     if not trip or trip.status != 'active':
         return
         
-    # E.g. challenge logic: If we detect anomaly, transition to HIGH_RISK
-    # This would normally be much more complex involving the Zone engine and liveness checks.
-    pass
+    # 1. Check Battery Critical
+    if latest_point.battery is not None and latest_point.battery < 15:
+        await risk_engine.inject_risk_factor(db, trip_id, 'BATTERY_CRITICAL')
+        
+    # 2. Check Extreme Velocity (> 40 m/s ~ 144 km/h)
+    if latest_point.speedMps is not None and latest_point.speedMps > 40:
+        await risk_engine.inject_risk_factor(db, trip_id, 'EXTREME_VELOCITY')
+        
+    # 4. Check Route Deviation
+    # If destination_point exists, check if distance > 10,000m (10km)
+    if trip.destination_point:
+        dist_result = await db.execute(
+            text("SELECT ST_DistanceSphere(ST_SetSRID(ST_MakePoint(:lon, :lat), 4326), :dest)")
+            .bindparams(lon=latest_point.lon, lat=latest_point.lat, dest=trip.destination_point)
+        )
+        distance = dist_result.scalar()
+        if distance and distance > 10000:
+            await risk_engine.inject_risk_factor(db, trip_id, 'ROUTE_DEVIATION')
+
+    # 5. Check Zone Entries (Disaster/Restricted)
+    # Intersect the user's point with active zones
+    zone_result = await db.execute(
+        select(Zone.zone_type).where(
+            text("ST_Intersects(geom, ST_SetSRID(ST_MakePoint(:lon, :lat), 4326))")
+            .bindparams(lon=latest_point.lon, lat=latest_point.lat)
+        )
+    )
+    zones = zone_result.scalars().all()
+    for z_type in zones:
+        if z_type == 'disaster':
+            await risk_engine.inject_risk_factor(db, trip_id, 'DISASTER_ZONE_ENTRY')
+        elif z_type == 'restricted':
+            await risk_engine.inject_risk_factor(db, trip_id, 'RESTRICTED_ZONE_ENTRY')
 
 
 @router.post("/batch", response_model=LocationBatchResponse)
@@ -98,7 +131,8 @@ async def upload_location_batch(
         await redis_client.set(f"idem:{idempotency_key}", "1", ex=172800) # 48h
 
     # Trigger Risk Engine Evaluation asynchronously
-    background_tasks.add_task(evaluate_risk, trip.id, db)
+    if latest_point:
+        background_tasks.add_task(evaluate_risk, trip.id, latest_point, db)
 
     return LocationBatchResponse(
         accepted=accepted,

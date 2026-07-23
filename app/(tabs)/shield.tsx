@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { router } from 'expo-router';
-import { Text, View } from 'react-native';
+import { Text, View, Alert } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { EyeOff, HeartPulse } from 'lucide-react-native';
 
@@ -15,10 +15,25 @@ export default function ShieldScreen() {
   const { t } = useTranslation();
   const beginSos = useAppStore((state) => state.beginSos);
   const [kind, setKind] = useState<SOSRecord['type']>('police');
+  const [starting, setStarting] = useState(false);
+
   const start = async (silent = false) => {
-    await beginSos(kind, silent);
-    router.push('/sos/active');
+    if (starting) return;
+    setStarting(true);
+    try {
+      await beginSos(kind, silent);
+      router.push('/sos/active');
+    } catch (error) {
+      Alert.alert(
+        'SOS Failed',
+        'Could not initiate the emergency alert. Please try again or call 112 directly.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setStarting(false);
+    }
   };
+
   return (
     <Screen scroll={false}>
       <View style={{ flex: 1, justifyContent: 'space-between', paddingVertical: space.lg }}>
@@ -33,16 +48,19 @@ export default function ShieldScreen() {
               label={t('shield.medical')}
               variant={kind === 'medical' ? 'primary' : 'secondary'}
               onPress={() => setKind('medical')}
+              disabled={starting}
             />
             <Button
               label={t('shield.police')}
               variant={kind === 'police' ? 'primary' : 'secondary'}
               onPress={() => setKind('police')}
+              disabled={starting}
             />
             <Button
               label={t('shield.watch')}
               variant={kind === 'watch' ? 'primary' : 'secondary'}
               onPress={() => setKind('watch')}
+              disabled={starting}
             />
           </View>
         </View>
@@ -63,6 +81,8 @@ export default function ShieldScreen() {
               label={t('shield.silentStart')}
               variant="ghost"
               onPress={() => void start(true)}
+              disabled={starting}
+              loading={starting}
             />
           </Card>
           <View style={{ flexDirection: 'row', gap: space.xs, alignItems: 'center' }}>

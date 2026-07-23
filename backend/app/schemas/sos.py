@@ -26,8 +26,7 @@ class SOSResponse(BaseModel):
     ackSlaSec: int
 
 class SOSAcknowledgeRequest(BaseModel):
-    unitId: UUID
-    etaMinutes: int
+    notes: Optional[str] = None
 
 class SOSCancelRequest(BaseModel):
     reason: str
@@ -52,4 +51,8 @@ class IncidentResponse(BaseModel):
 class SmsIngestRequest(BaseModel):
     sender_phone: str
     payload: str
+
+class MeshIngestRequest(BaseModel):
+    payload: str
+    relayedAt: str
 

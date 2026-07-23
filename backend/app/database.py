@@ -7,8 +7,8 @@ engine = create_async_engine(
     settings.async_database_url,
     echo=False,
     future=True,
-    pool_size=20,
-    max_overflow=10
+    pool_size=50,
+    max_overflow=20
 )
 
 # Async Session Factory

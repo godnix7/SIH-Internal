@@ -13,7 +13,8 @@
         "UIBackgroundModes": ["location", "remote-notification"],
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Yatri Shield uses your location during an active trip to monitor the safety level you choose.",
         "NSLocationWhenInUseUsageDescription": "Yatri Shield uses your location while you monitor an active trip.",
-        "NSCameraUsageDescription": "Use your camera to scan an ID or attach incident evidence."
+        "NSCameraUsageDescription": "Use your camera to scan an ID or attach incident evidence.",
+        "NSBluetoothAlwaysUsageDescription": "Yatri Shield uses Bluetooth to broadcast offline SOS beacons to nearby tourists in areas without cellular reception."
       }
     },
     "android": {
@@ -27,7 +28,12 @@
         "POST_NOTIFICATIONS",
         "SCHEDULE_EXACT_ALARM",
         "CAMERA",
-        "VIBRATE"
+        "VIBRATE",
+        "BLUETOOTH",
+        "BLUETOOTH_ADMIN",
+        "BLUETOOTH_SCAN",
+        "BLUETOOTH_CONNECT",
+        "BLUETOOTH_ADVERTISE"
       ]
     },
     "plugins": [
@@ -44,6 +50,14 @@
       [
         "expo-camera",
         { "cameraPermission": "Allow Yatri Shield to use your camera for ID and evidence capture." }
+      ],
+      [
+        "react-native-ble-plx",
+        {
+          "isBackgroundEnabled": true,
+          "modes": ["peripheral", "central"],
+          "bluetoothAlwaysPermission": "Allow Yatri Shield to broadcast offline SOS beacons using Bluetooth."
+        }
       ]
     ],
     "experiments": {

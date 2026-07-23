@@ -1,8 +1,11 @@
 import axios from 'axios';
 import { storage } from '@/src/lib/storage';
 import { outboxQueue } from './outboxQueue';
+import { meshService } from './mesh';
+import { smsCrypto } from './smsCrypto';
+import { router } from 'expo-router';
 
-const baseURL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://10.0.2.2:4000/v1';
+const baseURL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://10.0.2.2:8000/v1';
 
 export const api = axios.create({
   baseURL,
@@ -87,8 +90,14 @@ api.interceptors.response.use(
         return api(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
-        // Dispatch logout event here (clear store / redirect to login)
         await storage.clearTokens();
+        try {
+          const { useAppStore } = require('../stores/useAppStore');
+          useAppStore.getState().logout();
+        } catch (e) {
+          console.error('Failed to clear store on logout', e);
+        }
+        router.replace('/(onboarding)/phone');
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
@@ -270,9 +279,19 @@ export async function flushOutbox(): Promise<FlushResult> {
           const acc = (item.payload as any).location?.accM || 0;
           const ts = (item.payload as any).location?.ts || new Date().toISOString();
 
-          const payload = `SOS|v1|${item.id}|${lat}|${lon}|${acc}|${new Date(ts).getTime()}`;
+          const rawPayload = `SOS|v1|${item.id}|${lat}|${lon}|${acc}|${new Date(ts).getTime()}`;
+          const payload = smsCrypto.encrypt(rawPayload);
+          
           // The government emergency shortcode
           await SMS.sendSMSAsync(['112'], payload);
+          
+          // Phase 5.2: Activate BLE Mesh Broadcasting
+          await meshService.startBroadcastingSOS(item.id, lat, lon);
+        } else {
+          // If SMS is not available (e.g. iPad, no SIM), immediately rely on BLE Mesh
+          const lat = (item.payload as any).location?.lat || 0;
+          const lon = (item.payload as any).location?.lon || 0;
+          await meshService.startBroadcastingSOS(item.id, lat, lon);
         }
       }
     }

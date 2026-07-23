@@ -1,6 +1,6 @@
 import '@/src/i18n';
 import '@/src/services/monitoring';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import {
   Fraunces_500Medium,
@@ -18,8 +18,13 @@ import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { isSosActive, useAppStore } from '@/src/stores/useAppStore';
+import { isSosActive, useAppStore, activeTrip } from '@/src/stores/useAppStore';
 import { connectRealtime, type RemoteIncident } from '@/src/services/realtime';
+import { meshService } from '@/src/services/mesh';
+import { escalationManager } from '@/src/services/escalationManager';
+import { aiEngine } from '@/src/services/aiEngine';
+import { VerificationPrompt } from '@/src/components/VerificationPrompt';
+import { CustomSplashScreen } from '@/src/components/SplashScreen';
 
 const client = new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 30_000 } } });
 
@@ -56,6 +61,44 @@ function RealtimeBridge() {
   return null;
 }
 
+function MeshBridge() {
+  useEffect(() => {
+    // Start scanning for nearby SOS beacons in the background
+    meshService.startScanningForRelays();
+    return () => {
+      meshService.stopScanning();
+    };
+  }, []);
+  return null;
+}
+
+function AIEngineBridge() {
+  const trips = useAppStore(state => state.trips);
+  
+  useEffect(() => {
+    const currentTrip = activeTrip(trips);
+    
+    // Only monitor the accelerometer/sensors if the user is on an active trip
+    if (currentTrip) {
+      escalationManager.initialize();
+      aiEngine.startMonitoring();
+    } else {
+      aiEngine.stopMonitoring();
+    }
+    
+    return () => {
+      aiEngine.stopMonitoring();
+    };
+  }, [trips]);
+  
+  return null;
+}
+
+import { SplashScreen } from 'expo-router';
+
+// Prevent the splash screen from auto-hiding before asset loading is complete.
+SplashScreen.preventAutoHideAsync();
+
 export default function RootLayout() {
   const [interLoaded, interError] = useInterFonts({
     Inter_400Regular,
@@ -66,20 +109,36 @@ export default function RootLayout() {
     Fraunces_500Medium,
     Fraunces_600SemiBold,
   });
+  const [authHydrated, setAuthHydrated] = useState(false);
+  const hydrateAuth = useAppStore((state) => state.hydrateAuth);
 
   useEffect(() => {
-    if (interError || frauncesError) {
-    }
-  }, [interError, frauncesError]);
+    hydrateAuth().finally(() => setAuthHydrated(true));
+  }, [hydrateAuth]);
 
-  if (!interLoaded && !interError) return <View />;
-  if (!frauncesLoaded && !frauncesError) return <View />;
+  useEffect(() => {
+    if (interLoaded || interError) {
+      if (frauncesLoaded || frauncesError) {
+        if (authHydrated) {
+          // Hide the splash screen after the fonts and auth state have loaded
+          SplashScreen.hideAsync();
+        }
+      }
+    }
+  }, [interLoaded, interError, frauncesLoaded, frauncesError, authHydrated]);
+
+  if ((!interLoaded && !interError) || (!frauncesLoaded && !frauncesError) || !authHydrated) {
+    return <CustomSplashScreen />;
+  }
 
   return (
     <SafeAreaProvider>
       <QueryClientProvider client={client}>
         <SafetyRestorer />
         <RealtimeBridge />
+        <MeshBridge />
+        <AIEngineBridge />
+        <VerificationPrompt />
         <StatusBar style="auto" />
         <Stack screenOptions={{ headerShown: false, animation: 'fade' }}>
           <Stack.Screen name="(onboarding)" />

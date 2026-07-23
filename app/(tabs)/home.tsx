@@ -1,7 +1,9 @@
+import { useEffect, useState } from 'react';
 import { router } from 'expo-router';
-import { MapPin, ShieldCheck, Umbrella } from 'lucide-react-native';
-import { Text, View } from 'react-native';
+import { MapPin, ShieldCheck, Umbrella, Building2, Phone } from 'lucide-react-native';
+import { Text, View, ActivityIndicator } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import * as Location from 'expo-location';
 import { Screen } from '@/src/components/Screen';
 import {
   Button,
@@ -15,12 +17,69 @@ import {
 } from '@/src/components/ui';
 import { activeTrip, isSosActive, useAppStore } from '@/src/stores/useAppStore';
 import { space, type } from '@/src/theme/tokens';
+import { api } from '@/src/services/api';
+
+type Facility = {
+  id: string;
+  name: string;
+  type: string;
+  phone: string | null;
+  address: string | null;
+};
 
 export default function HomeScreen() {
   const c = useAppColors();
   const { t } = useTranslation();
   const { profile, trips, online, sos, addAlert } = useAppStore();
   const trip = activeTrip(trips);
+  const [facilities, setFacilities] = useState<Facility[]>([]);
+  const [loadingFacilities, setLoadingFacilities] = useState(true);
+  const [gpsActive, setGpsActive] = useState<boolean>(true);
+
+  // Monitor GPS Status continuously during an active trip
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (trip) {
+      const checkGps = async () => {
+        try {
+          const enabled = await Location.hasServicesEnabledAsync();
+          setGpsActive(enabled);
+        } catch {
+          setGpsActive(false);
+        }
+      };
+      checkGps();
+      interval = setInterval(checkGps, 5000);
+    }
+    return () => clearInterval(interval);
+  }, [trip]);
+
+  useEffect(() => {
+    async function loadFacilities() {
+      try {
+        setLoadingFacilities(true);
+        // Default to Bengaluru if location fails
+        let lat = 12.9716;
+        let lng = 77.5946;
+        
+        let { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === 'granted') {
+          let location = await Location.getCurrentPositionAsync({});
+          lat = location.coords.latitude;
+          lng = location.coords.longitude;
+        }
+
+        const { data } = await api.get(`/facilities/nearby?lat=${lat}&lng=${lng}&radius_m=10000`);
+        setFacilities(data);
+      } catch (e) {
+        console.error('Failed to load facilities:', e);
+      } finally {
+        setLoadingFacilities(false);
+      }
+    }
+    loadFacilities();
+  }, []);
+
   const state = isSosActive(sos)
     ? 'emergency'
     : trip?.status === 'paused'
@@ -42,6 +101,19 @@ export default function HomeScreen() {
       {!online && <OfflineBar />}
       {trip ? (
         <Card>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: space.sm }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs }}>
+              <View style={{ 
+                width: 8, 
+                height: 8, 
+                borderRadius: 4, 
+                backgroundColor: gpsActive ? c.success : c.critical 
+              }} />
+              <Text style={[type.caption, { color: gpsActive ? c.success : c.critical, fontWeight: '600' }]}>
+                {gpsActive ? 'GPS ACTIVE' : 'GPS LOST'}
+              </Text>
+            </View>
+          </View>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: space.sm }}>
             <View style={{ flex: 1, gap: 4 }}>
               <Text style={[type.subtitle, { color: c.onSurface }]}>{trip.destination}</Text>
@@ -73,19 +145,37 @@ export default function HomeScreen() {
       <View style={{ gap: space.xs }}>
         <Text style={[type.title, { color: c.onSurface }]}>{t('home.nearby')}</Text>
         <Card>
-          <ListRow
-            icon={<MapPin color={c.primary} />}
-            title={t('home.policeAidPost')}
-            sub={t('home.policeAidPostSub')}
-            onPress={() =>
-              addAlert({
-                kind: 'system',
-                severity: 'info',
-                title: t('home.aidSavedTitle'),
-                body: t('home.aidSavedBody'),
-              })
-            }
-          />
+          {loadingFacilities ? (
+            <View style={{ padding: space.md, alignItems: 'center' }}>
+              <ActivityIndicator size="small" color={c.primary} />
+            </View>
+          ) : facilities.length > 0 ? (
+            facilities.map(f => (
+              <ListRow
+                key={f.id}
+                icon={f.type === 'hospital' ? <Building2 color={c.critical} /> : <MapPin color={c.primary} />}
+                title={f.name}
+                sub={f.address || t('home.policeAidPostSub')}
+                trailing={f.phone ? <Phone size={16} color={c.onSurfaceVariant} /> : undefined}
+                onPress={() => {
+                  if (f.phone) {
+                    addAlert({
+                      kind: 'system',
+                      severity: 'info',
+                      title: 'Calling Service',
+                      body: `Dialing ${f.phone}...`,
+                    });
+                  }
+                }}
+              />
+            ))
+          ) : (
+            <View style={{ padding: space.sm }}>
+              <Text style={[type.body, { color: c.onSurfaceVariant, textAlign: 'center' }]}>
+                No facilities nearby
+              </Text>
+            </View>
+          )}
           <ListRow
             icon={<ShieldCheck color={c.warning} />}
             title={t('home.areaAdvisory')}

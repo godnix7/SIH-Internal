@@ -1,6 +1,7 @@
 import uuid
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
@@ -10,6 +11,8 @@ from app.models.auth import User
 from app.models.incident import Incident, IncidentEvent
 from app.models.sos import SOSAlert
 from app.schemas.sos import IncidentResponse, IncidentEventSchema, SOSAcknowledgeRequest
+from app.core.socket import broadcast_incident_update
+from app.services.blockchain import BlockchainService
 
 router = APIRouter()
 
@@ -78,6 +81,9 @@ async def acknowledge_incident(
     if not incident:
         raise HTTPException(status_code=404, detail="Incident not found")
         
+    if incident.status == 'acknowledged':
+        return {"status": "acknowledged", "acknowledgedBy": str(incident.assigned_to)}
+        
     incident.status = 'acknowledged'
     incident.assigned_to = current_user.id
     
@@ -91,10 +97,21 @@ async def acknowledge_incident(
         incident_id=incident.id,
         event_type='acknowledged',
         actor_id=current_user.id,
-        details={"unitId": str(req.unitId), "etaMinutes": req.etaMinutes}
+        details={"notes": req.notes} if req.notes else {}
     )
     db.add(event)
+    await db.flush() # flush to get event.id
+    
+    # Anchor to cryptographic chain
+    await BlockchainService.append_event(db, str(incident.id), str(event.id), event.event_type, event.details)
+    
     await db.commit()
+    
+    await broadcast_incident_update({
+        "id": str(incident.id),
+        "status": incident.status,
+        "updatedAt": int(incident.updated_at.timestamp() * 1000) if incident.updated_at else None
+    })
     
     return {"status": "acknowledged", "acknowledgedBy": str(current_user.id)}
 
@@ -113,6 +130,9 @@ async def resolve_incident(
     if not incident:
         raise HTTPException(status_code=404, detail="Incident not found")
         
+    if incident.status == 'resolved':
+        return {"status": "resolved"}
+        
     incident.status = 'resolved'
     
     sos_res = await db.execute(select(SOSAlert).where(SOSAlert.id == incident.sos_alert_id))
@@ -127,6 +147,102 @@ async def resolve_incident(
         details={"reason": "Threat cleared"}
     )
     db.add(event)
+    await db.flush()
+    
+    # Anchor to cryptographic chain
+    await BlockchainService.append_event(db, str(incident.id), str(event.id), event.event_type, event.details)
+    
     await db.commit()
     
+    await broadcast_incident_update({
+        "id": str(incident.id),
+        "status": incident.status,
+        "updatedAt": int(incident.updated_at.timestamp() * 1000) if incident.updated_at else None
+    })
+    
     return {"status": "resolved"}
+
+class IncidentAssignRequest(BaseModel):
+    unitId: uuid.UUID
+
+@router.post("/{incident_id}/assign")
+async def assign_incident(
+    incident_id: uuid.UUID,
+    req: IncidentAssignRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    if current_user.role not in ['operator', 'dispatcher', 'supervisor', 'sys_admin']:
+        raise HTTPException(status_code=403, detail="Unauthorized")
+        
+    result = await db.execute(select(Incident).where(Incident.id == incident_id))
+    incident = result.scalars().first()
+    
+    if not incident:
+        raise HTTPException(status_code=404, detail="Incident not found")
+        
+    if incident.status == 'assigned' and incident.assigned_to == req.unitId:
+        return {"status": "assigned"}
+        
+    incident.status = 'assigned'
+    incident.assigned_to = req.unitId
+    
+    event = IncidentEvent(
+        incident_id=incident.id,
+        event_type='assigned',
+        actor_id=current_user.id,
+        details={"unitId": str(req.unitId)}
+    )
+    db.add(event)
+    await db.flush()
+    await BlockchainService.append_event(db, str(incident.id), str(event.id), event.event_type, event.details)
+    await db.commit()
+    
+    await broadcast_incident_update({
+        "id": str(incident.id),
+        "status": incident.status,
+        "assigned_to": str(req.unitId)
+    })
+    return {"status": "assigned"}
+
+class IncidentEscalateRequest(BaseModel):
+    reason: str
+
+@router.post("/{incident_id}/escalate")
+async def escalate_incident(
+    incident_id: uuid.UUID,
+    req: IncidentEscalateRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    if current_user.role not in ['operator', 'dispatcher', 'supervisor', 'sys_admin']:
+        raise HTTPException(status_code=403, detail="Unauthorized")
+        
+    result = await db.execute(select(Incident).where(Incident.id == incident_id))
+    incident = result.scalars().first()
+    
+    if not incident:
+        raise HTTPException(status_code=404, detail="Incident not found")
+        
+    if incident.severity == 'critical':
+        return {"status": "escalated"}
+        
+    incident.severity = 'critical'
+    
+    event = IncidentEvent(
+        incident_id=incident.id,
+        event_type='escalated',
+        actor_id=current_user.id,
+        details={"reason": req.reason}
+    )
+    db.add(event)
+    await db.flush()
+    await BlockchainService.append_event(db, str(incident.id), str(event.id), event.event_type, event.details)
+    await db.commit()
+    
+    await broadcast_incident_update({
+        "id": str(incident.id),
+        "severity": incident.severity,
+        "event": "escalated"
+    })
+    return {"status": "escalated"}

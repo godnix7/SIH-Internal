@@ -10,8 +10,8 @@ from app.database import get_db
 from app.core.middleware import get_current_user
 from app.core.security import encrypt_pii, decrypt_pii
 from app.models.auth import User
-from app.models.identity import Identity
-from app.schemas.identity import KycVerificationRequest, KycVerificationResponse
+from app.models.identity import Identity, MedicalCard, EmergencyContact
+from app.schemas.identity import KycVerificationRequest, KycVerificationResponse, IdentityScanRequest, IdentityScanResponse, EmergencyContactSchema
 
 router = APIRouter()
 
@@ -109,4 +109,87 @@ async def verify_identity(
         confidence=identity.confidence,
         credentialQR=qr_data,
         expiresAt=identity.expires_at
+    )
+
+@router.post("/scan", response_model=IdentityScanResponse)
+async def scan_identity(
+    req: IdentityScanRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Hospital API to scan a QR token and retrieve decrypted Medical Card and Identity data.
+    """
+    if current_user.role not in ["hospital", "sys_admin"]:
+        raise HTTPException(status_code=403, detail="Only hospital staff can scan IDs")
+
+    # In a real app we'd decode and verify the JWT signature here.
+    # For this MVP, since we passed a base64 encoded json string:
+    try:
+        padded = req.qrToken + "=" * ((4 - len(req.qrToken) % 4) % 4)
+        token_decoded = json.loads(base64.b64decode(padded).decode('utf-8'))
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid QR token format")
+
+    user_id_str = token_decoded.get("sub")
+    if not user_id_str:
+        raise HTTPException(status_code=400, detail="Token missing subject identifier")
+
+    try:
+        target_user_id = uuid.UUID(user_id_str)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid subject identifier")
+
+    # Fetch Identity
+    result = await db.execute(select(Identity).where(Identity.user_id == target_user_id))
+    identity = result.scalars().first()
+    
+    if not identity:
+        raise HTTPException(status_code=404, detail="Identity not found")
+        
+    name = decrypt_pii(identity.name_enc)
+    dob = decrypt_pii(identity.dob_enc) if identity.dob_enc else None
+
+    # Fetch Medical Card
+    mc_result = await db.execute(select(MedicalCard).where(MedicalCard.user_id == target_user_id))
+    medical_card = mc_result.scalars().first()
+    
+    blood_group = None
+    allergies = []
+    medications = []
+    conditions = []
+    
+    if medical_card:
+        blood_group = medical_card.blood_group
+        allergies = json.loads(decrypt_pii(medical_card.allergies_enc)) if medical_card.allergies_enc else []
+        medications = json.loads(decrypt_pii(medical_card.medications_enc)) if medical_card.medications_enc else []
+        conditions = json.loads(decrypt_pii(medical_card.conditions_enc)) if medical_card.conditions_enc else []
+        
+    # Fetch Emergency Contacts
+    ec_result = await db.execute(select(EmergencyContact).where(EmergencyContact.user_id == target_user_id))
+    emergency_contacts = ec_result.scalars().all()
+    
+    ec_out = []
+    for ec in emergency_contacts:
+        ec_out.append(EmergencyContactSchema(
+            id=ec.id,
+            name=decrypt_pii(ec.name_enc),
+            phone=decrypt_pii(ec.phone_enc),
+            relationship=ec.relationship,
+            notifyTrip=ec.notify_trip,
+            notifyDailyOk=ec.notify_daily_ok
+        ))
+
+    return IdentityScanResponse(
+        userId=target_user_id,
+        name=name,
+        dob=dob,
+        nationality=identity.nationality,
+        verified=identity.name_verified,
+        bloodGroup=blood_group,
+        allergies=allergies,
+        medications=medications,
+        conditions=conditions,
+        emergencyContacts=ec_out,
+        medicalDataSelfDeclared=True # Always flagged per spec
     )

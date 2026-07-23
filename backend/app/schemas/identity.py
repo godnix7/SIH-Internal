@@ -60,3 +60,19 @@ class UserProfileResponse(BaseModel):
     role: str
     status: str
     identity: Optional[IdentitySchema] = None
+
+class IdentityScanRequest(BaseModel):
+    qrToken: str
+
+class IdentityScanResponse(BaseModel):
+    userId: UUID
+    name: str
+    dob: Optional[str] = None
+    nationality: Optional[str] = None
+    verified: bool
+    bloodGroup: Optional[str] = None
+    allergies: List[str] = []
+    medications: List[str] = []
+    conditions: List[str] = []
+    emergencyContacts: List[EmergencyContactSchema] = []
+    medicalDataSelfDeclared: bool = True

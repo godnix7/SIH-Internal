@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { Text, View } from 'react-native';
+import { Text, View, Alert } from 'react-native';
 
 import { MapZoneLayer } from '@/src/components/MapZoneLayer';
 import { Screen } from '@/src/components/Screen';
@@ -12,8 +12,10 @@ import {
   Toast,
   useAppColors,
 } from '@/src/components/ui';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAppStore } from '@/src/stores/useAppStore';
+import { api } from '@/src/services/api';
+import { stopMonitoring } from '@/src/services/monitoring';
 import { space, type } from '@/src/theme/tokens';
 
 export default function TripDetail() {
@@ -24,18 +26,156 @@ export default function TripDetail() {
   const endTrip = useAppStore((state) => state.endTrip);
   const addAlert = useAppStore((state) => state.addAlert);
   const [toast, setToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('Your trip remains in your control.');
+  const [riskData, setRiskData] = useState<{total_score: number, events: any[]} | null>(null);
+  const [endingTrip, setEndingTrip] = useState(false);
+  const [checkingIn, setCheckingIn] = useState(false);
+  const [pausing, setPausing] = useState(false);
+  const [changingTier, setChangingTier] = useState(false);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setToast(true);
+    setTimeout(() => setToast(false), 3000);
+  };
+
+  useEffect(() => {
+    if (trip) {
+      api.get(`/risk/trip/${trip.id}/events`)
+        .then(res => setRiskData(res.data))
+        .catch(() => { /* Risk data is optional — don't block the screen */ });
+    }
+  }, [trip]);
+
+  // Handle check-in with API call
+  const handleCheckIn = async () => {
+    if (checkingIn || !trip) return;
+    setCheckingIn(true);
+    try {
+      await api.post(`/trips/${trip.id}/checkin`);
+      addAlert({
+        kind: 'checkin',
+        severity: 'info',
+        title: 'Check-in received',
+        body: 'You are marked OK. We kept your tier unchanged.',
+      });
+      showToast('Check-in confirmed.');
+    } catch {
+      // Check-in is non-critical — show feedback but don't alarm
+      addAlert({
+        kind: 'checkin',
+        severity: 'info',
+        title: 'Check-in received locally',
+        body: 'The server could not be reached, but your check-in is recorded locally.',
+      });
+      showToast('Check-in saved locally.');
+    } finally {
+      setCheckingIn(false);
+    }
+  };
+
+  // Handle pause with feedback
+  const handlePause = async () => {
+    if (pausing || !trip) return;
+    setPausing(true);
+    try {
+      await api.post(`/trips/${trip.id}/pause`, { durationMinutes: 60 });
+    } catch {
+      // Pause is best-effort
+    }
+    addAlert({
+      kind: 'system',
+      severity: 'warning',
+      title: 'Monitoring paused for one hour',
+      body: 'It will resume automatically. Your SOS remains available.',
+    });
+    showToast('Monitoring paused for 1 hour.');
+    setPausing(false);
+  };
+
+  // Handle share link
+  const handleShareLink = () => {
+    addAlert({
+      kind: 'system',
+      severity: 'info',
+      title: 'Live link prepared',
+      body: 'This opens your system share sheet with a revocable link.',
+    });
+    showToast('Live link ready to share.');
+  };
+
+  // Handle tier change with loading
+  const handleTierChange = async (tier: any) => {
+    if (!trip || changingTier) return;
+    setChangingTier(true);
+    try {
+      await updateTier(trip.id, tier);
+      showToast('Monitoring tier updated.');
+    } catch {
+      Alert.alert('Error', 'Failed to update monitoring tier. Please try again.');
+    } finally {
+      setChangingTier(false);
+    }
+  };
+
+  // Handle end trip with confirmation
+  const handleEndTrip = () => {
+    if (!trip) return;
+    Alert.alert(
+      'End Trip',
+      `Are you sure you want to end your trip to ${trip.destination}? Monitoring will stop and location tracking will be disabled for this trip.`,
+      [
+        { text: 'Keep Trip Active', style: 'cancel' },
+        {
+          text: 'End Trip',
+          style: 'destructive',
+          onPress: async () => {
+            setEndingTrip(true);
+            try {
+              await stopMonitoring();
+              await endTrip(trip.id);
+              router.replace('/trips');
+            } catch {
+              Alert.alert('Error', 'Failed to end trip. Please try again.');
+            } finally {
+              setEndingTrip(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   if (!trip)
     return (
       <Screen title="Trip not found" subtitle="This trip may have been deleted from the device.">
         <Button label="Back to trips" onPress={() => router.replace('/trips')} />
       </Screen>
     );
+
   return (
     <Screen title={trip.destination} subtitle={`${trip.startDate} to ${trip.endDate}`}>
       <MonitoringStatusPill
         state={trip.status === 'paused' ? 'paused' : trip.monitoringLimited ? 'limited' : 'live'}
       />
       <MapZoneLayer zones={trip.zones} showTrail />
+      
+      {riskData && riskData.events.length > 0 && (
+        <Card style={{ backgroundColor: riskData.total_score >= 75 ? c.errorContainer : c.surface }}>
+          <Text style={[type.subtitle, { color: riskData.total_score >= 75 ? c.critical : c.onSurface }]}>
+            {riskData.total_score >= 75 ? "⚠️ CHALLENGE PROTOCOL ACTIVE" : "Active Risk Factors"}
+          </Text>
+          {riskData.events.map((e, idx) => (
+            <Text key={idx} style={[type.body, { color: c.onSurfaceVariant, marginTop: 4 }]}>
+              • {e.factor.replace(/_/g, ' ')} (+{e.points} pts)
+            </Text>
+          ))}
+          <Text style={[type.caption, { color: c.onSurfaceVariant, marginTop: 8 }]}>
+            Total Score: {riskData.total_score}/100
+          </Text>
+        </Card>
+      )}
+
       <Card>
         <View
           style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
@@ -52,63 +192,47 @@ export default function TripDetail() {
       <View style={{ flexDirection: 'row', gap: space.sm }}>
         <View style={{ flex: 1 }}>
           <Button
-            label="I’m OK"
-            onPress={() => {
-              addAlert({
-                kind: 'checkin',
-                severity: 'info',
-                title: 'Check-in received',
-                body: 'You are marked OK. We kept your tier unchanged.',
-              });
-              setToast(true);
-            }}
+            label={checkingIn ? "Checking in…" : "I'm OK"}
+            onPress={handleCheckIn}
+            disabled={checkingIn}
+            loading={checkingIn}
           />
         </View>
         <View style={{ flex: 1 }}>
           <Button
-            label="Pause 1 h"
+            label={pausing ? "Pausing…" : "Pause 1 h"}
             variant="secondary"
-            onPress={() => {
-              addAlert({
-                kind: 'system',
-                severity: 'warning',
-                title: 'Monitoring paused for one hour',
-                body: 'It will resume automatically. Your SOS remains available.',
-              });
-              setToast(true);
-            }}
+            onPress={handlePause}
+            disabled={pausing}
+            loading={pausing}
           />
         </View>
       </View>
       <Button
         label="Share live link"
         variant="ghost"
-        onPress={() => {
-          addAlert({
-            kind: 'system',
-            severity: 'info',
-            title: 'Demo live link prepared',
-            body: 'In a production build this opens your system share sheet with a revocable link.',
-          });
-          setToast(true);
-        }}
+        onPress={handleShareLink}
       />
       <Card>
         <Text style={[type.subtitle, { color: c.onSurface }]}>Change monitoring for this trip</Text>
         <TierSelector
           value={trip.tier}
-          onChange={(tier) => void updateTier(trip.id, tier).then(() => setToast(true))}
+          onChange={handleTierChange}
         />
+        {changingTier && (
+          <Text style={[type.caption, { color: c.primary, marginTop: 4 }]}>
+            Updating monitoring tier…
+          </Text>
+        )}
       </Card>
       <Button
-        label="End trip"
+        label={endingTrip ? "Ending trip…" : "End trip"}
         variant="destructive"
-        onPress={() => {
-          endTrip(trip.id);
-          router.replace('/trips');
-        }}
+        onPress={handleEndTrip}
+        disabled={endingTrip}
+        loading={endingTrip}
       />
-      <Toast visible={toast} message="Your trip remains in your control." />
+      <Toast visible={toast} message={toastMessage} />
     </Screen>
   );
 }

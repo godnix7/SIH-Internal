@@ -10,14 +10,14 @@ class Incident(Base):
     __table_args__ = {"schema": "incident"}
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    sos_alert_id = Column(UUID(as_uuid=True), ForeignKey('sos.sos_alerts.id'))
-    user_id = Column(UUID(as_uuid=True), ForeignKey('auth.users.id'))
-    trip_id = Column(UUID(as_uuid=True), ForeignKey('trips.trips.id'))
+    sos_alert_id = Column(UUID(as_uuid=True), ForeignKey('sos.sos_alerts.id'), index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey('auth.users.id'), index=True)
+    trip_id = Column(UUID(as_uuid=True), ForeignKey('trips.trips.id'), index=True)
     type = Column(String, nullable=False)
     severity = Column(String, nullable=False)
-    status = Column(String, nullable=False, default='created')
-    jurisdiction = Column(UUID(as_uuid=True))
-    assigned_to = Column(UUID(as_uuid=True))
+    status = Column(String, nullable=False, default='created', index=True)
+    jurisdiction = Column(UUID(as_uuid=True), index=True)
+    assigned_to = Column(UUID(as_uuid=True), index=True)
     location = Column(Geometry(geometry_type='POINT', srid=4326))
     disposition_code = Column(String)
     summary = Column(String)
@@ -34,7 +34,7 @@ class IncidentEvent(Base):
     __table_args__ = {"schema": "incident"}
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    incident_id = Column(UUID(as_uuid=True), ForeignKey('incident.incidents.id'), nullable=False)
+    incident_id = Column(UUID(as_uuid=True), ForeignKey('incident.incidents.id'), nullable=False, index=True)
     event_type = Column(String, nullable=False)
     actor_id = Column(UUID(as_uuid=True))
     details = Column(JSON)

@@ -15,8 +15,10 @@ class User(Base):
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    phone_hash: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)
-    phone_enc: Mapped[bytes] = mapped_column(nullable=False)
+    phone_hash: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=True)
+    phone_enc: Mapped[bytes] = mapped_column(nullable=True)
+    email: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=True)
+    password_hash: Mapped[str] = mapped_column(String, nullable=True)
     role: Mapped[str] = mapped_column(String, default="tourist", index=True, nullable=False)
     language: Mapped[str] = mapped_column(String, default="en", nullable=False)
     status: Mapped[str] = mapped_column(String, default="active", nullable=False)
@@ -65,3 +67,32 @@ class OTPAttempt(Base):
     locked_until: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+
+class InternalUser(Base):
+    __tablename__ = "internal_users"
+    __table_args__ = (
+        CheckConstraint("role IN ('operator','dispatcher','supervisor','hospital','tourism_admin','sys_admin','auditor')"),
+        CheckConstraint("status IN ('active','suspended','deleted')"),
+        {"schema": "auth"}
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    email: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)
+    password_hash: Mapped[str] = mapped_column(String, nullable=False)
+    role: Mapped[str] = mapped_column(String, default="operator", index=True, nullable=False)
+    status: Mapped[str] = mapped_column(String, default="active", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+    deleted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class InternalSession(Base):
+    __tablename__ = "internal_sessions"
+    __table_args__ = {"schema": "auth"}
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    internal_user_id: Mapped[uuid.UUID] = mapped_column(nullable=False)
+    refresh_token_hash: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)

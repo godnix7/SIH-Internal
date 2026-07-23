@@ -6,7 +6,7 @@ export type RemoteIncident = {
   updatedAt?: number;
 };
 
-const socketUrl = process.env.EXPO_PUBLIC_SOCKET_URL ?? 'http://10.0.2.2:4000';
+const socketUrl = process.env.EXPO_PUBLIC_SOCKET_URL ?? 'http://10.0.2.2:8000';
 
 export function connectRealtime(onIncident: (incident: RemoteIncident) => void): Socket {
   const socket = io(socketUrl, {

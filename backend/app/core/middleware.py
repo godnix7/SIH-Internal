@@ -17,7 +17,7 @@ class AuthenticatedUser:
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> AuthenticatedUser:
     token = credentials.credentials
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM], audience="yatrishield-api")
         user_id: str = payload.get("sub")
         device_id: str = payload.get("deviceId")
         role: str = payload.get("role")

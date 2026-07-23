@@ -1,5 +1,5 @@
 import uuid
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, APIRouter
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from app.config import settings
@@ -13,16 +13,28 @@ from app.api.v1.identity import router as identity_router
 from app.api.v1.users import router as users_router
 from app.api.v1.sos import router as sos_router
 from app.api.v1.incidents import router as incidents_router
+from app.api.v1.facilities import router as facilities_router
+from app.api.v1.risk import router as risk_router
+from app.api.v1.analytics import router as analytics_router
+from app.api.v1.system import router as system_router
+from app.api.v1.voice import router as voice_router
+from app.api.v1 import blockchain
 from app.core.redis import init_redis, close_redis
+from app.services.sweeper import start_scheduler
+from app.services.anchor_batcher import start_anchor_batcher
 from contextlib import asynccontextmanager
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
     await init_redis()
+    start_scheduler()
+    start_anchor_batcher()
     yield
     # Shutdown
     await close_redis()
+
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -30,6 +42,20 @@ app = FastAPI(
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     lifespan=lifespan
 )
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+api_router = APIRouter()
+api_router.include_router(system_router, prefix="/system", tags=["system"])
+api_router.include_router(blockchain.router, prefix="/blockchain", tags=["blockchain"])
+
+app.include_router(api_router, prefix=settings.API_V1_STR)
 
 app.include_router(auth_router, prefix=settings.API_V1_STR)
 app.include_router(trips_router, prefix=f"{settings.API_V1_STR}/trips", tags=["trips"])
@@ -39,6 +65,11 @@ app.include_router(identity_router, prefix=f"{settings.API_V1_STR}/identity", ta
 app.include_router(users_router, prefix=f"{settings.API_V1_STR}/users", tags=["users"])
 app.include_router(sos_router, prefix=f"{settings.API_V1_STR}/sos", tags=["sos"])
 app.include_router(incidents_router, prefix=f"{settings.API_V1_STR}/incidents", tags=["incidents"])
+app.include_router(facilities_router, prefix=f"{settings.API_V1_STR}/facilities", tags=["facilities"])
+app.include_router(risk_router, prefix=f"{settings.API_V1_STR}/risk", tags=["risk"])
+app.include_router(analytics_router, prefix=f"{settings.API_V1_STR}/analytics", tags=["analytics"])
+app.include_router(system_router, prefix=f"{settings.API_V1_STR}/system", tags=["system"])
+app.include_router(voice_router, prefix=f"{settings.API_V1_STR}/voice", tags=["voice"])
 
 # --- Global Exception Handlers ---
 
@@ -99,3 +130,8 @@ async def add_request_id_and_correlation(request: Request, call_next):
 @app.get("/health")
 async def health_check():
     return {"status": "ok", "version": settings.VERSION}
+
+# Wrap the FastAPI application with Socket.IO ASGI App
+from app.core.socket import sio
+import socketio
+socket_app = socketio.ASGIApp(socketio_server=sio, other_asgi_app=app)
