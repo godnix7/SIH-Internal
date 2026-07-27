@@ -19,6 +19,9 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    # Enable PostGIS extension
+    op.execute("CREATE EXTENSION IF NOT EXISTS postgis")
+
     # Create schema
     op.execute("CREATE SCHEMA IF NOT EXISTS auth")
     
