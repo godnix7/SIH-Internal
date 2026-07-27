@@ -28,6 +28,14 @@ logger = logging.getLogger(__name__)
 # Format: { phone_hash: (otp_code, expires_at_timestamp) }
 _OTP_CACHE: Dict[str, Tuple[str, float]] = {}
 
+
+def _otp_value_as_text(value) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, (bytes, bytearray)):
+        return value.decode("utf-8", errors="ignore").strip()
+    return str(value).strip()
+
 def _send_twilio_sms(phone: str, otp_code: str):
     try:
         sid = getattr(settings, 'TWILIO_ACCOUNT_SID', None)
@@ -154,7 +162,7 @@ async def verify_otp(request: VerifyOTPRequest, db: AsyncSession = Depends(get_d
             if redis_inst:
                 try:
                     stored_otp = await redis_inst.get(otp_key)
-                    if stored_otp and str(stored_otp).strip() == input_otp:
+                    if _otp_value_as_text(stored_otp) == input_otp:
                         is_valid = True
                         await redis_inst.delete(otp_key)
                         logger.info(f"[AUTH VERIFY] Redis match successful for {masked_phone}")
