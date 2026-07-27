@@ -16,3 +16,4 @@ cryptography>=42.0.0
 passlib[bcrypt]>=1.7.4
 python-socketio>=5.11.0  
 twilio>=8.0.0 
+python-multipart>=0.0.7 
