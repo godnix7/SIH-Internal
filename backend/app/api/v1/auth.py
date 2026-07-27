@@ -34,18 +34,28 @@ def _send_twilio_sms(phone: str, otp_code: str):
         token = getattr(settings, 'TWILIO_AUTH_TOKEN', None)
         sender = getattr(settings, 'TWILIO_PHONE_NUMBER', None)
         if sid and sid != "mock_sid" and token and sender:
-            clean_phone = str(phone).strip()
-            target_phone = clean_phone if clean_phone.startswith("+") else f"+91{clean_phone}"
+            raw_phone = str(phone).strip()
+            clean_digits = "".join(filter(str.isdigit, raw_phone))
+            
+            if raw_phone.startswith("+"):
+                target_phone = raw_phone
+            elif clean_digits.startswith("91") and len(clean_digits) == 12:
+                target_phone = f"+{clean_digits}"
+            elif len(clean_digits) == 10:
+                target_phone = f"+91{clean_digits}"
+            else:
+                target_phone = f"+{clean_digits}"
+
             from_number = str(sender).replace(" ", "").strip()
             client = Client(sid, token)
-            client.messages.create(
+            message = client.messages.create(
                 body=f"Your Yatri Shield verification code is: {otp_code}",
                 from_=from_number,
                 to=target_phone
             )
-            logger.info(f"Realtime SMS dispatched via Twilio to {target_phone}")
+            logger.info(f"Realtime SMS dispatched via Twilio to {target_phone} | Message SID: {message.sid}")
     except Exception as e:
-        logger.error(f"Failed to dispatch SMS via Twilio: {e}")
+        logger.error(f"Failed to dispatch SMS via Twilio to {phone}: {e}")
 
 @router.post("/register", response_model=RegisterResponse)
 async def register(request: RegisterRequest):
