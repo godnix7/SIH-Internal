@@ -7,6 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 import redis.asyncio as redis
 import logging
+import time
+from typing import Dict, Tuple
 
 from app.database import get_db
 from app.config import settings
@@ -15,10 +17,9 @@ from app.models.auth import User, Device, OTPAttempt, Session, InternalUser, Int
 from app.core.security import encrypt_pii, create_access_token
 from passlib.context import CryptContext
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+from twilio.rest import Client
 
-import time
-from typing import Dict, Tuple
+from app.core.redis import get_redis
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 logger = logging.getLogger(__name__)
@@ -30,13 +31,15 @@ _OTP_CACHE: Dict[str, Tuple[str, float]] = {}
 def _send_twilio_sms(phone: str, otp_code: str):
     if settings.TWILIO_ACCOUNT_SID and settings.TWILIO_ACCOUNT_SID != "mock_sid":
         try:
+            clean_phone = phone.strip()
+            target_phone = clean_phone if clean_phone.startswith("+") else f"+91{clean_phone}"
             client = Client(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
             client.messages.create(
                 body=f"Your Yatri Shield verification code is: {otp_code}",
                 from_=settings.TWILIO_PHONE_NUMBER,
-                to=phone
+                to=target_phone
             )
-            logger.info(f"Realtime SMS dispatched via Twilio to {phone}")
+            logger.info(f"Realtime SMS dispatched via Twilio to {target_phone}")
         except Exception as e:
             logger.error(f"Failed to dispatch SMS via Twilio: {e}")
 
