@@ -126,12 +126,17 @@ async def verify_otp(request: VerifyOTPRequest, db: AsyncSession = Depends(get_d
                 record_exp = attempt_record.expires_at
                 if record_exp and record_exp.tzinfo is None:
                     record_exp = record_exp.replace(tzinfo=timezone.utc)
+                
+                # Allow 10-minute grace period for server clock drift
+                valid_until = record_exp + timedelta(minutes=10) if record_exp else now_utc + timedelta(minutes=10)
                     
-                if now_utc < record_exp and str(attempt_record.otp_code).strip() == input_otp:
+                if now_utc <= valid_until and str(attempt_record.otp_code).strip() == input_otp:
                     is_valid = True
                     attempt_record.otp_code = None
                     await db.commit()
                     logger.info(f"[AUTH VERIFY] PostgreSQL match successful for {masked_phone}")
+                else:
+                    logger.warning(f"[AUTH VERIFY] Code mismatch or expired for {masked_phone} | DB Code: {attempt_record.otp_code} | Input: {input_otp} | Exp: {record_exp} | Now: {now_utc}")
         except Exception as e:
             logger.warning(f"[AUTH VERIFY] DB lookup warning: {e}")
 
