@@ -19,8 +19,8 @@
       },
       "channel": "preview",
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://YOUR_BACKEND_URL/v1",
-        "EXPO_PUBLIC_SOCKET_URL": "https://YOUR_BACKEND_URL"
+        "EXPO_PUBLIC_API_BASE_URL": "https://yatri-shield-api.onrender.com/api/v1",
+        "EXPO_PUBLIC_SOCKET_URL": "https://yatri-shield-api.onrender.com"
       }
     },
     "production": {
@@ -29,8 +29,8 @@
       },
       "channel": "production",
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://YOUR_BACKEND_URL/v1",
-        "EXPO_PUBLIC_SOCKET_URL": "https://YOUR_BACKEND_URL"
+        "EXPO_PUBLIC_API_BASE_URL": "https://yatri-shield-api.onrender.com/api/v1",
+        "EXPO_PUBLIC_SOCKET_URL": "https://yatri-shield-api.onrender.com"
       }
     }
   },
