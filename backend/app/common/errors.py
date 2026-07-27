@@ -26,6 +26,7 @@ class AppError(Exception):
 
     def to_dict(self, request_id: str) -> Dict[str, Any]:
         return {
+            "detail": self.message,
             "error": {
                 "code": self.code,
                 "message": self.message,
