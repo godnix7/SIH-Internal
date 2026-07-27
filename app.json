@@ -18,11 +18,6 @@
         "NSBluetoothAlwaysUsageDescription": "Yatri Shield uses Bluetooth to broadcast offline SOS beacons to nearby tourists in areas without cellular reception."
       }
     },
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#0D1B2A"
-    },
     "android": {
       "package": "in.yatrishield.app",
       "versionCode": 1,
@@ -49,6 +44,14 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#0D1B2A"
+        }
+      ],
       ["expo-dev-client", { "launchMode": "most-recent" }],
       [
         "expo-location",
