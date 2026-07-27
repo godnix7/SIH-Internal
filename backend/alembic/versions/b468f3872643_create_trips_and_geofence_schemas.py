@@ -17,6 +17,9 @@ branch_labels = None
 depends_on = None
 
 def upgrade() -> None:
+    # Ensure PostGIS extension exists
+    op.execute("CREATE EXTENSION IF NOT EXISTS postgis")
+
     # Create schemas
     op.execute("CREATE SCHEMA IF NOT EXISTS trips")
     op.execute("CREATE SCHEMA IF NOT EXISTS geofence")
