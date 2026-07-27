@@ -46,7 +46,7 @@ export default function SettingsScreen() {
   if (screen === 'security') return <SecurityScreen />;
   if (screen === 'notifications') return <NotificationsScreen />;
 
-  const handleSetLanguage = async (lang: string) => {
+  const handleSetLanguage = async (lang: 'en' | 'hi') => {
     try {
       await api.patch(`/users/me/language?language=${lang}`);
       setLanguage(lang);

@@ -44,6 +44,8 @@ type Profile = {
   homeCity: string;
   idRef: string;
   language: Language;
+  phone?: string;
+  role?: string;
 };
 
 type AppStore = {

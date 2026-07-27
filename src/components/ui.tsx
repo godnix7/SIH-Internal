@@ -31,6 +31,7 @@ type ButtonProps = {
   variant?: 'primary' | 'secondary' | 'ghost' | 'destructive';
   loading?: boolean;
   disabled?: boolean;
+  icon?: ReactNode;
   accessibilityHint?: string;
   testID?: string;
 };
@@ -40,6 +41,7 @@ export function Button({
   variant = 'primary',
   loading,
   disabled,
+  icon,
   accessibilityHint,
   testID,
 }: ButtonProps) {
@@ -71,13 +73,19 @@ export function Button({
           backgroundColor: background,
           borderColor: variant === 'secondary' ? c.surfaceVariant : 'transparent',
           opacity: disabled ? 0.45 : pressed ? 0.82 : 1,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: icon ? 8 : 0,
         },
       ]}
     >
       {loading ? (
         <ActivityIndicator color={color} />
       ) : (
-        <Text style={[type.subtitle, { color }]}>{label}</Text>
+        <>
+          {icon}
+          <Text style={[type.subtitle, { color }]}>{label}</Text>
+        </>
       )}
     </Pressable>
   );

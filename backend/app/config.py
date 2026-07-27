@@ -6,7 +6,9 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     API_BASE_URL: str = "https://api.yatrishield.gov.in"
     
-    # Database
+    # Database — Render provides a single DATABASE_URL.
+    # For local dev, the individual POSTGRES_* vars are used as fallback.
+    DATABASE_URL: str = ""
     POSTGRES_USER: str = "yatrishield"
     POSTGRES_PASSWORD: str = "password123"
     POSTGRES_HOST: str = "localhost"
@@ -15,10 +17,23 @@ class Settings(BaseSettings):
     
     @property
     def async_database_url(self) -> str:
+        if self.DATABASE_URL:
+            url = self.DATABASE_URL
+            # Render uses postgres://, SQLAlchemy async needs postgresql+asyncpg://
+            if url.startswith("postgres://"):
+                url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+            elif url.startswith("postgresql://"):
+                url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+            return url
         return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
     
     @property
     def sync_database_url(self) -> str:
+        if self.DATABASE_URL:
+            url = self.DATABASE_URL
+            if url.startswith("postgres://"):
+                url = url.replace("postgres://", "postgresql://", 1)
+            return url
         return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
     
     # Redis
@@ -41,3 +56,4 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
 
 settings = Settings()
+
