@@ -72,9 +72,9 @@ export default function OTP() {
       if (!e.response) {
         Alert.alert('No Connection', 'Could not reach the server. Please check your internet connection and try again.');
       } else if (e.response.status === 401) {
-        const detail = e.response.data?.detail;
+        const detail = e.response.data?.detail || e.response.data?.error?.message;
         if (detail === 'INVALID_OTP') {
-          Alert.alert('Invalid Code', 'The code you entered is incorrect. Please check and try again.');
+          Alert.alert('Invalid Code', 'The code you entered is incorrect. Please check the SMS and try again.');
         } else {
           Alert.alert('Expired Code', 'This code has expired. Please request a new one.');
         }
