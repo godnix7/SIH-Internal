@@ -116,6 +116,8 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     }
     return JSONResponse(status_code=400, content=error_dict)
 
+from fastapi import HTTPException
+
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
     request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
