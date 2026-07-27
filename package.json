@@ -16,7 +16,7 @@
     "typecheck": "tsc --noEmit",
     "test": "jest --runInBand",
     "test:coverage": "jest --coverage --runInBand",
-    "prepare": "husky"
+    "prepare": "husky || true"
   },
   "dependencies": {
     "@expo-google-fonts/fraunces": "^0.4.1",
@@ -44,6 +44,7 @@
     "expo-status-bar": "~57.0.0",
     "expo-system-ui": "~57.0.0",
     "expo-task-manager": "~57.0.2",
+    "expo-updates": "~57.0.10",
     "i18next": "^25.10.3",
     "lucide-react-native": "^0.576.0",
     "moti": "^0.30.0",
