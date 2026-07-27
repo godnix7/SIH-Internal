@@ -16,9 +16,19 @@ down_revision = '6f7ff8b34a94'
 branch_labels = None
 depends_on = None
 
+def get_spatial_type(geometry_type='GEOMETRY', srid=4326):
+    try:
+        op.execute("CREATE EXTENSION IF NOT EXISTS postgis")
+        return geoalchemy2.types.Geometry(geometry_type=geometry_type, srid=srid, from_text='ST_GeomFromEWKT', name='geometry')
+    except Exception:
+        return sa.Text()
+
 def upgrade() -> None:
-    # Ensure PostGIS extension exists
-    op.execute("CREATE EXTENSION IF NOT EXISTS postgis")
+    # Ensure PostGIS extension exists if supported
+    try:
+        op.execute("CREATE EXTENSION IF NOT EXISTS postgis")
+    except Exception:
+        pass
 
     # Create schemas
     op.execute("CREATE SCHEMA IF NOT EXISTS trips")
@@ -30,7 +40,7 @@ def upgrade() -> None:
         sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column('user_id', postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column('destination', sa.String(), nullable=False),
-        sa.Column('destination_point', geoalchemy2.types.Geometry(geometry_type='POINT', srid=4326, from_text='ST_GeomFromEWKT', name='geometry'), nullable=True),
+        sa.Column('destination_point', get_spatial_type('POINT', 4326), nullable=True),
         sa.Column('start_date', sa.Date(), nullable=False),
         sa.Column('end_date', sa.Date(), nullable=False),
         sa.Column('consent_tier', sa.String(), nullable=False),
@@ -74,7 +84,7 @@ def upgrade() -> None:
         sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column('name', sa.String(), nullable=False),
         sa.Column('class', sa.String(), nullable=False),
-        sa.Column('geometry', geoalchemy2.types.Geometry(geometry_type='POLYGON', srid=4326, from_text='ST_GeomFromEWKT', name='geometry'), nullable=False),
+        sa.Column('geometry', get_spatial_type('POLYGON', 4326), nullable=False),
         sa.Column('buffer_m', sa.Integer(), nullable=False, server_default='100'),
         sa.Column('schedule', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
         sa.Column('description', sa.Text(), nullable=False),

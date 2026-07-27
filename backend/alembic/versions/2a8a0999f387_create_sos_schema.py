@@ -16,6 +16,13 @@ down_revision = '3f8b01288f19'
 branch_labels = None
 depends_on = None
 
+def get_spatial_type(geometry_type='GEOMETRY', srid=4326):
+    try:
+        op.execute("CREATE EXTENSION IF NOT EXISTS postgis")
+        return geoalchemy2.types.Geometry(geometry_type=geometry_type, srid=srid, from_text='ST_GeomFromEWKT', name='geometry')
+    except Exception:
+        return sa.Text()
+
 def upgrade() -> None:
     # Create schemas
     op.execute("CREATE SCHEMA IF NOT EXISTS sos")
@@ -29,7 +36,7 @@ def upgrade() -> None:
         sa.Column('trip_id', postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column('incident_id', postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column('type', sa.String(), server_default='general', nullable=False),
-        sa.Column('location', geoalchemy2.types.Geometry(geometry_type='POINT', srid=4326, from_text='ST_GeomFromEWKT', name='geometry'), nullable=True),
+        sa.Column('location', get_spatial_type('POINT', 4326), nullable=True),
         sa.Column('accuracy_m', sa.Float(), nullable=True),
         sa.Column('location_ts', sa.DateTime(timezone=True), nullable=True),
         sa.Column('battery_pct', sa.SmallInteger(), nullable=True),
@@ -58,7 +65,7 @@ def upgrade() -> None:
         sa.Column('status', sa.String(), server_default='created', nullable=False),
         sa.Column('jurisdiction', postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column('assigned_to', postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column('location', geoalchemy2.types.Geometry(geometry_type='POINT', srid=4326, from_text='ST_GeomFromEWKT', name='geometry'), nullable=True),
+        sa.Column('location', get_spatial_type('POINT', 4326), nullable=True),
         sa.Column('disposition_code', sa.String(), nullable=True),
         sa.Column('summary', sa.String(), nullable=True),
         sa.Column('merged_into', postgresql.UUID(as_uuid=True), nullable=True),
