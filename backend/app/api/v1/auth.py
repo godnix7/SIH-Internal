@@ -45,44 +45,52 @@ def _send_twilio_sms(phone: str, otp_code: str):
 
 @router.post("/register", response_model=RegisterResponse)
 async def register(request: RegisterRequest, db: AsyncSession = Depends(get_db)):
-    phone_hash = hashlib.sha256(request.phone.encode()).hexdigest()
-    
-    # Generate dynamic 6-digit random OTP
-    otp_code = str(random.randint(100000, 999999))
-    
-    redis_inst = get_redis()
-    if redis_inst:
-        try:
-            rate_key = f"rate:otp:{phone_hash}"
-            requests_count = await redis_inst.incr(rate_key)
-            if requests_count == 1:
-                await redis_inst.expire(rate_key, 3600)
-                
-            if requests_count > 100:
-                raise HTTPException(status_code=429, detail="Too many OTP requests. Try again later.")
-                
-            cooldown_key = f"cooldown:otp:{phone_hash}"
-            if await redis_inst.exists(cooldown_key):
-                raise HTTPException(status_code=429, detail="Please wait 60 seconds before requesting another OTP.")
-                
-            await redis_inst.setex(cooldown_key, 60, "1")
+    try:
+        phone_hash = hashlib.sha256(request.phone.encode()).hexdigest()
+        
+        # Generate dynamic 6-digit random OTP
+        otp_code = str(random.randint(100000, 999999))
+        
+        redis_inst = get_redis()
+        if redis_inst:
+            try:
+                rate_key = f"rate:otp:{phone_hash}"
+                requests_count = await redis_inst.incr(rate_key)
+                if requests_count == 1:
+                    await redis_inst.expire(rate_key, 3600)
+                    
+                if requests_count > 100:
+                    raise HTTPException(status_code=429, detail="Too many OTP requests. Try again later.")
+                    
+                cooldown_key = f"cooldown:otp:{phone_hash}"
+                if await redis_inst.exists(cooldown_key):
+                    raise HTTPException(status_code=429, detail="Please wait 60 seconds before requesting another OTP.")
+                    
+                await redis_inst.setex(cooldown_key, 60, "1")
 
-            otp_key = f"otp:{phone_hash}"
-            await redis_inst.setex(otp_key, 300, otp_code)
-        except Exception as e:
-            logger.warning(f"Redis unavailable during register: {e}")
+                otp_key = f"otp:{phone_hash}"
+                await redis_inst.setex(otp_key, 300, otp_code)
+            except HTTPException:
+                raise
+            except Exception as e:
+                logger.warning(f"Redis unavailable during register: {e}")
+                _OTP_CACHE[phone_hash] = (otp_code, time.time() + 300)
+        else:
+            # Fallback to in-memory TTL cache (expires in 300 seconds)
             _OTP_CACHE[phone_hash] = (otp_code, time.time() + 300)
-    else:
-        # Fallback to in-memory TTL cache (expires in 300 seconds)
-        _OTP_CACHE[phone_hash] = (otp_code, time.time() + 300)
 
-    # Send Realtime SMS via Twilio if configured, or log to server console
-    _send_twilio_sms(request.phone, otp_code)
-    
-    logger.info(f"REALTIME OTP GENERATED FOR {request.phone}: {otp_code}")
-    print(f"\n========================================\n📱 REALTIME OTP DISPATCH TO {request.phone}\n🔑 OTP CODE: {otp_code}\n========================================\n")
+        # Send Realtime SMS via Twilio if configured
+        _send_twilio_sms(request.phone, otp_code)
+        
+        logger.info(f"REALTIME OTP GENERATED FOR {request.phone}: {otp_code}")
+        print(f"\n========================================\n📱 REALTIME OTP DISPATCH TO {request.phone}\n🔑 OTP CODE: {otp_code}\n========================================\n")
 
-    return RegisterResponse(otpSent=True, expiresInSec=300, method="sms")
+        return RegisterResponse(otpSent=True, expiresInSec=300, method="sms")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Registration failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/verify-otp", response_model=VerifyOTPResponse)

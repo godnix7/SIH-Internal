@@ -98,11 +98,14 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     }
     return JSONResponse(status_code=400, content=error_dict)
 
+import logging
+logger = logging.getLogger(__name__)
+
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception):
-    # Log the full traceback here in production
+    logger.exception(f"Unhandled exception during {request.method} {request.url.path}: {exc}")
     request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
-    internal_error = InternalError(message="An unexpected error occurred.")
+    internal_error = InternalError(message=f"An unexpected error occurred: {str(exc)}")
     return JSONResponse(
         status_code=internal_error.status_code,
         content=internal_error.to_dict(request_id)
