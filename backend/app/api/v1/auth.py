@@ -58,15 +58,32 @@ def _send_twilio_sms(phone: str, otp_code: str):
         logger.error(f"Failed to dispatch SMS via Twilio to {phone}: {e}")
 
 @router.post("/register", response_model=RegisterResponse)
-async def register(request: RegisterRequest):
+async def register(request: RegisterRequest, db: AsyncSession = Depends(get_db)):
     clean_phone = "".join(filter(str.isdigit, request.phone)) if request.phone else request.phone
     phone_hash = hashlib.sha256(clean_phone.encode()).hexdigest()
     otp_code = str(random.randint(100000, 999999))
     masked_phone = f"******{clean_phone[-4:]}" if len(clean_phone) >= 4 else "******"
+    expires_time = datetime.now(timezone.utc) + timedelta(minutes=5)
 
     logger.info(f"[AUTH REGISTER] Processing OTP request for {masked_phone} | Hash: {phone_hash[:10]}...")
 
-    # Store in memory fallback (5-minute TTL)
+    # Store in PostgreSQL (Persistent across all Render processes/workers/restarts)
+    try:
+        res = await db.execute(select(OTPAttempt).where(OTPAttempt.phone_hash == phone_hash))
+        attempt = res.scalars().first()
+        if not attempt:
+            attempt = OTPAttempt(phone_hash=phone_hash, otp_code=otp_code, expires_at=expires_time)
+            db.add(attempt)
+        else:
+            attempt.otp_code = otp_code
+            attempt.expires_at = expires_time
+            attempt.updated_at = datetime.now(timezone.utc)
+        await db.commit()
+        logger.info(f"[AUTH REGISTER] Saved OTP to PostgreSQL for {masked_phone}")
+    except Exception as e:
+        logger.warning(f"[AUTH REGISTER] DB store warning: {e}")
+
+    # Memory fallback
     _OTP_CACHE[phone_hash] = (otp_code, time.time() + 300)
     
     # Store in Redis if connected
@@ -100,19 +117,38 @@ async def verify_otp(request: VerifyOTPRequest, db: AsyncSession = Depends(get_d
 
         logger.info(f"[AUTH VERIFY] Attempting verification for {masked_phone} | OTP len: {len(input_otp)}")
 
-        # 1. Check Redis
-        redis_inst = get_redis()
-        if redis_inst:
-            try:
-                stored_otp = await redis_inst.get(otp_key)
-                if stored_otp and str(stored_otp).strip() == input_otp:
+        # 1. Check PostgreSQL Database (100% Reliable across all workers/restarts)
+        try:
+            res = await db.execute(select(OTPAttempt).where(OTPAttempt.phone_hash == phone_hash))
+            attempt_record = res.scalars().first()
+            if attempt_record and attempt_record.otp_code:
+                now_utc = datetime.now(timezone.utc)
+                record_exp = attempt_record.expires_at
+                if record_exp and record_exp.tzinfo is None:
+                    record_exp = record_exp.replace(tzinfo=timezone.utc)
+                    
+                if now_utc < record_exp and str(attempt_record.otp_code).strip() == input_otp:
                     is_valid = True
-                    await redis_inst.delete(otp_key)
-                    logger.info(f"[AUTH VERIFY] Redis match successful for {masked_phone}")
-            except Exception as e:
-                logger.warning(f"[AUTH VERIFY] Redis lookup warning: {e}")
+                    attempt_record.otp_code = None
+                    await db.commit()
+                    logger.info(f"[AUTH VERIFY] PostgreSQL match successful for {masked_phone}")
+        except Exception as e:
+            logger.warning(f"[AUTH VERIFY] DB lookup warning: {e}")
 
-        # 2. Check In-Memory Cache fallback
+        # 2. Check Redis
+        if not is_valid:
+            redis_inst = get_redis()
+            if redis_inst:
+                try:
+                    stored_otp = await redis_inst.get(otp_key)
+                    if stored_otp and str(stored_otp).strip() == input_otp:
+                        is_valid = True
+                        await redis_inst.delete(otp_key)
+                        logger.info(f"[AUTH VERIFY] Redis match successful for {masked_phone}")
+                except Exception as e:
+                    logger.warning(f"[AUTH VERIFY] Redis lookup warning: {e}")
+
+        # 3. Check In-Memory Cache fallback
         if not is_valid and phone_hash in _OTP_CACHE:
             cached_otp, expires_at = _OTP_CACHE[phone_hash]
             if time.time() < expires_at and str(cached_otp).strip() == input_otp:
