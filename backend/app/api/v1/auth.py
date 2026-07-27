@@ -17,16 +17,37 @@ from passlib.context import CryptContext
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-from app.core.redis import get_redis
+import time
+from typing import Dict, Tuple
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 logger = logging.getLogger(__name__)
 
+# In-memory OTP storage fallback when Redis is not available
+# Format: { phone_hash: (otp_code, expires_at_timestamp) }
+_OTP_CACHE: Dict[str, Tuple[str, float]] = {}
+
+def _send_twilio_sms(phone: str, otp_code: str):
+    if settings.TWILIO_ACCOUNT_SID and settings.TWILIO_ACCOUNT_SID != "mock_sid":
+        try:
+            client = Client(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
+            client.messages.create(
+                body=f"Your Yatri Shield verification code is: {otp_code}",
+                from_=settings.TWILIO_PHONE_NUMBER,
+                to=phone
+            )
+            logger.info(f"Realtime SMS dispatched via Twilio to {phone}")
+        except Exception as e:
+            logger.error(f"Failed to dispatch SMS via Twilio: {e}")
+
 @router.post("/register", response_model=RegisterResponse)
 async def register(request: RegisterRequest, db: AsyncSession = Depends(get_db)):
     phone_hash = hashlib.sha256(request.phone.encode()).hexdigest()
-    redis_inst = get_redis()
     
+    # Generate dynamic 6-digit random OTP
+    otp_code = str(random.randint(100000, 999999))
+    
+    redis_inst = get_redis()
     if redis_inst:
         try:
             rate_key = f"rate:otp:{phone_hash}"
@@ -43,17 +64,20 @@ async def register(request: RegisterRequest, db: AsyncSession = Depends(get_db))
                 
             await redis_inst.setex(cooldown_key, 60, "1")
 
-            otp_code = str(random.randint(100000, 999999))
             otp_key = f"otp:{phone_hash}"
             await redis_inst.setex(otp_key, 300, otp_code)
         except Exception as e:
             logger.warning(f"Redis unavailable during register: {e}")
+            _OTP_CACHE[phone_hash] = (otp_code, time.time() + 300)
+    else:
+        # Fallback to in-memory TTL cache (expires in 300 seconds)
+        _OTP_CACHE[phone_hash] = (otp_code, time.time() + 300)
+
+    # Send Realtime SMS via Twilio if configured, or log to server console
+    _send_twilio_sms(request.phone, otp_code)
     
-    # Send SMS (Mocked via console output — use test OTP '123456' for testing)
-    print("\n" + "=" * 40)
-    print(f"📱 SMS DISPATCH TO {request.phone}")
-    print(f"🔑 Your Yatri Shield verification code is: 123456")
-    print("=" * 40 + "\n")
+    logger.info(f"REALTIME OTP GENERATED FOR {request.phone}: {otp_code}")
+    print(f"\n========================================\n📱 REALTIME OTP DISPATCH TO {request.phone}\n🔑 OTP CODE: {otp_code}\n========================================\n")
 
     return RegisterResponse(otpSent=True, expiresInSec=300, method="sms")
 
@@ -62,19 +86,26 @@ async def register(request: RegisterRequest, db: AsyncSession = Depends(get_db))
 async def verify_otp(request: VerifyOTPRequest, db: AsyncSession = Depends(get_db)):
     phone_hash = hashlib.sha256(request.phone.encode()).hexdigest()
     otp_key = f"otp:{phone_hash}"
-    
-    # Universal test OTP '123456' for internal testing
-    is_valid = (request.otp == "123456")
+    is_valid = False
     
     redis_inst = get_redis()
-    if not is_valid and redis_inst:
+    if redis_inst:
         try:
             stored_otp = await redis_inst.get(otp_key)
             if stored_otp and stored_otp == request.otp:
                 is_valid = True
                 await redis_inst.delete(otp_key)
         except Exception as e:
-            logger.warning(f"Redis unavailable during verify: {e}")
+            logger.warning(f"Redis error during verify: {e}")
+
+    # Check in-memory fallback cache
+    if not is_valid and phone_hash in _OTP_CACHE:
+        cached_otp, expires_at = _OTP_CACHE[phone_hash]
+        if time.time() < expires_at and cached_otp == request.otp:
+            is_valid = True
+            del _OTP_CACHE[phone_hash]
+        elif time.time() >= expires_at:
+            del _OTP_CACHE[phone_hash]
 
     if not is_valid:
         raise HTTPException(status_code=401, detail="INVALID_OTP")
