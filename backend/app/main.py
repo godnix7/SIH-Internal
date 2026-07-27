@@ -24,9 +24,27 @@ from app.services.sweeper import start_scheduler
 from app.services.anchor_batcher import start_anchor_batcher
 from contextlib import asynccontextmanager
 
+def run_db_migrations():
+    try:
+        import os
+        from alembic.config import Config
+        from alembic import command
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        alembic_ini_path = os.path.join(base_dir, "alembic.ini")
+        if os.path.exists(alembic_ini_path):
+            alembic_cfg = Config(alembic_ini_path)
+            alembic_cfg.set_main_option("script_location", os.path.join(base_dir, "alembic"))
+            if settings.sync_database_url:
+                alembic_cfg.set_main_option("sqlalchemy.url", settings.sync_database_url)
+            command.upgrade(alembic_cfg, "head")
+            logger.info("Database migrations applied successfully on startup!")
+    except Exception as e:
+        logger.warning(f"Database auto-migration warning: {e}")
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
+    run_db_migrations()
     await init_redis()
     start_scheduler()
     start_anchor_batcher()

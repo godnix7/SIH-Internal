@@ -49,7 +49,8 @@ def _send_twilio_sms(phone: str, otp_code: str):
 
 @router.post("/register", response_model=RegisterResponse)
 async def register(request: RegisterRequest):
-    phone_hash = hashlib.sha256(request.phone.encode()).hexdigest()
+    clean_phone = "".join(filter(str.isdigit, request.phone)) if request.phone else request.phone
+    phone_hash = hashlib.sha256(clean_phone.encode()).hexdigest()
     otp_code = str(random.randint(100000, 999999))
     
     # Always store in memory cache (5-minute TTL)
@@ -77,31 +78,34 @@ async def register(request: RegisterRequest):
 
 @router.post("/verify-otp", response_model=VerifyOTPResponse)
 async def verify_otp(request: VerifyOTPRequest, db: AsyncSession = Depends(get_db)):
-    phone_hash = hashlib.sha256(request.phone.encode()).hexdigest()
-    otp_key = f"otp:{phone_hash}"
-    is_valid = False
-    
-    redis_inst = get_redis()
-    if redis_inst:
-        try:
-            stored_otp = await redis_inst.get(otp_key)
-            if stored_otp and stored_otp == request.otp:
+    try:
+        clean_phone = "".join(filter(str.isdigit, request.phone)) if request.phone else request.phone
+        phone_hash = hashlib.sha256(clean_phone.encode()).hexdigest()
+        otp_key = f"otp:{phone_hash}"
+        input_otp = str(request.otp).strip() if request.otp else ""
+        is_valid = False
+        
+        redis_inst = get_redis()
+        if redis_inst:
+            try:
+                stored_otp = await redis_inst.get(otp_key)
+                if stored_otp and str(stored_otp).strip() == input_otp:
+                    is_valid = True
+                    await redis_inst.delete(otp_key)
+            except Exception as e:
+                logger.warning(f"Redis error during verify: {e}")
+
+        # Check in-memory fallback cache
+        if not is_valid and phone_hash in _OTP_CACHE:
+            cached_otp, expires_at = _OTP_CACHE[phone_hash]
+            if time.time() < expires_at and str(cached_otp).strip() == input_otp:
                 is_valid = True
-                await redis_inst.delete(otp_key)
-        except Exception as e:
-            logger.warning(f"Redis error during verify: {e}")
+                del _OTP_CACHE[phone_hash]
+            elif time.time() >= expires_at:
+                del _OTP_CACHE[phone_hash]
 
-    # Check in-memory fallback cache
-    if not is_valid and phone_hash in _OTP_CACHE:
-        cached_otp, expires_at = _OTP_CACHE[phone_hash]
-        if time.time() < expires_at and cached_otp == request.otp:
-            is_valid = True
-            del _OTP_CACHE[phone_hash]
-        elif time.time() >= expires_at:
-            del _OTP_CACHE[phone_hash]
-
-    if not is_valid:
-        raise HTTPException(status_code=401, detail="INVALID_OTP")
+        if not is_valid:
+            raise HTTPException(status_code=401, detail="INVALID_OTP")
     
     # Find or create user
     result = await db.execute(select(User).where(User.phone_hash == phone_hash))
