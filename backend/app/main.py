@@ -98,6 +98,24 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     }
     return JSONResponse(status_code=400, content=error_dict)
 
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "error": {
+                "code": "HTTP_ERROR",
+                "message": str(exc.detail),
+                "details": [],
+                "requestId": request_id,
+                "retryable": False
+            }
+        }
+    )
+
 import logging
 logger = logging.getLogger(__name__)
 
