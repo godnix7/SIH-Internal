@@ -62,27 +62,29 @@ async def register(request: RegisterRequest):
     clean_phone = "".join(filter(str.isdigit, request.phone)) if request.phone else request.phone
     phone_hash = hashlib.sha256(clean_phone.encode()).hexdigest()
     otp_code = str(random.randint(100000, 999999))
-    
-    # Always store in memory cache (5-minute TTL)
+    masked_phone = f"******{clean_phone[-4:]}" if len(clean_phone) >= 4 else "******"
+
+    logger.info(f"[AUTH REGISTER] Processing OTP request for {masked_phone} | Hash: {phone_hash[:10]}...")
+
+    # Store in memory fallback (5-minute TTL)
     _OTP_CACHE[phone_hash] = (otp_code, time.time() + 300)
     
-    # Optionally attempt Redis store if connected
+    # Store in Redis if connected
     try:
         redis_inst = get_redis()
         if redis_inst:
             await redis_inst.setex(f"otp:{phone_hash}", 300, otp_code)
+            logger.info(f"[AUTH REGISTER] Saved OTP to Redis for {phone_hash[:10]}...")
     except Exception as e:
-        logger.warning(f"Redis store skipped: {e}")
+        logger.warning(f"[AUTH REGISTER] Redis store bypassed: {e}")
 
     # Dispatch SMS via Twilio if configured
     try:
         _send_twilio_sms(request.phone, otp_code)
     except Exception as e:
-        logger.error(f"SMS dispatch skipped: {e}")
-        
-    logger.info(f"REALTIME OTP GENERATED FOR {request.phone}: {otp_code}")
-    print(f"\n========================================\n📱 REALTIME OTP DISPATCH TO {request.phone}\n🔑 OTP CODE: {otp_code}\n========================================\n")
+        logger.error(f"[AUTH REGISTER] SMS dispatch warning: {e}")
 
+    logger.info(f"[AUTH REGISTER] Realtime OTP successfully generated for {masked_phone}")
     return RegisterResponse(otpSent=True, expiresInSec=300, method="sms")
 
 
@@ -93,8 +95,12 @@ async def verify_otp(request: VerifyOTPRequest, db: AsyncSession = Depends(get_d
         phone_hash = hashlib.sha256(clean_phone.encode()).hexdigest()
         otp_key = f"otp:{phone_hash}"
         input_otp = str(request.otp).strip() if request.otp else ""
+        masked_phone = f"******{clean_phone[-4:]}" if len(clean_phone) >= 4 else "******"
         is_valid = False
-        
+
+        logger.info(f"[AUTH VERIFY] Attempting verification for {masked_phone} | OTP len: {len(input_otp)}")
+
+        # 1. Check Redis
         redis_inst = get_redis()
         if redis_inst:
             try:
@@ -102,22 +108,26 @@ async def verify_otp(request: VerifyOTPRequest, db: AsyncSession = Depends(get_d
                 if stored_otp and str(stored_otp).strip() == input_otp:
                     is_valid = True
                     await redis_inst.delete(otp_key)
+                    logger.info(f"[AUTH VERIFY] Redis match successful for {masked_phone}")
             except Exception as e:
-                logger.warning(f"Redis error during verify: {e}")
+                logger.warning(f"[AUTH VERIFY] Redis lookup warning: {e}")
 
-        # Check in-memory fallback cache
+        # 2. Check In-Memory Cache fallback
         if not is_valid and phone_hash in _OTP_CACHE:
             cached_otp, expires_at = _OTP_CACHE[phone_hash]
             if time.time() < expires_at and str(cached_otp).strip() == input_otp:
                 is_valid = True
                 del _OTP_CACHE[phone_hash]
+                logger.info(f"[AUTH VERIFY] Memory cache match successful for {masked_phone}")
             elif time.time() >= expires_at:
+                logger.warning(f"[AUTH VERIFY] Memory cache OTP expired for {masked_phone}")
                 del _OTP_CACHE[phone_hash]
 
         if not is_valid:
+            logger.warning(f"[AUTH VERIFY] Verification failed (INVALID_OTP) for {masked_phone}")
             raise HTTPException(status_code=401, detail="INVALID_OTP")
         
-        # Find or create user
+        # 3. Find or Create User
         result = await db.execute(select(User).where(User.phone_hash == phone_hash))
         user = result.scalars().first()
         is_new_user = False
@@ -131,8 +141,9 @@ async def verify_otp(request: VerifyOTPRequest, db: AsyncSession = Depends(get_d
             await db.commit()
             await db.refresh(user)
             is_new_user = True
+            logger.info(f"[AUTH VERIFY] Created new user record: {user.id}")
             
-        # Find or create device
+        # 4. Find or Create Device
         result = await db.execute(
             select(Device)
             .where(Device.user_id == user.id)
@@ -154,11 +165,10 @@ async def verify_otp(request: VerifyOTPRequest, db: AsyncSession = Depends(get_d
         await db.commit()
         await db.refresh(device)
         
-        # Create tokens
+        # 5. Token Generation & Session Storage
         access_token = create_access_token(subject=str(user.id), device_id=str(device.id), role=user.role)
         refresh_token = str(uuid.uuid4())
         
-        # Store refresh token session in DB
         refresh_hash = hashlib.sha256(refresh_token.encode()).hexdigest()
         db_session = Session(
             user_id=user.id,
@@ -169,6 +179,7 @@ async def verify_otp(request: VerifyOTPRequest, db: AsyncSession = Depends(get_d
         db.add(db_session)
         await db.commit()
 
+        logger.info(f"[AUTH VERIFY] Verification successful for user {user.id}")
         return VerifyOTPResponse(
             accessToken=access_token,
             refreshToken=refresh_token,
@@ -180,7 +191,7 @@ async def verify_otp(request: VerifyOTPRequest, db: AsyncSession = Depends(get_d
     except HTTPException:
         raise
     except Exception as e:
-        logger.exception(f"Verify OTP failed: {e}")
+        logger.exception(f"[AUTH VERIFY] Exception during verification: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
