@@ -29,65 +29,50 @@ logger = logging.getLogger(__name__)
 _OTP_CACHE: Dict[str, Tuple[str, float]] = {}
 
 def _send_twilio_sms(phone: str, otp_code: str):
-    if settings.TWILIO_ACCOUNT_SID and settings.TWILIO_ACCOUNT_SID != "mock_sid":
-        try:
-            clean_phone = phone.strip()
+    try:
+        sid = getattr(settings, 'TWILIO_ACCOUNT_SID', None)
+        token = getattr(settings, 'TWILIO_AUTH_TOKEN', None)
+        sender = getattr(settings, 'TWILIO_PHONE_NUMBER', None)
+        if sid and sid != "mock_sid" and token and sender:
+            clean_phone = str(phone).strip()
             target_phone = clean_phone if clean_phone.startswith("+") else f"+91{clean_phone}"
-            client = Client(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
+            from_number = str(sender).replace(" ", "").strip()
+            client = Client(sid, token)
             client.messages.create(
                 body=f"Your Yatri Shield verification code is: {otp_code}",
-                from_=settings.TWILIO_PHONE_NUMBER,
+                from_=from_number,
                 to=target_phone
             )
             logger.info(f"Realtime SMS dispatched via Twilio to {target_phone}")
-        except Exception as e:
-            logger.error(f"Failed to dispatch SMS via Twilio: {e}")
+    except Exception as e:
+        logger.error(f"Failed to dispatch SMS via Twilio: {e}")
 
 @router.post("/register", response_model=RegisterResponse)
 async def register(request: RegisterRequest):
+    phone_hash = hashlib.sha256(request.phone.encode()).hexdigest()
+    otp_code = str(random.randint(100000, 999999))
+    
+    # Always store in memory cache (5-minute TTL)
+    _OTP_CACHE[phone_hash] = (otp_code, time.time() + 300)
+    
+    # Optionally attempt Redis store if connected
     try:
-        phone_hash = hashlib.sha256(request.phone.encode()).hexdigest()
-        
-        # Generate dynamic 6-digit random OTP
-        otp_code = str(random.randint(100000, 999999))
-        
-        # Store in Redis if available, else in-memory cache
         redis_inst = get_redis()
         if redis_inst:
-            try:
-                rate_key = f"rate:otp:{phone_hash}"
-                requests_count = await redis_inst.incr(rate_key)
-                if requests_count == 1:
-                    await redis_inst.expire(rate_key, 3600)
-                    
-                cooldown_key = f"cooldown:otp:{phone_hash}"
-                if await redis_inst.exists(cooldown_key):
-                    raise HTTPException(status_code=429, detail="Please wait 60 seconds before requesting another OTP.")
-                    
-                await redis_inst.setex(cooldown_key, 60, "1")
-
-                otp_key = f"otp:{phone_hash}"
-                await redis_inst.setex(otp_key, 300, otp_code)
-            except HTTPException:
-                raise
-            except Exception as e:
-                logger.warning(f"Redis fallback during register: {e}")
-                _OTP_CACHE[phone_hash] = (otp_code, time.time() + 300)
-        else:
-            _OTP_CACHE[phone_hash] = (otp_code, time.time() + 300)
-
-        # Dispatch SMS via Twilio if credentials exist, otherwise log code
-        _send_twilio_sms(request.phone, otp_code)
-        
-        logger.info(f"REALTIME OTP GENERATED FOR {request.phone}: {otp_code}")
-
-        return RegisterResponse(otpSent=True, expiresInSec=300, method="sms")
-    except HTTPException:
-        raise
+            await redis_inst.setex(f"otp:{phone_hash}", 300, otp_code)
     except Exception as e:
-        logger.exception(f"Registration failed: {e}")
-        # Always return successful response in fallback mode so mobile client proceeds to OTP screen
-        return RegisterResponse(otpSent=True, expiresInSec=300, method="sms")
+        logger.warning(f"Redis store skipped: {e}")
+
+    # Dispatch SMS via Twilio if configured
+    try:
+        _send_twilio_sms(request.phone, otp_code)
+    except Exception as e:
+        logger.error(f"SMS dispatch skipped: {e}")
+        
+    logger.info(f"REALTIME OTP GENERATED FOR {request.phone}: {otp_code}")
+    print(f"\n========================================\n📱 REALTIME OTP DISPATCH TO {request.phone}\n🔑 OTP CODE: {otp_code}\n========================================\n")
+
+    return RegisterResponse(otpSent=True, expiresInSec=300, method="sms")
 
 
 @router.post("/verify-otp", response_model=VerifyOTPResponse)
