@@ -57,15 +57,23 @@ def _send_twilio_sms(phone: str, otp_code: str):
     except Exception as e:
         logger.error(f"Failed to dispatch SMS via Twilio to {phone}: {e}")
 
+def normalize_phone_number(raw_phone: str) -> str:
+    if not raw_phone:
+        return ""
+    digits = "".join(filter(str.isdigit, str(raw_phone)))
+    if len(digits) >= 10:
+        return digits[-10:]
+    return digits
+
 @router.post("/register", response_model=RegisterResponse)
 async def register(request: RegisterRequest, db: AsyncSession = Depends(get_db)):
-    clean_phone = "".join(filter(str.isdigit, request.phone)) if request.phone else request.phone
+    clean_phone = normalize_phone_number(request.phone)
     phone_hash = hashlib.sha256(clean_phone.encode()).hexdigest()
     otp_code = str(random.randint(100000, 999999))
     masked_phone = f"******{clean_phone[-4:]}" if len(clean_phone) >= 4 else "******"
-    expires_time = datetime.now(timezone.utc) + timedelta(minutes=5)
+    expires_time = datetime.now(timezone.utc) + timedelta(minutes=15)
 
-    logger.info(f"[AUTH REGISTER] Processing OTP request for {masked_phone} | Hash: {phone_hash[:10]}...")
+    logger.info(f"[AUTH REGISTER] Processing OTP request for {masked_phone} | Raw: {request.phone} | Clean: {clean_phone} | Hash: {phone_hash[:10]}")
 
     # Store in PostgreSQL (Persistent across all Render processes/workers/restarts)
     try:
@@ -79,7 +87,7 @@ async def register(request: RegisterRequest, db: AsyncSession = Depends(get_db))
             attempt.expires_at = expires_time
             attempt.updated_at = datetime.now(timezone.utc)
         await db.commit()
-        logger.info(f"[AUTH REGISTER] Saved OTP to PostgreSQL for {masked_phone}")
+        logger.info(f"[AUTH REGISTER] Saved OTP {otp_code} to PostgreSQL for {masked_phone}")
     except Exception as e:
         logger.warning(f"[AUTH REGISTER] DB store warning: {e}")
 
@@ -108,14 +116,14 @@ async def register(request: RegisterRequest, db: AsyncSession = Depends(get_db))
 @router.post("/verify-otp", response_model=VerifyOTPResponse)
 async def verify_otp(request: VerifyOTPRequest, db: AsyncSession = Depends(get_db)):
     try:
-        clean_phone = "".join(filter(str.isdigit, request.phone)) if request.phone else request.phone
+        clean_phone = normalize_phone_number(request.phone)
         phone_hash = hashlib.sha256(clean_phone.encode()).hexdigest()
         otp_key = f"otp:{phone_hash}"
         input_otp = str(request.otp).strip() if request.otp else ""
         masked_phone = f"******{clean_phone[-4:]}" if len(clean_phone) >= 4 else "******"
         is_valid = False
 
-        logger.info(f"[AUTH VERIFY] Attempting verification for {masked_phone} | OTP len: {len(input_otp)}")
+        logger.info(f"[AUTH VERIFY] Attempting verification for {masked_phone} | Raw: {request.phone} | Clean: {clean_phone} | Hash: {phone_hash[:10]} | OTP: {input_otp}")
 
         # 1. Check PostgreSQL Database (100% Reliable across all workers/restarts)
         try:
