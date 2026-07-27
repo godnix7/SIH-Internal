@@ -123,10 +123,18 @@ logger = logging.getLogger(__name__)
 async def unhandled_exception_handler(request: Request, exc: Exception):
     logger.exception(f"Unhandled exception during {request.method} {request.url.path}: {exc}")
     request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
-    internal_error = InternalError(message=f"An unexpected error occurred: {str(exc)}")
+    err_msg = f"{type(exc).__name__}: {str(exc)}"
     return JSONResponse(
-        status_code=internal_error.status_code,
-        content=internal_error.to_dict(request_id)
+        status_code=500,
+        content={
+            "error": {
+                "code": "INTERNAL_ERROR",
+                "message": err_msg,
+                "details": [],
+                "requestId": request_id,
+                "retryable": True
+            }
+        }
     )
 
 # --- Middleware ---
