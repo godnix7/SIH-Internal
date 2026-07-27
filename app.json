@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Yatri Shield",
-    "slug": "yatri-shield",
+    "slug": "yatrishield",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
