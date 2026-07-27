@@ -106,67 +106,72 @@ async def verify_otp(request: VerifyOTPRequest, db: AsyncSession = Depends(get_d
 
         if not is_valid:
             raise HTTPException(status_code=401, detail="INVALID_OTP")
-    
-    # Find or create user
-    result = await db.execute(select(User).where(User.phone_hash == phone_hash))
-    user = result.scalars().first()
-    is_new_user = False
-    
-    if not user:
-        user = User(
-            phone_hash=phone_hash,
-            phone_enc=encrypt_pii(request.phone)
+        
+        # Find or create user
+        result = await db.execute(select(User).where(User.phone_hash == phone_hash))
+        user = result.scalars().first()
+        is_new_user = False
+        
+        if not user:
+            user = User(
+                phone_hash=phone_hash,
+                phone_enc=encrypt_pii(request.phone)
+            )
+            db.add(user)
+            await db.commit()
+            await db.refresh(user)
+            is_new_user = True
+            
+        # Find or create device
+        result = await db.execute(
+            select(Device)
+            .where(Device.user_id == user.id)
+            .where(Device.device_fingerprint == request.deviceFingerprint)
         )
-        db.add(user)
+        device = result.scalars().first()
+        
+        if not device:
+            device = Device(
+                user_id=user.id,
+                device_fingerprint=request.deviceFingerprint,
+                platform=request.platform,
+                sos_token=str(uuid.uuid4())
+            )
+            db.add(device)
+        else:
+            device.last_seen_at = datetime.now(timezone.utc)
+            
         await db.commit()
-        await db.refresh(user)
-        is_new_user = True
+        await db.refresh(device)
         
-    # Find or create device
-    result = await db.execute(
-        select(Device)
-        .where(Device.user_id == user.id)
-        .where(Device.device_fingerprint == request.deviceFingerprint)
-    )
-    device = result.scalars().first()
-    
-    if not device:
-        device = Device(
+        # Create tokens
+        access_token = create_access_token(subject=str(user.id), device_id=str(device.id), role=user.role)
+        refresh_token = str(uuid.uuid4())
+        
+        # Store refresh token session in DB
+        refresh_hash = hashlib.sha256(refresh_token.encode()).hexdigest()
+        db_session = Session(
             user_id=user.id,
-            device_fingerprint=request.deviceFingerprint,
-            platform=request.platform,
-            sos_token=str(uuid.uuid4())
+            device_id=device.id,
+            refresh_token_hash=refresh_hash,
+            expires_at=datetime.now(timezone.utc) + timedelta(days=90)
         )
-        db.add(device)
-    else:
-        device.last_seen_at = datetime.now(timezone.utc)
-        
-    await db.commit()
-    await db.refresh(device)
-    
-    # Create tokens
-    access_token = create_access_token(subject=str(user.id), device_id=str(device.id), role=user.role)
-    refresh_token = str(uuid.uuid4())
-    
-    # Store refresh token session in DB
-    refresh_hash = hashlib.sha256(refresh_token.encode()).hexdigest()
-    db_session = Session(
-        user_id=user.id,
-        device_id=device.id,
-        refresh_token_hash=refresh_hash,
-        expires_at=datetime.now(timezone.utc) + timedelta(days=90)
-    )
-    db.add(db_session)
-    await db.commit()
+        db.add(db_session)
+        await db.commit()
 
-    return VerifyOTPResponse(
-        accessToken=access_token,
-        refreshToken=refresh_token,
-        sosToken=device.sos_token,
-        userId=user.id,
-        isNewUser=is_new_user,
-        expiresIn=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
-    )
+        return VerifyOTPResponse(
+            accessToken=access_token,
+            refreshToken=refresh_token,
+            sosToken=device.sos_token,
+            userId=user.id,
+            isNewUser=is_new_user,
+            expiresIn=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Verify OTP failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/login/internal", response_model=VerifyOTPResponse)
