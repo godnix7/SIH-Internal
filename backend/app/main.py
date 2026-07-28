@@ -38,34 +38,6 @@ def run_db_migrations():
                 alembic_cfg.set_main_option("sqlalchemy.url", settings.sync_database_url)
             command.upgrade(alembic_cfg, "head")
             logger.info("Database migrations applied successfully on startup!")
-            
-            # Seed admin
-            from sqlalchemy import create_engine, select
-            from sqlalchemy.orm import sessionmaker
-            from app.models.auth import InternalUser
-            import bcrypt
-            
-            if settings.SUPER_ADMIN_PASSWORD:
-                sync_engine = create_engine(settings.sync_database_url)
-                SessionLocal = sessionmaker(bind=sync_engine)
-                with SessionLocal() as session:
-                    user = session.execute(select(InternalUser).where(InternalUser.email == settings.SUPER_ADMIN_EMAIL)).scalars().first()
-                    clean_pass = settings.SUPER_ADMIN_PASSWORD.strip('"\'')
-                    new_hash = bcrypt.hashpw(clean_pass.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-                    if not user:
-                        user = InternalUser(
-                            email=settings.SUPER_ADMIN_EMAIL,
-                            password_hash=new_hash,
-                            role="sys_admin",
-                            status="active"
-                        )
-                        session.add(user)
-                        logger.info("Seeded super admin on startup using environment variables!")
-                    else:
-                        user.password_hash = new_hash
-                        logger.info("Updated super admin password to match environment variables!")
-                    session.commit()
-                
     except Exception as e:
         logger.warning(f"Database auto-migration/seed warning: {e}")
 
