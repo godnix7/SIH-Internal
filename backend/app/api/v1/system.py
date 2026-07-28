@@ -230,7 +230,7 @@ async def delete_internal_user(
     if user.email == settings.SUPER_ADMIN_EMAIL:
         raise HTTPException(status_code=400, detail="Cannot delete the primary Super Admin account")
 
-    if str(user.id) == str(current_user.user_id):
+    if str(user.id) == str(current_user.id):
         raise HTTPException(status_code=400, detail="Cannot delete your own admin account")
         
     await db.delete(user)

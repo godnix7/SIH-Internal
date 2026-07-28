@@ -52,12 +52,8 @@ async def update_language(language: str, current_user: User = Depends(get_curren
     
     # Resolve actual DB user
     if current_user.role == 'tourist':
-        user_uuid = uuid.UUID(current_user.user_id) if isinstance(current_user.user_id, str) else current_user.user_id
-        result = await db.execute(select(User).where(User.id == user_uuid))
-        db_user = result.scalars().first()
-        if db_user:
-            db_user.language = language
-            await db.commit()
+        current_user.language = language
+        await db.commit()
     # Internal users don't store language in DB, we return success and let client store in localStorage
     return {"status": "ok", "language": language}
 
