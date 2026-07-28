@@ -18,9 +18,15 @@ COPY . .
 # Expose port (Render sets PORT env var)
 EXPOSE 8000
 
-# Run migrations then start the server
+# Run migrations, auto-seed admin if env vars set, then start the server
 # Render provides the PORT env var; uvicorn binds to it
 CMD alembic upgrade head && \
+    python -c "\
+import os, sys; \
+email = os.environ.get('SEED_ADMIN_EMAIL', ''); \
+password = os.environ.get('SEED_ADMIN_PASSWORD', ''); \
+role = os.environ.get('SEED_ADMIN_ROLE', 'sys_admin'); \
+exec('if email and password:\n    import asyncio\n    sys.path.insert(0, \"/app\")\n    from scripts.seed_admin import seed_admin\n    asyncio.run(seed_admin(email, password, role))\n    print(f\"Admin seeded: {email}\")\nelse:\n    print(\"No SEED_ADMIN_EMAIL/PASSWORD set, skipping admin seed.\")')" && \
     python -m uvicorn app.main:socket_app \
     --host 0.0.0.0 \
     --port ${PORT:-8000} \

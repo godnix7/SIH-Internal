@@ -1,5 +1,5 @@
 from app.database import Base
-from app.models.auth import User, Device, Session, OTPAttempt
+from app.models.auth import User, Device, Session, InternalUser, InternalSession
 from app.models.trip import Trip, ConsentReceipt
 from app.models.zone import Zone
 from app.models.location import LocationPoint
@@ -12,7 +12,7 @@ from app.models.blockchain import EventChain, MerkleAnchor
 
 # Add all models to this list to ensure they are discovered by Alembic/SQLAlchemy
 __all__ = [
-    "User", "Device", "Session", "OTPAttempt",
+    "User", "Device", "Session", "InternalUser", "InternalSession",
     "Identity", "MedicalCard", "EmergencyContact",
     "Zone",
     "LocationPoint",

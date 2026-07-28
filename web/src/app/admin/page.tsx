@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type CSSProperties } from 'react';
 import DashboardLayout from '../components/DashboardLayout';
-import { deleteInternalUser, getInternalUsers, getSystemHealth } from '../../lib/api';
+import { deleteInternalUser, getInternalUsers, getSystemHealth, updateInternalUser, resetUserPassword } from '../../lib/api';
 import {
   Activity,
   AlertTriangle,
@@ -11,11 +11,16 @@ import {
   Clock3,
   Database,
   Gauge,
+  KeyRound,
   Loader2,
   Network,
+  Pencil,
   RefreshCw,
+  Search,
   Server,
   ShieldCheck,
+  ToggleLeft,
+  ToggleRight,
   Trash2,
   UserPlus,
   UsersRound,
@@ -27,9 +32,12 @@ type Notice = { message: string; type: 'success' } | null;
 const roleLabel = (role: string) =>
   ({
     operator: 'Operator',
+    dispatcher: 'Dispatcher',
+    supervisor: 'Supervisor',
     hospital: 'Hospital staff',
     tourism_admin: 'Tourism authority',
     sys_admin: 'System admin',
+    auditor: 'Auditor',
   })[role] ?? role.replace(/_/g, ' ');
 
 const initials = (value: string) =>
@@ -47,15 +55,35 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Provision modal
   const [showProvisionModal, setShowProvisionModal] = useState(false);
   const [provisionForm, setProvisionForm] = useState({
     email: '',
     password: '',
     role: 'operator',
     organization: '',
+    name: '',
+    phone: '',
   });
   const [provisionError, setProvisionError] = useState<string | null>(null);
   const [provisionLoading, setProvisionLoading] = useState(false);
+
+  // Edit modal
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editUser, setEditUser] = useState<any>(null);
+  const [editForm, setEditForm] = useState({ name: '', phone: '', organization: '', role: '', status: '' });
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editLoading, setEditLoading] = useState(false);
+
+  // Reset password modal
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetUser, setResetUser] = useState<any>(null);
+  const [resetPassword, setResetPasswordValue] = useState('');
+  const [resetError, setResetError] = useState<string | null>(null);
+  const [resetLoading, setResetLoading] = useState(false);
+
   const [notice, setNotice] = useState<Notice>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -82,10 +110,24 @@ export default function AdminDashboard() {
   const isProvisionFormDirty =
     provisionForm.email !== '' ||
     provisionForm.password !== '' ||
-    provisionForm.organization !== '';
+    provisionForm.organization !== '' ||
+    provisionForm.name !== '' ||
+    provisionForm.phone !== '';
   const isHealthy = Boolean(health && !loadError);
   const dbUsed = health?.databasePool?.used ?? 0;
   const dbTotal = health?.databasePool?.total ?? 0;
+
+  // Filter users by search
+  const filteredUsers = users.filter((user) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      (user.name || '').toLowerCase().includes(q) ||
+      user.email.toLowerCase().includes(q) ||
+      user.role.toLowerCase().includes(q) ||
+      (user.organization || '').toLowerCase().includes(q)
+    );
+  });
 
   const handleDeleteUser = async (id: string, email: string) => {
     if (deletingId) return;
@@ -116,7 +158,7 @@ export default function AdminDashboard() {
     setDeletingId(id);
     try {
       await deleteInternalUser(id);
-      setNotice({ message: 'Internal user removed successfully.', type: 'success' });
+      showNotice('Internal user removed successfully.');
       await fetchDashboardData();
     } catch (error: any) {
       const message =
@@ -130,10 +172,16 @@ export default function AdminDashboard() {
     }
   };
 
+  const showNotice = (message: string) => {
+    setNotice({ message, type: 'success' });
+    window.setTimeout(() => setNotice(null), 4000);
+  };
+
+  // ---- Provision Modal ----
   const handleCancelProvision = () => {
     if (isProvisionFormDirty && !window.confirm('You have unsaved changes. Discard them?')) return;
     setShowProvisionModal(false);
-    setProvisionForm({ email: '', password: '', role: 'operator', organization: '' });
+    setProvisionForm({ email: '', password: '', role: 'operator', organization: '', name: '', phone: '' });
     setProvisionError(null);
   };
 
@@ -145,7 +193,7 @@ export default function AdminDashboard() {
     setProvisionLoading(true);
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/admin/provision`,
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/system/admin/provision`,
         {
           method: 'POST',
           headers: {
@@ -172,9 +220,8 @@ export default function AdminDashboard() {
       }
 
       setShowProvisionModal(false);
-      setProvisionForm({ email: '', password: '', role: 'operator', organization: '' });
-      setNotice({ message: 'Internal user provisioned successfully.', type: 'success' });
-      window.setTimeout(() => setNotice(null), 4000);
+      setProvisionForm({ email: '', password: '', role: 'operator', organization: '', name: '', phone: '' });
+      showNotice('Internal user provisioned successfully.');
       await fetchDashboardData();
     } catch (error: any) {
       setProvisionError(
@@ -184,6 +231,93 @@ export default function AdminDashboard() {
       );
     } finally {
       setProvisionLoading(false);
+    }
+  };
+
+  // ---- Edit Modal ----
+  const openEditModal = (user: any) => {
+    setEditUser(user);
+    setEditForm({
+      name: user.name || '',
+      phone: user.phone || '',
+      organization: user.organization || '',
+      role: user.role,
+      status: user.status,
+    });
+    setEditError(null);
+    setShowEditModal(true);
+  };
+
+  const handleEditSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (editLoading || !editUser) return;
+
+    setEditError(null);
+    setEditLoading(true);
+    try {
+      await updateInternalUser(editUser.id, editForm);
+      setShowEditModal(false);
+      showNotice('User updated successfully.');
+      await fetchDashboardData();
+    } catch (error: any) {
+      setEditError(
+        error.response?.data?.detail ??
+          (error.response ? 'Failed to update user.' : 'Network error. Please check your connection.'),
+      );
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  // ---- Suspend/Reactivate ----
+  const handleToggleStatus = async (user: any) => {
+    const newStatus = user.status === 'active' ? 'suspended' : 'active';
+    const action = newStatus === 'suspended' ? 'suspend' : 'reactivate';
+
+    if (!window.confirm(`Are you sure you want to ${action} ${user.email}?`)) return;
+
+    try {
+      await updateInternalUser(user.id, { status: newStatus });
+      showNotice(`User ${action}d successfully.`);
+      await fetchDashboardData();
+    } catch (error: any) {
+      alert(
+        error.response?.data?.detail ??
+          `Failed to ${action} user. Please try again.`,
+      );
+    }
+  };
+
+  // ---- Reset Password Modal ----
+  const openResetModal = (user: any) => {
+    setResetUser(user);
+    setResetPasswordValue('');
+    setResetError(null);
+    setShowResetModal(true);
+  };
+
+  const handleResetSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (resetLoading || !resetUser) return;
+
+    if (resetPassword.length < 8) {
+      setResetError('Password must be at least 8 characters.');
+      return;
+    }
+
+    setResetError(null);
+    setResetLoading(true);
+    try {
+      await resetUserPassword(resetUser.id, resetPassword);
+      setShowResetModal(false);
+      showNotice(`Password reset for ${resetUser.email}.`);
+    } catch (error: any) {
+      setResetError(
+        error.response?.data?.detail ??
+          (error.response ? 'Failed to reset password.' : 'Network error.'),
+      );
+    } finally {
+      setResetLoading(false);
     }
   };
 
@@ -327,9 +461,23 @@ export default function AdminDashboard() {
                     : ''}
                 </p>
               </div>
-              <button className="btn btn-primary" onClick={() => setShowProvisionModal(true)}>
-                <UserPlus size={16} /> Provision user
-              </button>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <div style={{ position: 'relative' }}>
+                  <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-on-surface-variant)' }} />
+                  <input
+                    type="text"
+                    className="input-premium"
+                    placeholder="Search users…"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    style={{ paddingLeft: '36px', minWidth: '200px', height: '38px', fontSize: '13px' }}
+                    id="user-search"
+                  />
+                </div>
+                <button className="btn btn-primary" onClick={() => setShowProvisionModal(true)}>
+                  <UserPlus size={16} /> Provision user
+                </button>
+              </div>
             </div>
 
             {loading && users.length === 0 ? (
@@ -337,12 +485,13 @@ export default function AdminDashboard() {
                 <Loader2 size={26} style={{ animation: 'spin 1s linear infinite' }} />
                 <p style={{ marginTop: 12 }}>Loading internal access records…</p>
               </div>
-            ) : users.length === 0 ? (
+            ) : filteredUsers.length === 0 ? (
               <div className={styles.emptyState}>
                 <UsersRound size={28} />
                 <p style={{ marginTop: 12 }}>
-                  No internal users are available yet. Provision the first staff account to grant
-                  access.
+                  {searchQuery.trim()
+                    ? `No users matching "${searchQuery}". Try a different search.`
+                    : 'No internal users are available yet. Provision the first staff account to grant access.'}
                 </p>
               </div>
             ) : (
@@ -352,13 +501,13 @@ export default function AdminDashboard() {
                     <tr>
                       <th>User</th>
                       <th>Role</th>
-                      <th>MFA</th>
+                      <th>Organization</th>
                       <th>Account</th>
-                      <th>Access</th>
+                      <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {users.map((user) => {
+                    {filteredUsers.map((user) => {
                       const active = user.status === 'active';
                       const protectedAccount =
                         user.email === 'admin@yatrishield.gov.in' ||
@@ -373,6 +522,9 @@ export default function AdminDashboard() {
                               <div>
                                 <p className={styles.personName}>{user.name || 'Unnamed user'}</p>
                                 <p className={styles.personEmail}>{user.email}</p>
+                                {user.phone && (
+                                  <p className={styles.personEmail} style={{ fontSize: '11px' }}>{user.phone}</p>
+                                )}
                               </div>
                             </div>
                           </td>
@@ -380,20 +532,8 @@ export default function AdminDashboard() {
                             <span className={styles.rolePill}>{roleLabel(user.role)}</span>
                           </td>
                           <td>
-                            <span
-                              className={styles.mfaState}
-                              style={{
-                                color: user.mfa_enabled
-                                  ? 'var(--color-success)'
-                                  : 'var(--color-warning)',
-                              }}
-                            >
-                              {user.mfa_enabled ? (
-                                <ShieldCheck size={16} />
-                              ) : (
-                                <AlertTriangle size={16} />
-                              )}
-                              {user.mfa_enabled ? 'Protected' : 'Not enrolled'}
+                            <span style={{ fontSize: '13px', color: user.organization ? 'var(--color-on-surface)' : 'var(--color-on-surface-variant)' }}>
+                              {user.organization || '—'}
                             </span>
                           </td>
                           <td>
@@ -412,32 +552,77 @@ export default function AdminDashboard() {
                             </span>
                           </td>
                           <td>
-                            {protectedAccount ? (
-                              <span className={styles.readOnlyPill}>Protected admin</span>
-                            ) : (
+                            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                              {/* Edit */}
                               <button
                                 className="btn btn-outline"
-                                onClick={() => handleDeleteUser(user.id, user.email)}
-                                disabled={deletingId !== null}
-                                style={{
-                                  minHeight: 34,
-                                  padding: '7px 10px',
-                                  color: 'var(--color-error)',
-                                  fontSize: 12,
-                                }}
-                                aria-label={`Remove ${user.email}`}
+                                onClick={() => openEditModal(user)}
+                                style={{ minHeight: 32, padding: '5px 8px', fontSize: 12 }}
+                                aria-label={`Edit ${user.email}`}
+                                title="Edit user"
                               >
-                                {deletingId === user.id ? (
-                                  <Loader2
-                                    size={14}
-                                    style={{ animation: 'spin 1s linear infinite' }}
-                                  />
-                                ) : (
-                                  <Trash2 size={14} />
-                                )}
-                                {deletingId === user.id ? 'Removing' : 'Remove'}
+                                <Pencil size={13} /> Edit
                               </button>
-                            )}
+
+                              {/* Suspend / Reactivate */}
+                              {!protectedAccount && (
+                                <button
+                                  className="btn btn-outline"
+                                  onClick={() => handleToggleStatus(user)}
+                                  style={{
+                                    minHeight: 32,
+                                    padding: '5px 8px',
+                                    fontSize: 12,
+                                    color: active ? 'var(--color-warning)' : 'var(--color-success)',
+                                  }}
+                                  aria-label={active ? `Suspend ${user.email}` : `Reactivate ${user.email}`}
+                                  title={active ? 'Suspend user' : 'Reactivate user'}
+                                >
+                                  {active ? <ToggleRight size={13} /> : <ToggleLeft size={13} />}
+                                  {active ? 'Suspend' : 'Activate'}
+                                </button>
+                              )}
+
+                              {/* Reset Password */}
+                              <button
+                                className="btn btn-outline"
+                                onClick={() => openResetModal(user)}
+                                style={{ minHeight: 32, padding: '5px 8px', fontSize: 12 }}
+                                aria-label={`Reset password for ${user.email}`}
+                                title="Reset password"
+                              >
+                                <KeyRound size={13} /> Reset
+                              </button>
+
+                              {/* Delete */}
+                              {protectedAccount ? (
+                                <span className={styles.readOnlyPill}>Protected</span>
+                              ) : (
+                                <button
+                                  className="btn btn-outline"
+                                  onClick={() => handleDeleteUser(user.id, user.email)}
+                                  disabled={deletingId !== null}
+                                  style={{
+                                    minHeight: 32,
+                                    padding: '5px 8px',
+                                    color: 'var(--color-error)',
+                                    fontSize: 12,
+                                  }}
+                                  aria-label={`Remove ${user.email}`}
+                                  title="Remove user"
+                                >
+                                  {deletingId === user.id ? (
+                                    <Loader2
+                                      size={13}
+                                      style={{ animation: 'spin 1s linear infinite' }}
+                                    />
+                                  ) : (
+                                    <Trash2 size={13} />
+                                  )}
+                                  {deletingId === user.id ? 'Removing' : 'Remove'}
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       );
@@ -496,6 +681,7 @@ export default function AdminDashboard() {
           </aside>
         </section>
 
+        {/* ===== Provision Modal ===== */}
         {showProvisionModal && (
           <div
             className={styles.modalBackdrop}
@@ -522,71 +708,105 @@ export default function AdminDashboard() {
                 </div>
               )}
               <form className={styles.form} onSubmit={handleProvisionSubmit}>
-                <div>
-                  <label className={styles.fieldLabel} htmlFor="provision-email">
-                    Work email
-                  </label>
-                  <input
-                    id="provision-email"
-                    required
-                    type="email"
-                    className="input-premium"
-                    placeholder="name@yatrishield.gov.in"
-                    value={provisionForm.email}
-                    onChange={(event) =>
-                      setProvisionForm({ ...provisionForm, email: event.target.value })
-                    }
-                  />
-                </div>
-                <div>
-                  <label className={styles.fieldLabel} htmlFor="provision-password">
-                    Temporary password
-                  </label>
-                  <input
-                    id="provision-password"
-                    required
-                    type="password"
-                    className="input-premium"
-                    placeholder="Create a one-time credential"
-                    value={provisionForm.password}
-                    onChange={(event) =>
-                      setProvisionForm({ ...provisionForm, password: event.target.value })
-                    }
-                  />
-                </div>
-                <div>
-                  <label className={styles.fieldLabel} htmlFor="provision-role">
-                    Role
-                  </label>
-                  <select
-                    id="provision-role"
-                    className="input-premium"
-                    value={provisionForm.role}
-                    onChange={(event) =>
-                      setProvisionForm({ ...provisionForm, role: event.target.value })
-                    }
-                  >
-                    <option value="operator">Police / SDRF operator</option>
-                    <option value="hospital">Hospital staff</option>
-                    <option value="tourism_admin">Tourism authority</option>
-                    <option value="sys_admin">System administrator</option>
-                  </select>
-                </div>
-                <div>
-                  <label className={styles.fieldLabel} htmlFor="provision-organization">
-                    Organization or precinct
-                  </label>
-                  <input
-                    id="provision-organization"
-                    required
-                    type="text"
-                    className="input-premium"
-                    placeholder="e.g. Kedarnath Base Camp"
-                    value={provisionForm.organization}
-                    onChange={(event) =>
-                      setProvisionForm({ ...provisionForm, organization: event.target.value })
-                    }
-                  />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <label className={styles.fieldLabel} htmlFor="provision-email">
+                      Work email
+                    </label>
+                    <input
+                      id="provision-email"
+                      required
+                      type="email"
+                      className="input-premium"
+                      placeholder="name@yatrishield.gov.in"
+                      value={provisionForm.email}
+                      onChange={(event) =>
+                        setProvisionForm({ ...provisionForm, email: event.target.value })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className={styles.fieldLabel} htmlFor="provision-name">
+                      Full name
+                    </label>
+                    <input
+                      id="provision-name"
+                      type="text"
+                      className="input-premium"
+                      placeholder="e.g. Rajesh Kumar"
+                      value={provisionForm.name}
+                      onChange={(event) =>
+                        setProvisionForm({ ...provisionForm, name: event.target.value })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className={styles.fieldLabel} htmlFor="provision-phone">
+                      Phone number
+                    </label>
+                    <input
+                      id="provision-phone"
+                      type="tel"
+                      className="input-premium"
+                      placeholder="+91 98765 43210"
+                      value={provisionForm.phone}
+                      onChange={(event) =>
+                        setProvisionForm({ ...provisionForm, phone: event.target.value })
+                      }
+                    />
+                  </div>
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <label className={styles.fieldLabel} htmlFor="provision-password">
+                      Temporary password
+                    </label>
+                    <input
+                      id="provision-password"
+                      required
+                      type="password"
+                      className="input-premium"
+                      placeholder="Create a one-time credential"
+                      value={provisionForm.password}
+                      onChange={(event) =>
+                        setProvisionForm({ ...provisionForm, password: event.target.value })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className={styles.fieldLabel} htmlFor="provision-role">
+                      Role
+                    </label>
+                    <select
+                      id="provision-role"
+                      className="input-premium"
+                      value={provisionForm.role}
+                      onChange={(event) =>
+                        setProvisionForm({ ...provisionForm, role: event.target.value })
+                      }
+                    >
+                      <option value="operator">Police / SDRF operator</option>
+                      <option value="dispatcher">Dispatcher</option>
+                      <option value="supervisor">Supervisor</option>
+                      <option value="hospital">Hospital staff</option>
+                      <option value="tourism_admin">Tourism authority</option>
+                      <option value="sys_admin">System administrator</option>
+                      <option value="auditor">Auditor</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className={styles.fieldLabel} htmlFor="provision-organization">
+                      Organization or precinct
+                    </label>
+                    <input
+                      id="provision-organization"
+                      type="text"
+                      className="input-premium"
+                      placeholder="e.g. Kedarnath Base Camp"
+                      value={provisionForm.organization}
+                      onChange={(event) =>
+                        setProvisionForm({ ...provisionForm, organization: event.target.value })
+                      }
+                    />
+                  </div>
                 </div>
                 <div className={styles.formActions}>
                   <button
@@ -607,6 +827,190 @@ export default function AdminDashboard() {
                       <>
                         <UserPlus size={15} />
                         Provision user
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ===== Edit Modal ===== */}
+        {showEditModal && editUser && (
+          <div
+            className={styles.modalBackdrop}
+            role="presentation"
+            onMouseDown={() => setShowEditModal(false)}
+          >
+            <div
+              className={`glass-card ${styles.modal}`}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="edit-title"
+              onMouseDown={(event) => event.stopPropagation()}
+            >
+              <h2 id="edit-title" className={styles.modalTitle}>
+                Edit user
+              </h2>
+              <p className={styles.modalSubtitle}>
+                Update {editUser.email}'s profile, role, and access status.
+              </p>
+              {editError && (
+                <div className={styles.errorState} role="alert">
+                  {editError}
+                </div>
+              )}
+              <form className={styles.form} onSubmit={handleEditSubmit}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <div>
+                    <label className={styles.fieldLabel} htmlFor="edit-name">Name</label>
+                    <input
+                      id="edit-name"
+                      type="text"
+                      className="input-premium"
+                      value={editForm.name}
+                      onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className={styles.fieldLabel} htmlFor="edit-phone">Phone</label>
+                    <input
+                      id="edit-phone"
+                      type="tel"
+                      className="input-premium"
+                      value={editForm.phone}
+                      onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className={styles.fieldLabel} htmlFor="edit-role">Role</label>
+                    <select
+                      id="edit-role"
+                      className="input-premium"
+                      value={editForm.role}
+                      onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
+                    >
+                      <option value="operator">Police / SDRF operator</option>
+                      <option value="dispatcher">Dispatcher</option>
+                      <option value="supervisor">Supervisor</option>
+                      <option value="hospital">Hospital staff</option>
+                      <option value="tourism_admin">Tourism authority</option>
+                      <option value="sys_admin">System administrator</option>
+                      <option value="auditor">Auditor</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className={styles.fieldLabel} htmlFor="edit-status">Status</label>
+                    <select
+                      id="edit-status"
+                      className="input-premium"
+                      value={editForm.status}
+                      onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+                    >
+                      <option value="active">Active</option>
+                      <option value="suspended">Suspended</option>
+                    </select>
+                  </div>
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <label className={styles.fieldLabel} htmlFor="edit-organization">Organization</label>
+                    <input
+                      id="edit-organization"
+                      type="text"
+                      className="input-premium"
+                      value={editForm.organization}
+                      onChange={(e) => setEditForm({ ...editForm, organization: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div className={styles.formActions}>
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    onClick={() => setShowEditModal(false)}
+                    disabled={editLoading}
+                  >
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn btn-primary" disabled={editLoading}>
+                    {editLoading ? (
+                      <>
+                        <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} />
+                        Saving
+                      </>
+                    ) : (
+                      <>
+                        <Pencil size={15} />
+                        Save Changes
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ===== Reset Password Modal ===== */}
+        {showResetModal && resetUser && (
+          <div
+            className={styles.modalBackdrop}
+            role="presentation"
+            onMouseDown={() => setShowResetModal(false)}
+          >
+            <div
+              className={`glass-card ${styles.modal}`}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="reset-title"
+              onMouseDown={(event) => event.stopPropagation()}
+            >
+              <h2 id="reset-title" className={styles.modalTitle}>
+                Reset password
+              </h2>
+              <p className={styles.modalSubtitle}>
+                Set a new temporary password for <strong>{resetUser.email}</strong>. They will need to use this password to log in.
+              </p>
+              {resetError && (
+                <div className={styles.errorState} role="alert">
+                  {resetError}
+                </div>
+              )}
+              <form className={styles.form} onSubmit={handleResetSubmit}>
+                <div>
+                  <label className={styles.fieldLabel} htmlFor="reset-new-password">
+                    New password
+                  </label>
+                  <input
+                    id="reset-new-password"
+                    required
+                    type="password"
+                    className="input-premium"
+                    placeholder="Minimum 8 characters"
+                    value={resetPassword}
+                    onChange={(e) => setResetPasswordValue(e.target.value)}
+                    minLength={8}
+                  />
+                </div>
+                <div className={styles.formActions}>
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    onClick={() => setShowResetModal(false)}
+                    disabled={resetLoading}
+                  >
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn btn-primary" disabled={resetLoading}>
+                    {resetLoading ? (
+                      <>
+                        <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} />
+                        Resetting
+                      </>
+                    ) : (
+                      <>
+                        <KeyRound size={15} />
+                        Reset Password
                       </>
                     )}
                   </button>

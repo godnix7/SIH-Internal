@@ -45,13 +45,14 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     SUPER_ADMIN_EMAIL: str = "admin@yatrishield.gov.in"
     
-    # Twilio
+    # Twilio (used by Voice AI emergency calling, not for OTP)
     TWILIO_ACCOUNT_SID: str = "mock_sid"
     TWILIO_AUTH_TOKEN: str = "mock_token"
     TWILIO_PHONE_NUMBER: str = "+1234567890"
     
-    # SMS Cryptography
-    SMS_ENCRYPTION_KEY: str = "0123456789abcdef0123456789abcdef"
+    # Admin seeding (set in Render env vars to auto-seed on first deploy)
+    SEED_ADMIN_EMAIL: str = ""
+    SEED_ADMIN_PASSWORD: str = ""
     
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
 

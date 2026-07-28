@@ -70,3 +70,21 @@ export const deleteInternalUser = async (userId: string) => {
   const response = await apiClient.delete(`/system/admin/users/${userId}`);
   return response.data;
 };
+
+export const updateInternalUser = async (userId: string, data: {
+  name?: string;
+  phone?: string;
+  organization?: string;
+  role?: string;
+  status?: string;
+}) => {
+  const response = await apiClient.put(`/system/admin/users/${userId}`, data);
+  return response.data;
+};
+
+export const resetUserPassword = async (userId: string, newPassword: string) => {
+  const response = await apiClient.post(`/system/admin/users/${userId}/reset-password`, {
+    newPassword,
+  });
+  return response.data;
+};
