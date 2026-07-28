@@ -2,12 +2,10 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 import jwt
-from passlib.context import CryptContext
+import bcrypt
 from cryptography.fernet import Fernet
 import os
 from app.config import settings
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # DEV ONLY: A static dummy key for Fernet. In production, this should come from KMS or environment.
 # Generating a valid fernet key string to use as default fallback.
@@ -16,10 +14,12 @@ ENCRYPTION_KEY = os.environ.get("ENCRYPTION_KEY_BASE64", _FALLBACK_FERNET_KEY)
 fernet = Fernet(ENCRYPTION_KEY)
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    if not hashed_password:
+        return False
+    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
 
 def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
 def encrypt_pii(plaintext: str) -> bytes:
     """Encrypts PII like phone numbers using application-level encryption."""
