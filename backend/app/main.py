@@ -175,6 +175,7 @@ async def add_request_id_and_correlation(request: Request, call_next):
     return response
 
 # --- Basic Health Check ---
+@app.get("/")
 @app.get("/health")
 async def health_check():
     return {"status": "ok", "version": settings.VERSION}
