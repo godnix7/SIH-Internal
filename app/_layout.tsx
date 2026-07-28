@@ -149,6 +149,8 @@ export default function RootLayout() {
             options={{ presentation: 'fullScreenModal', gestureEnabled: false }}
           />
           <Stack.Screen name="incident/[id]" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="settings/[screen]" />
+          <Stack.Screen name="identity/card" />
         </Stack>
       </QueryClientProvider>
     </SafeAreaProvider>
