@@ -50,16 +50,20 @@ def run_db_migrations():
                 SessionLocal = sessionmaker(bind=sync_engine)
                 with SessionLocal() as session:
                     user = session.execute(select(InternalUser).where(InternalUser.email == settings.SUPER_ADMIN_EMAIL)).scalars().first()
+                    new_hash = bcrypt.hashpw(settings.SUPER_ADMIN_PASSWORD.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
                     if not user:
                         user = InternalUser(
                             email=settings.SUPER_ADMIN_EMAIL,
-                            password_hash=bcrypt.hashpw(settings.SUPER_ADMIN_PASSWORD.encode('utf-8'), bcrypt.gensalt()).decode('utf-8'),
+                            password_hash=new_hash,
                             role="sys_admin",
                             status="active"
                         )
                         session.add(user)
-                        session.commit()
                         logger.info("Seeded super admin on startup using environment variables!")
+                    else:
+                        user.password_hash = new_hash
+                        logger.info("Updated super admin password to match environment variables!")
+                    session.commit()
                 
     except Exception as e:
         logger.warning(f"Database auto-migration/seed warning: {e}")
