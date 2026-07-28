@@ -38,8 +38,30 @@ def run_db_migrations():
                 alembic_cfg.set_main_option("sqlalchemy.url", settings.sync_database_url)
             command.upgrade(alembic_cfg, "head")
             logger.info("Database migrations applied successfully on startup!")
+            
+            # Seed admin
+            from sqlalchemy import create_engine, select
+            from sqlalchemy.orm import sessionmaker
+            from app.models.auth import InternalUser
+            import bcrypt
+            
+            sync_engine = create_engine(settings.sync_database_url)
+            SessionLocal = sessionmaker(bind=sync_engine)
+            with SessionLocal() as session:
+                user = session.execute(select(InternalUser).where(InternalUser.email == settings.SUPER_ADMIN_EMAIL)).scalars().first()
+                if not user:
+                    user = InternalUser(
+                        email=settings.SUPER_ADMIN_EMAIL,
+                        password_hash=bcrypt.hashpw(b"YatriAdmin2026!", bcrypt.gensalt()).decode('utf-8'),
+                        role="sys_admin",
+                        status="active"
+                    )
+                    session.add(user)
+                    session.commit()
+                    logger.info("Seeded super admin on startup!")
+                
     except Exception as e:
-        logger.warning(f"Database auto-migration warning: {e}")
+        logger.warning(f"Database auto-migration/seed warning: {e}")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
