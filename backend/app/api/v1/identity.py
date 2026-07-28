@@ -26,7 +26,7 @@ async def verify_identity(
     In MVP, this mocks the DigiLocker/OCR validation and immediately approves.
     """
     # Check if already verified
-    result = await db.execute(select(Identity).where(Identity.user_id == current_user.id))
+    result = await db.execute(select(Identity).where(Identity.user_id == current_user.user_id))
     existing = result.scalars().first()
     if existing:
         raise HTTPException(status_code=400, detail="Identity already verified")
@@ -78,7 +78,7 @@ async def verify_identity(
     
     credential_data = {
         "iss": "yatrishield",
-        "sub": str(current_user.id),
+        "sub": str(current_user.user_id),
         "type": "digital_id",
         "name": name,
         "verified": True,
@@ -87,7 +87,7 @@ async def verify_identity(
     
     # Store encrypted
     identity = Identity(
-        user_id=current_user.id,
+        user_id=current_user.user_id,
         id_type=req.type,
         name_enc=encrypt_pii(name),
         name_verified=True,
