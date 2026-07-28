@@ -50,7 +50,8 @@ def run_db_migrations():
                 SessionLocal = sessionmaker(bind=sync_engine)
                 with SessionLocal() as session:
                     user = session.execute(select(InternalUser).where(InternalUser.email == settings.SUPER_ADMIN_EMAIL)).scalars().first()
-                    new_hash = bcrypt.hashpw(settings.SUPER_ADMIN_PASSWORD.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                    clean_pass = settings.SUPER_ADMIN_PASSWORD.strip('"\'')
+                    new_hash = bcrypt.hashpw(clean_pass.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
                     if not user:
                         user = InternalUser(
                             email=settings.SUPER_ADMIN_EMAIL,

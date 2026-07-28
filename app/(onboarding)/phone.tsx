@@ -42,7 +42,12 @@ export default function Login() {
       if (isNewUser) {
         router.push('/kyc');
       } else {
-        router.replace('/');
+        const complete = useAppStore.getState().hasCompletedOnboarding;
+        if (complete) {
+          router.replace('/');
+        } else {
+          router.replace('/offline-maps' as any);
+        }
       }
     } catch (e: any) {
       console.error(e);
