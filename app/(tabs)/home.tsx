@@ -139,7 +139,30 @@ export default function HomeScreen() {
         <EmptyState
           title={t('home.emptyTitle')}
           body={t('home.emptyBody')}
-          action={<Button label={t('common.planTrip')} onPress={() => router.push('/trip/new')} />}
+          action={
+            <View style={{ width: '100%', gap: space.sm }}>
+              <Button label={t('common.planTrip')} onPress={() => router.push('/trip/new')} />
+              <Button 
+                label="Quick Protect (Today)" 
+                variant="secondary"
+                onPress={async () => {
+                  try {
+                    const today = new Date().toISOString().split('T')[0];
+                    const trip = await useAppStore.getState().createTrip({
+                      destination: 'Quick Protection',
+                      startDate: today,
+                      endDate: today,
+                      tier: 'zones',
+                      partySize: 1,
+                    });
+                    router.push(`/trip/${trip.id}`);
+                  } catch (e) {
+                    console.error('Failed to start quick protect', e);
+                  }
+                }} 
+              />
+            </View>
+          }
         />
       )}
       <View style={{ gap: space.xs }}>

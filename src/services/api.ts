@@ -109,7 +109,14 @@ api.interceptors.response.use(
 
 export const tripApi = {
   createTrip: async (data: any) => {
-    const res = await api.post('/trips', data);
+    const payload = {
+      destination: data.destination,
+      start_date: data.startDate,
+      end_date: data.endDate,
+      consent_tier: data.tier,
+      party_size: data.partySize || 1,
+    };
+    const res = await api.post('/trips', payload);
     return res.data;
   },
   startTrip: async (tripId: string) => {
