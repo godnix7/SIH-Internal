@@ -81,12 +81,14 @@ export default function ResponderDashboard() {
 
   useEffect(() => {
     fetchIncidents();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (lastEvent) {
       fetchIncidents();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastEvent]);
 
   const fetchIncidents = async () => {

@@ -854,7 +854,7 @@ export default function AdminDashboard() {
                 Edit user
               </h2>
               <p className={styles.modalSubtitle}>
-                Update {editUser.email}'s profile, role, and access status.
+                Update {editUser.email}&apos;s profile, role, and access status.
               </p>
               {editError && (
                 <div className={styles.errorState} role="alert">
