@@ -44,6 +44,7 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256" # For dev. Prod uses ES256
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     SUPER_ADMIN_EMAIL: str = "admin@yatrishield.gov.in"
+    SUPER_ADMIN_PASSWORD: str | None = None
     
     # Twilio (used by Voice AI emergency calling, not for OTP)
     TWILIO_ACCOUNT_SID: str = "mock_sid"
