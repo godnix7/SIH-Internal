@@ -35,7 +35,7 @@ function PinGuard() {
   
   useEffect(() => {
     if (isAuthenticated && !hasSetPin && segments[0] !== '(onboarding)') {
-      router.replace('/(onboarding)/pin');
+      router.replace('/(onboarding)/pin' as any);
     }
   }, [isAuthenticated, hasSetPin, segments]);
   return null;

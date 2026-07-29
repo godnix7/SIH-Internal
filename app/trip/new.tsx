@@ -35,7 +35,15 @@ export default function NewTrip() {
     latitudeDelta: 10.0,
     longitudeDelta: 10.0,
   });
-  const [dates, setDates] = useState({ start: '2026-07-12', end: '2026-07-16' });
+  const [dates, setDates] = useState(() => {
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return {
+      start: today.toISOString().split('T')[0],
+      end: tomorrow.toISOString().split('T')[0],
+    };
+  });
   const [trek, setTrek] = useState(false);
   const [tier, setTier] = useState<ConsentTier>('checkins');
   const [primer, setPrimer] = useState(false);
@@ -165,11 +173,11 @@ export default function NewTrip() {
               onRegionChangeComplete={setMapRegion}
             />
             {/* Center crosshair */}
-            <View style={{ ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+            <View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
               <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: c.primary, borderWidth: 3, borderColor: '#fff', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84, elevation: 5 }} />
             </View>
             {geocoding && (
-              <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center' }}>
+              <View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center' }}>
                 <ActivityIndicator size="large" color="#fff" />
               </View>
             )}
