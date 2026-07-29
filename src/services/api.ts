@@ -211,9 +211,14 @@ export const sosApi = {
 
 export type FlushResult = { sent: number; failed: number; sentTypes: string[] };
 
+let isFlushing = false;
+
 export async function flushOutbox(): Promise<FlushResult> {
-  const due = await outboxQueue.due();
-  const sentTypes: string[] = [];
+  if (isFlushing) return { sent: 0, failed: 0, sentTypes: [] };
+  isFlushing = true;
+  try {
+    const due = await outboxQueue.due();
+    const sentTypes: string[] = [];
   let sent = 0;
   let failed = 0;
 
@@ -316,4 +321,7 @@ export async function flushOutbox(): Promise<FlushResult> {
     }
   }
   return { sent, failed, sentTypes };
+  } finally {
+    isFlushing = false;
+  }
 }

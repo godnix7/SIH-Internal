@@ -3,6 +3,7 @@ import { Alert, Linking, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { router } from 'expo-router';
 import { ShieldAlert } from 'lucide-react-native';
+import { connectRealtime } from '@/src/services/realtime';
 
 import { MapZoneLayer } from '@/src/components/MapZoneLayer';
 import { Screen } from '@/src/components/Screen';
@@ -54,6 +55,37 @@ export default function SosActiveScreen() {
   useEffect(() => {
     if (sos?.status === 'COUNTDOWN' && secondsLeft === 0) void sendSos();
   }, [secondsLeft, sendSos, sos?.status]);
+  // Realtime updates (like getting the OTP)
+  useEffect(() => {
+    if (!sos || sos.status === 'COUNTDOWN' || sos.status === 'OFFLINE_QUEUED') return;
+
+    let socket: ReturnType<typeof connectRealtime> | undefined;
+    import('expo-secure-store').then(SecureStore => {
+      SecureStore.getItemAsync('accessToken').then(token => {
+        if (!token) return;
+        import('@/src/services/realtime').then(({ connectRealtime }) => {
+          socket = connectRealtime(token, (update) => {
+            if (update.id === sos.incidentId) {
+              const state = useAppStore.getState();
+              // Create nextEvents (mocking since we just want to force a re-render/update)
+              const nextEvents = [...state.incidentEvents];
+              // Use setSosStatus conceptually, or we can just update the store directly.
+              // We'll update the store directly to keep it simple.
+              state.setSosStatus(update.status.toUpperCase() as any);
+              if (update.otp) {
+                 useAppStore.setState({ resolutionOtp: update.otp });
+              }
+            }
+          });
+        });
+      });
+    });
+
+    return () => {
+      if (socket) socket.disconnect();
+    };
+  }, [sos?.id, sos?.status]);
+
   // Backs the "trying every 10 s" promise shown on the offline card.
   useEffect(() => {
     if (sos?.status !== 'OFFLINE_QUEUED') return;
