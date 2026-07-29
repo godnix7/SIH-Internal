@@ -54,12 +54,20 @@ class IdentitySchema(BaseModel):
     expiresAt: datetime
     # Name and DOB are not returned in basic profile to avoid PII over-sharing
 
+class ProfileUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    dob: Optional[str] = None
+    email: Optional[str] = None
+
 class UserProfileResponse(BaseModel):
     id: UUID
-    phone: str # Decrypted for the owner to see
+    phone: str
     role: str
     status: str
     identity: Optional[IdentitySchema] = None
+    name: Optional[str] = None
+    dob: Optional[str] = None
+    email: Optional[str] = None
 
 class IdentityScanRequest(BaseModel):
     qrToken: str

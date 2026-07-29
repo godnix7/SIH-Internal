@@ -1,7 +1,7 @@
 import json
 import base64
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,6 +14,7 @@ from app.models.auth import User, Session, Device
 from app.models.identity import Identity, MedicalCard, EmergencyContact
 from app.schemas.identity import (
     UserProfileResponse, 
+    ProfileUpdateRequest,
     IdentitySchema, 
     MedicalCardSchema, 
     MedicalCardUpdateRequest,
@@ -29,6 +30,8 @@ async def get_my_profile(current_user: User = Depends(get_current_user), db: Asy
     identity = result.scalars().first()
     
     id_schema = None
+    name = None
+    dob = None
     if identity:
         id_schema = IdentitySchema(
             idType=identity.id_type,
@@ -36,14 +39,48 @@ async def get_my_profile(current_user: User = Depends(get_current_user), db: Asy
             confidence=identity.confidence,
             expiresAt=identity.expires_at
         )
+        name = decrypt_pii(identity.name_enc) if identity.name_enc else None
+        dob = decrypt_pii(identity.dob_enc) if getattr(identity, 'dob_enc', None) else None
         
     return UserProfileResponse(
         id=current_user.id,
-        phone=decrypt_pii(current_user.phone_hash),
+        phone=decrypt_pii(current_user.phone_enc),
         role=current_user.role,
         status=current_user.status,
-        identity=id_schema
+        identity=id_schema,
+        name=name,
+        dob=dob,
+        email=current_user.email
     )
+
+@router.patch("/me/profile", response_model=UserProfileResponse)
+async def update_profile(req: ProfileUpdateRequest, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if req.email is not None:
+        current_user.email = req.email
+        
+    result = await db.execute(select(Identity).where(Identity.user_id == current_user.id))
+    identity = result.scalars().first()
+    
+    if req.name or req.dob:
+        if not identity:
+            identity = Identity(
+                user_id=current_user.id,
+                id_type='manual',
+                name_enc=encrypt_pii(req.name or ""),
+                dob_enc=encrypt_pii(req.dob) if req.dob else None,
+                confidence='low',
+                credential_data={},
+                expires_at=datetime.now(timezone.utc) + timedelta(days=365*10)
+            )
+            db.add(identity)
+        else:
+            if req.name is not None:
+                identity.name_enc = encrypt_pii(req.name)
+            if req.dob is not None:
+                identity.dob_enc = encrypt_pii(req.dob)
+                
+    await db.commit()
+    return await get_my_profile(current_user, db)
 
 @router.patch("/me/language")
 async def update_language(language: str, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
@@ -182,7 +219,7 @@ async def export_my_data(current_user: User = Depends(get_current_user), db: Asy
     # Export basic profile
     profile = {
         "id": str(current_user.id),
-        "phone": decrypt_pii(current_user.phone_hash),
+        "phone": decrypt_pii(current_user.phone_enc),
         "role": current_user.role,
         "status": current_user.status
     }

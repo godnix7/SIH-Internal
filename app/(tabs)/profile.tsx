@@ -14,13 +14,15 @@ import {
   HelpCircle,
   UserCircle2
 } from 'lucide-react-native';
-import { Text, View, ActivityIndicator, Alert } from 'react-native';
+import { Text, View, ActivityIndicator, Alert, Image } from 'react-native';
 import { Screen } from '@/src/components/Screen';
 import { Card, ListRow, useAppColors, Button } from '@/src/components/ui';
 import { useAppStore } from '@/src/stores/useAppStore';
 import { type, space } from '@/src/theme/tokens';
 import { api } from '@/src/services/api';
 import { storage } from '@/src/lib/storage';
+import { preferences } from '@/src/services/preferences';
+import { useTranslation } from 'react-i18next';
 
 type UserProfile = {
   id: string;
@@ -34,17 +36,22 @@ type UserProfile = {
 
 export default function ProfileScreen() {
   const c = useAppColors();
+  const { t } = useTranslation();
   const { profile, logout } = useAppStore();
   const [userData, setUserData] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [loggingOut, setLoggingOut] = useState(false);
   const [loadError, setLoadError] = useState(false);
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadProfile() {
       try {
         const { data } = await api.get('/users/me');
         setUserData(data);
+        
+        const storedPhoto = preferences.getString('yatri-shield.profile-photo');
+        if (storedPhoto) setPhotoUri(storedPhoto);
       } catch (e) {
         console.error('Failed to load profile:', e);
         setLoadError(true);
@@ -99,12 +106,16 @@ export default function ProfileScreen() {
   return (
     <Screen
       title="Profile"
-      subtitle={loading ? 'Loading...' : userData?.phone ? `+${userData.phone}` : 'Set up your Digital Tourist ID'}
+      subtitle={loading ? 'Loading...' : userData?.name ? userData.name : userData?.phone ? `+${userData.phone}` : 'Set up your Digital Tourist ID'}
     >
       {/* Profile Header */}
       <View style={{ alignItems: 'center', marginBottom: space.lg, marginTop: space.sm }}>
-        <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: c.surface, alignItems: 'center', justifyContent: 'center', marginBottom: space.sm }}>
-          <UserCircle2 color={c.primary} size={48} />
+        <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: c.surface, alignItems: 'center', justifyContent: 'center', marginBottom: space.sm, overflow: 'hidden' }}>
+          {photoUri ? (
+            <Image source={{ uri: photoUri }} style={{ width: 80, height: 80 }} />
+          ) : (
+            <UserCircle2 color={c.primary} size={48} />
+          )}
         </View>
         {loading ? (
           <ActivityIndicator size="small" color={c.primary} />
@@ -112,7 +123,7 @@ export default function ProfileScreen() {
           <Text style={[type.caption, { color: c.critical }]}>Failed to load profile data</Text>
         ) : (
           <>
-            <Text style={[type.title, { color: c.onSurface }]}>{userData?.phone ? `+${userData.phone}` : 'Tourist'}</Text>
+            <Text style={[type.title, { color: c.onSurface }]}>{userData?.name ? userData.name : userData?.phone ? `+${userData.phone}` : 'Tourist'}</Text>
             <Text style={[type.caption, { color: c.onSurfaceVariant, marginTop: 2 }]}>{userData?.role ? userData.role.toUpperCase() : 'USER'}</Text>
           </>
         )}
@@ -169,9 +180,9 @@ export default function ProfileScreen() {
         />
         <ListRow
           icon={<HelpCircle color={c.primary} />}
-          title="Help & Support"
-          sub="Contact emergency support or feedback"
-          onPress={() => Alert.alert('Help & Support', 'For immediate emergencies, call 112. For app support, email support@yatrishield.gov.in')}
+          title={t('settings.help.title', 'Help & Support')}
+          sub={t('settings.help.desc', 'Contact emergency support or feedback')}
+          onPress={() => router.push('/settings/help')}
         />
       </Card>
       
