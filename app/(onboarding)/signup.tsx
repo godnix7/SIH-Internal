@@ -14,23 +14,30 @@ export default function Signup() {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [pin, setPin] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [dpdpConsent, setDpdpConsent] = useState(false);
   const c = useAppColors();
-  const { login } = useAppStore();
+  const { login, setHasSetPin } = useAppStore();
 
   const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   const validPhone = phone.replace(/\D/g, '').length >= 10;
   const passwordsMatch = password === confirmPassword && password.length >= 8;
-  const valid = validEmail && validPhone && passwordsMatch && dpdpConsent;
+  const validPin = pin.replace(/\D/g, '').length === 4;
+  const valid = validEmail && validPhone && passwordsMatch && validPin && dpdpConsent;
 
   const handleSignup = async () => {
     if (loading) return;
 
     if (password !== confirmPassword) {
       Alert.alert('Password Mismatch', 'The passwords you entered do not match.');
+      return;
+    }
+
+    if (!validPin) {
+      Alert.alert('Invalid PIN', 'Please enter a 4-digit SOS cancellation PIN.');
       return;
     }
 
@@ -46,6 +53,11 @@ export default function Signup() {
       const { accessToken, refreshToken, sosToken, userId } = res.data;
 
       await storage.setTokens(accessToken, refreshToken, sosToken);
+      
+      // Save device PIN
+      await storage.setDevicePin(pin.replace(/\D/g, ''));
+      setHasSetPin(true);
+
       api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
 
       login(userId);
@@ -124,6 +136,16 @@ export default function Signup() {
         onChangeText={setPhone}
         keyboardType="phone-pad"
         placeholder="+91 98765 43210"
+      />
+
+      <Input
+        label="SOS Cancellation PIN (4 Digits)"
+        value={pin}
+        onChangeText={setPin}
+        keyboardType="number-pad"
+        secureTextEntry
+        maxLength={4}
+        placeholder="e.g. 1122"
       />
 
       <View>

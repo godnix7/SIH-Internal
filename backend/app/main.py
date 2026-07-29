@@ -63,7 +63,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:3000", "https://yatrishield.gov.in", "http://localhost:8081", "exp://127.0.0.1:8081"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -86,7 +86,6 @@ app.include_router(incidents_router, prefix=f"{settings.API_V1_STR}/incidents", 
 app.include_router(facilities_router, prefix=f"{settings.API_V1_STR}/facilities", tags=["facilities"])
 app.include_router(risk_router, prefix=f"{settings.API_V1_STR}/risk", tags=["risk"])
 app.include_router(analytics_router, prefix=f"{settings.API_V1_STR}/analytics", tags=["analytics"])
-app.include_router(system_router, prefix=f"{settings.API_V1_STR}/system", tags=["system"])
 app.include_router(voice_router, prefix=f"{settings.API_V1_STR}/voice", tags=["voice"])
 
 # --- Global Exception Handlers ---

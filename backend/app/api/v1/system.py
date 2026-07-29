@@ -237,3 +237,23 @@ async def delete_internal_user(
     await db.commit()
     
     return {"status": "ok", "deleted": str(user_id)}
+
+class BroadcastRequest(BaseModel):
+    zone: str
+    message: str
+
+@router.post("/broadcast")
+async def broadcast_alert(
+    req: BroadcastRequest,
+    current_user = Depends(get_current_user)
+):
+    if current_user.role not in ['sys_admin', 'tourism_authority', 'tourism']:
+        raise HTTPException(status_code=403, detail="Not authorized to broadcast alerts")
+        
+    # In a real scenario, this would integrate with FCM/APNs and Twilio.
+    # For now we'll mock the integration but return a real API response.
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"[EMERGENCY BROADCAST] Zone: {req.zone} | Message: {req.message}")
+    
+    return {"status": "success", "dispatched": True}

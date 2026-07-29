@@ -111,10 +111,11 @@ export default function RootLayout() {
   });
   const [authHydrated, setAuthHydrated] = useState(false);
   const hydrateAuth = useAppStore((state) => state.hydrateAuth);
+  const fetchZones = useAppStore((state) => state.fetchZones);
 
   useEffect(() => {
-    hydrateAuth().finally(() => setAuthHydrated(true));
-  }, [hydrateAuth]);
+    Promise.all([hydrateAuth(), fetchZones()]).finally(() => setAuthHydrated(true));
+  }, [hydrateAuth, fetchZones]);
 
   useEffect(() => {
     if (interLoaded || interError) {

@@ -51,6 +51,9 @@ class Settings(BaseSettings):
     TWILIO_AUTH_TOKEN: str = "mock_token"
     TWILIO_PHONE_NUMBER: str = "+1234567890"
     
+    # SMS Webhook Encryption Key
+    SMS_ENCRYPTION_KEY: str = "mock_sms_key_for_dev_only_32bytes"
+    
     # Admin seeding (set in Render env vars to auto-seed on first deploy)
     SEED_ADMIN_EMAIL: str = ""
     SEED_ADMIN_PASSWORD: str = ""
@@ -58,4 +61,10 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
 
 settings = Settings()
+
+import os
+if os.environ.get("ENVIRONMENT") == "production":
+    if settings.SECRET_KEY == "CHANGE_ME_IN_PRODUCTION_extremely_secret_key_for_jwt":
+        raise ValueError("CRITICAL: SECRET_KEY is using the default value in production. Set SECRET_KEY in your environment variables.")
+
 

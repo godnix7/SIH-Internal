@@ -52,7 +52,7 @@ export default function ResponderDashboard() {
   const [selectedIncident, setSelectedIncident] = useState<any>(null);
   const [processingActionId, setProcessingActionId] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
-  const { socket, lastEvent } = useIncidentsSocket();
+  const { socket, lastEvent, isConnected } = useIncidentsSocket();
 
   // Toast state
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error'; visible: boolean }>({ message: '', type: 'success', visible: false });
@@ -83,6 +83,16 @@ export default function ResponderDashboard() {
     fetchIncidents();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!isConnected) {
+      console.warn('Socket disconnected. Falling back to HTTP polling.');
+      const interval = setInterval(() => {
+        fetchIncidents();
+      }, 10000); // Poll every 10s
+      return () => clearInterval(interval);
+    }
+  }, [isConnected]);
 
   useEffect(() => {
     if (lastEvent) {

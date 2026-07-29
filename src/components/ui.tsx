@@ -457,13 +457,17 @@ export function Input({
   placeholder,
   secureTextEntry,
   keyboardType = 'default',
+  maxLength,
+  autoCapitalize,
 }: {
   label: string;
   value: string;
   onChangeText: (value: string) => void;
   placeholder?: string;
   secureTextEntry?: boolean;
-  keyboardType?: 'default' | 'phone-pad' | 'number-pad';
+  keyboardType?: 'default' | 'phone-pad' | 'number-pad' | 'email-address';
+  maxLength?: number;
+  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
 }) {
   const c = useAppColors();
   return (
@@ -477,6 +481,8 @@ export function Input({
         placeholderTextColor={c.onSurfaceVariant}
         secureTextEntry={secureTextEntry}
         keyboardType={keyboardType}
+        maxLength={maxLength}
+        autoCapitalize={autoCapitalize}
         style={[
           styles.input,
           type.body,

@@ -13,7 +13,6 @@ const en = {
     back: 'Back',
     save: 'Save',
     cancel: 'Cancel',
-    demo: 'Demo mode',
     planTrip: 'Plan a trip',
     imOk: 'I’m OK',
   },
@@ -36,7 +35,6 @@ const en = {
     emergencyBody:
       'Yatri Shield adds your trip context and last known location. It never replaces India’s emergency service.',
     getStarted: 'Get started',
-    exploreDemo: 'Explore demo mode',
   },
   home: {
     greeting: 'Good morning',
@@ -50,7 +48,7 @@ const en = {
     areaAdvisory: 'Area advisory',
     areaAdvisorySub: 'Keep valuables zipped around busy markets after dark.',
     weatherTitle: 'Light rain later',
-    weatherSub: 'Demo forecast · carry a light layer for the evening.',
+    weatherSub: 'Carry a light layer for the evening.',
     checkInTitle: 'Check-in received',
     checkInBody: 'You are marked OK. Your next check-in is scheduled automatically.',
     aidSavedTitle: 'Aid post saved',
@@ -67,7 +65,7 @@ const en = {
     watch: 'Just watch me',
     silentTitle: 'Silent SOS',
     silentBody:
-      'This local demo uses two short vibrations and a discreet weather-card screen after you trigger it.',
+      'This feature uses two short vibrations and a discreet weather-card screen after you trigger it.',
     silentStart: 'Start silent SOS',
     disclaimer:
       'For immediate emergency services, call 112. Yatri Shield adds context; it does not replace 112.',
@@ -78,7 +76,7 @@ const en = {
     cancel: 'I’m safe — cancel',
     cancelWithPin: 'I’m safe — cancel with PIN',
     cancelButton: 'Cancel SOS',
-    pinHint: 'Enter the cancellation PIN set in this demo: {{pin}}.',
+    pinHint: 'Enter your security PIN to cancel this alert.',
     activeTitle: 'SOS active',
     statusLine: 'Status: {{status}}',
     decoyTitle: 'Weather update',
@@ -247,7 +245,6 @@ const hi: typeof en = {
     back: 'वापस',
     save: 'सहेजें',
     cancel: 'रद्द करें',
-    demo: 'डेमो मोड',
     planTrip: 'यात्रा की योजना बनाएँ',
     imOk: 'मैं ठीक हूँ',
   },
@@ -270,7 +267,6 @@ const hi: typeof en = {
     emergencyBody:
       'यात्री शील्ड आपकी यात्रा का संदर्भ और अंतिम ज्ञात स्थान जोड़ता है। यह भारत की आपातकालीन सेवा की जगह कभी नहीं लेता।',
     getStarted: 'शुरू करें',
-    exploreDemo: 'डेमो मोड देखें',
   },
   home: {
     greeting: 'सुप्रभात',
@@ -284,7 +280,7 @@ const hi: typeof en = {
     areaAdvisory: 'क्षेत्र सलाह',
     areaAdvisorySub: 'अँधेरे के बाद भीड़ भरे बाज़ारों में क़ीमती सामान संभालकर रखें।',
     weatherTitle: 'बाद में हल्की बारिश',
-    weatherSub: 'डेमो पूर्वानुमान · शाम के लिए हल्का कपड़ा साथ रखें।',
+    weatherSub: 'शाम के लिए हल्का कपड़ा साथ रखें।',
     checkInTitle: 'चेक-इन मिल गया',
     checkInBody: 'आप ठीक दर्ज किए गए हैं। आपका अगला चेक-इन अपने आप तय हो गया है।',
     aidSavedTitle: 'सहायता चौकी सहेजी गई',
@@ -301,7 +297,7 @@ const hi: typeof en = {
     watch: 'बस नज़र रखें',
     silentTitle: 'साइलेंट SOS',
     silentBody:
-      'यह स्थानीय डेमो दो छोटे कंपन देता है और भेजने के बाद मौसम कार्ड वाली सामान्य दिखने वाली स्क्रीन दिखाता है।',
+      'यह सुविधा दो छोटे कंपन देती है और भेजने के बाद मौसम कार्ड वाली सामान्य दिखने वाली स्क्रीन दिखाती है।',
     silentStart: 'साइलेंट SOS भेजें',
     disclaimer:
       'तुरंत आपातकालीन सेवा के लिए 112 पर कॉल करें। यात्री शील्ड संदर्भ जोड़ता है; यह 112 की जगह नहीं लेता।',
@@ -312,7 +308,7 @@ const hi: typeof en = {
     cancel: 'मैं सुरक्षित हूँ — रद्द करें',
     cancelWithPin: 'मैं सुरक्षित हूँ — PIN से रद्द करें',
     cancelButton: 'SOS रद्द करें',
-    pinHint: 'इस डेमो में तय किया गया रद्दीकरण PIN डालें: {{pin}}।',
+    pinHint: 'इस अलर्ट को रद्द करने के लिए अपना सुरक्षा PIN डालें।',
     activeTitle: 'SOS सक्रिय',
     statusLine: 'स्थिति: {{status}}',
     decoyTitle: 'मौसम अपडेट',

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import DashboardLayout from '../components/DashboardLayout';
-import { getAnalyticsOverview } from '../../lib/api';
+import { getAnalyticsOverview, broadcastAlert } from '../../lib/api';
 import { Activity, AlertTriangle, Users, Clock, Send, ShieldAlert, BarChart2 } from 'lucide-react';
 
 export default function AuthorityDashboard() {
@@ -10,6 +10,8 @@ export default function AuthorityDashboard() {
   const [loading, setLoading] = useState(true);
   const [broadcastSuccess, setBroadcastSuccess] = useState(false);
   const [broadcastLoading, setBroadcastLoading] = useState(false);
+  const [zone, setZone] = useState('all');
+  const [message, setMessage] = useState('');
 
   useEffect(() => {
     getAnalyticsOverview()
@@ -18,13 +20,23 @@ export default function AuthorityDashboard() {
       .finally(() => setLoading(false));
   }, []);
 
-  const handleBroadcast = () => {
+  const handleBroadcast = async () => {
+    if (!message.trim()) {
+      alert("Please enter a message to broadcast.");
+      return;
+    }
     setBroadcastLoading(true);
-    setTimeout(() => {
-      setBroadcastLoading(false);
+    try {
+      await broadcastAlert(zone, message);
       setBroadcastSuccess(true);
+      setMessage('');
       setTimeout(() => setBroadcastSuccess(false), 4000);
-    }, 1200);
+    } catch (e) {
+      console.error(e);
+      alert("Failed to broadcast alert. Please check your permissions and try again.");
+    } finally {
+      setBroadcastLoading(false);
+    }
   };
 
   if (loading) {
@@ -138,7 +150,7 @@ export default function AuthorityDashboard() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div className="input-group">
                 <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: 'var(--color-text-secondary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Target Zone</label>
-                <select className="premium-input" defaultValue="all" style={{ width: '100%', padding: '16px', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', fontSize: '16px', appearance: 'none', cursor: 'pointer' }}>
+                <select className="premium-input" value={zone} onChange={e => setZone(e.target.value)} style={{ width: '100%', padding: '16px', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', fontSize: '16px', appearance: 'none', cursor: 'pointer' }}>
                   <option value="all" style={{ background: '#1A1A1A' }}>State-wide (All Regions)</option>
                   <option value="north" style={{ background: '#1A1A1A' }}>North District Only</option>
                   <option value="south" style={{ background: '#1A1A1A' }}>South District Only</option>
@@ -150,7 +162,9 @@ export default function AuthorityDashboard() {
                 <textarea 
                   className="premium-input" 
                   placeholder="e.g. Flash flood warning in the northern valley. Please seek higher ground immediately..." 
-                  rows={5} 
+                  rows={5}
+                  value={message}
+                  onChange={e => setMessage(e.target.value)}
                   style={{ width: '100%', padding: '16px', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', fontSize: '16px', resize: 'vertical', fontFamily: 'inherit' }}
                 />
               </div>

@@ -51,4 +51,3 @@ export const priorityRank: Record<QueuePriority, number> = {
 export const SMS_SHORTCODE = '78112';
 export const EMERGENCY_NUMBER = '112';
 export const OFFLINE_RETRY_MS = 10_000;
-export const SOS_CANCEL_PIN = '1122';

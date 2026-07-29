@@ -88,3 +88,8 @@ export const resetUserPassword = async (userId: string, newPassword: string) => 
   });
   return response.data;
 };
+
+export const broadcastAlert = async (zone: string, message: string) => {
+  const response = await apiClient.post(`/system/broadcast`, { zone, message });
+  return response.data;
+};

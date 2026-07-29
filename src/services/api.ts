@@ -230,7 +230,7 @@ export async function flushOutbox(): Promise<FlushResult> {
         const points = locations.map((loc) => ({
           lat: loc.payload.lat,
           lon: loc.payload.lng, // map lng to lon
-          accM: 10, // dummy acc for MVP unless passed
+          accM: loc.payload.accuracy || 10,
           sampledAt: loc.payload.timestamp,
         }));
 

@@ -20,10 +20,23 @@ from app.core.security import encrypt_pii, create_access_token, get_password_has
 router = APIRouter(prefix="/auth", tags=["auth"])
 logger = logging.getLogger(__name__)
 
+async def check_rate_limit(key: str, max_requests: int = 5, window_seconds: int = 60):
+    from app.core.redis import get_redis
+    redis_client = get_redis()
+    if not redis_client:
+        return
+    
+    current = await redis_client.incr(key)
+    if current == 1:
+        await redis_client.expire(key, window_seconds)
+    
+    if current > max_requests:
+        raise HTTPException(status_code=429, detail="Too many requests. Please try again later.")
 
 @router.post("/signup", response_model=SignupResponse)
 async def signup(request: SignupRequest, db: AsyncSession = Depends(get_db)):
     """Tourist signup with email, phone, password, confirmPassword."""
+    await check_rate_limit(f"rate_limit:signup:{request.email}", max_requests=3, window_seconds=300)
     # Check if email already exists
     result = await db.execute(select(User).where(User.email == request.email))
     if result.scalars().first():
@@ -87,6 +100,7 @@ async def signup(request: SignupRequest, db: AsyncSession = Depends(get_db)):
 @router.post("/login", response_model=LoginResponse)
 async def login(request: LoginRequest, db: AsyncSession = Depends(get_db)):
     """Tourist login with email and password."""
+    await check_rate_limit(f"rate_limit:login:{request.email}", max_requests=5, window_seconds=300)
     result = await db.execute(select(User).where(User.email == request.email))
     user = result.scalars().first()
 
@@ -151,6 +165,7 @@ async def login(request: LoginRequest, db: AsyncSession = Depends(get_db)):
 @router.post("/login/internal", response_model=InternalLoginResponse)
 async def login_internal(request: InternalLoginRequest, db: AsyncSession = Depends(get_db)):
     """Internal user login for web dashboard (all staff roles)."""
+    await check_rate_limit(f"rate_limit:login_internal:{request.email}", max_requests=5, window_seconds=300)
     result = await db.execute(select(InternalUser).where(InternalUser.email == request.email))
     user = result.scalars().first()
 

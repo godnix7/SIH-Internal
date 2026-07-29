@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 async def send_push_notification(db: AsyncSession, user_id: uuid.UUID, title: str, body: str, data: Optional[Dict[str, Any]] = None, priority: str = "high"):
     """
-    Mock pushing an FCM/APNs notification to all user devices.
+    Push an Expo notification to all user devices.
     """
     result = await db.execute(select(Device).where(Device.user_id == user_id))
     devices = result.scalars().all()
@@ -23,12 +23,32 @@ async def send_push_notification(db: AsyncSession, user_id: uuid.UUID, title: st
         logger.warning(f"No devices found for user {user_id} to send push notification.")
         return
         
+    messages = []
     for device in devices:
-        if device.push_token:
-            # Mocking network call to FCM/APNs
-            logger.info(f"[MOCK PUSH] -> {device.push_token} (Priority: {priority}) | {title}: {body} | Data: {data}")
+        if device.push_token and device.push_token.startswith("ExponentPushToken"):
+            messages.append({
+                "to": device.push_token,
+                "sound": "default",
+                "title": title,
+                "body": body,
+                "data": data or {},
+                "priority": priority
+            })
         else:
-            logger.info(f"[MOCK PUSH] -> Skipped device {device.id} (No push token)")
+            logger.info(f"Skipped device {device.id} (Invalid or missing push token)")
+            
+    if messages:
+        try:
+            import httpx
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    "https://exp.host/--/api/v2/push/send",
+                    json=messages,
+                    headers={"Accept": "application/json", "Accept-encoding": "gzip, deflate", "Content-Type": "application/json"}
+                )
+                logger.info(f"Expo push response: {response.status_code} {response.text}")
+        except Exception as e:
+            logger.error(f"Failed to send Expo push notification: {e}")
 
 
 async def send_sms(phone_hash: str, phone_plaintext: str, template_id: str, variables: Dict[str, str]):
@@ -59,10 +79,16 @@ async def notify_emergency_contacts(user_id: uuid.UUID, incident_id: uuid.UUID):
         if not user:
             return
             
-        # We could fetch their actual name from Identity if they have one, 
-        # but for simplicity/safety, we might use their phone number or "Your contact"
-        # To keep it robust without extra joins, we'll just say "Your contact".
-        # In a real impl, we'd fetch identity.identities.name_enc and decrypt it.
+        # Fetch their actual name from Identity if they have one
+        from app.models.identity import Identity
+        identity_result = await db.execute(select(Identity).where(Identity.user_id == user_id))
+        identity = identity_result.scalars().first()
+        
+        user_name = "Your contact"
+        if identity and identity.name_enc:
+            user_name = decrypt_pii(identity.name_enc)
+        elif user.phone:
+            user_name = f"User ({user.phone[-4:]})"
         
         # 2. Fetch emergency contacts
         contacts_result = await db.execute(
@@ -83,14 +109,14 @@ async def notify_emergency_contacts(user_id: uuid.UUID, incident_id: uuid.UUID):
                 phone_plaintext=contact_phone,
                 template_id="SOS_EMERGENCY",
                 variables={
-                    "name": "Your contact",
+                    "name": user_name,
                     "link": incident_link
                 }
             )
             # 2. Initiate AI Voice Operator Call
-            await initiate_emergency_call(contact_phone, incident_id)
+            await initiate_emergency_call(contact_phone, incident_id, user_name)
 
-async def initiate_emergency_call(phone_plaintext: str, incident_id: uuid.UUID):
+async def initiate_emergency_call(phone_plaintext: str, incident_id: uuid.UUID, user_name: str = "Your contact"):
     """
     Sends an outbound call request to Twilio.
     Twilio will hit our /api/v1/voice/outbound/{incident_id} webhook.
@@ -104,6 +130,10 @@ async def initiate_emergency_call(phone_plaintext: str, incident_id: uuid.UUID):
     
     for attempt in range(max_retries):
         try:
+            if settings.TWILIO_ACCOUNT_SID == "mock_sid":
+                logger.info(f"[VOICE AI] Twilio mock_sid detected. Bypassing real call to {phone_plaintext}.")
+                return
+
             client = Client(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
             
             # Real call initiation

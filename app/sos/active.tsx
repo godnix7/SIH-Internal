@@ -8,7 +8,6 @@ import { MapZoneLayer } from '@/src/components/MapZoneLayer';
 import { Screen } from '@/src/components/Screen';
 import { Button, Card, OfflineBar, PinPad, TimelineItem, useAppColors } from '@/src/components/ui';
 import {
-  SOS_CANCEL_PIN,
   SMS_SHORTCODE,
   EMERGENCY_NUMBER,
   OFFLINE_RETRY_MS,
@@ -140,7 +139,7 @@ export default function SosActiveScreen() {
                 </Text>
               )}
               <Text style={[type.caption, { color: c.onSurfaceVariant }]}>
-                {t('sos.pinHint', { pin: SOS_CANCEL_PIN })}
+                Enter your 4-digit security PIN to cancel
               </Text>
               <Button
                 label={cancelling ? 'Cancelling…' : t('sos.cancelButton')}
