@@ -9,6 +9,8 @@ export type SOSStatus =
   | 'SENT'
   | 'ACKNOWLEDGED'
   | 'RESPONDER_ENROUTE'
+  | 'RESPONDER_ARRIVED'
+  | 'RESOLVE_PENDING'
   | 'RESOLVED'
   | 'CANCELLED'
   | 'OFFLINE_QUEUED';

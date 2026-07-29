@@ -10,9 +10,12 @@ from app.core.middleware import get_current_user
 from app.models.auth import User
 from app.models.incident import Incident, IncidentEvent
 from app.models.sos import SOSAlert
-from app.schemas.sos import IncidentResponse, IncidentEventSchema, SOSAcknowledgeRequest
+from app.models.identity import Identity, MedicalCard
+from app.schemas.sos import IncidentResponse, IncidentEventSchema, SOSAcknowledgeRequest, TouristDetails, SOSResolveRequest
 from app.core.socket import broadcast_incident_update
+from app.core.security import decrypt_pii
 from app.services.blockchain import BlockchainService
+import random
 
 router = APIRouter()
 
@@ -49,6 +52,46 @@ async def list_incidents(
             ) for ev in events
         ]
         
+        # Fetch tourist details
+        tourist_details = TouristDetails()
+        ident_res = await db.execute(select(Identity).where(Identity.user_id == inc.user_id))
+        identity = ident_res.scalars().first()
+        if identity and identity.name_enc:
+            try:
+                tourist_details.name = decrypt_pii(identity.name_enc)
+            except Exception:
+                pass
+
+        user_res = await db.execute(select(User).where(User.id == inc.user_id))
+        user = user_res.scalars().first()
+        if user and user.phone_hash:
+            # Phone isn't encrypted identically to name (phone_hash is just hash), but usually we might store encrypted phone in Identity if requested. We can just use phone_hash as a mock if needed, or skip it.
+            # Actually, the user object doesn't have phone_enc in MVP. Let's leave phone blank or use a placeholder.
+            pass
+
+        med_res = await db.execute(select(MedicalCard).where(MedicalCard.user_id == inc.user_id))
+        medical = med_res.scalars().first()
+        if medical:
+            tourist_details.bloodGroup = medical.blood_group
+            if medical.allergies_enc:
+                try:
+                    tourist_details.allergies = decrypt_pii(medical.allergies_enc)
+                except Exception:
+                    pass
+            if medical.medications_enc:
+                try:
+                    tourist_details.medications = decrypt_pii(medical.medications_enc)
+                except Exception:
+                    pass
+
+        # Try to extract WKT location if available. 
+        # For geoalchemy2, it returns WKBElement natively, which is not JSON serializable easily without shapely.
+        # We can run a secondary quick scalar query for the wkt.
+        loc_wkt = None
+        if inc.location is not None:
+            from sqlalchemy.sql import func
+            loc_wkt = await db.scalar(select(func.ST_AsText(Incident.location)).where(Incident.id == inc.id))
+
         responses.append(IncidentResponse(
             id=inc.id,
             sosAlertId=inc.sos_alert_id,
@@ -57,7 +100,9 @@ async def list_incidents(
             type=inc.type,
             createdAt=inc.created_at,
             updatedAt=inc.updated_at,
-            events=event_schemas
+            events=event_schemas,
+            locationWkt=loc_wkt,
+            touristDetails=tourist_details
         ))
         
     return responses
@@ -115,9 +160,85 @@ async def acknowledge_incident(
     
     return {"status": "acknowledged", "acknowledgedBy": str(current_user.id)}
 
+@router.post("/{incident_id}/arrive")
+async def arrive_incident(
+    incident_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    if current_user.role == 'tourist':
+        raise HTTPException(status_code=403, detail="Only operators can update arrival status")
+        
+    result = await db.execute(select(Incident).where(Incident.id == incident_id))
+    incident = result.scalars().first()
+    
+    if not incident:
+        raise HTTPException(status_code=404, detail="Incident not found")
+        
+    incident.status = 'responder_arrived'
+    
+    event = IncidentEvent(
+        incident_id=incident.id,
+        event_type='responder_arrived',
+        actor_id=current_user.id,
+        details={"status": "Responders arrived on scene"}
+    )
+    db.add(event)
+    await db.flush()
+    await BlockchainService.append_event(db, str(incident.id), str(event.id), event.event_type, event.details)
+    await db.commit()
+    
+    await broadcast_incident_update({
+        "id": str(incident.id),
+        "status": incident.status,
+        "updatedAt": int(incident.updated_at.timestamp() * 1000) if incident.updated_at else None
+    })
+    return {"status": "responder_arrived"}
+
+@router.post("/{incident_id}/request_resolve")
+async def request_resolve_incident(
+    incident_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    if current_user.role == 'tourist':
+        raise HTTPException(status_code=403, detail="Only operators can request resolution")
+        
+    result = await db.execute(select(Incident).where(Incident.id == incident_id))
+    incident = result.scalars().first()
+    
+    if not incident:
+        raise HTTPException(status_code=404, detail="Incident not found")
+        
+    # Generate 4-digit OTP
+    otp = str(random.randint(1000, 9999))
+    incident.resolution_otp = otp
+    incident.status = 'resolve_pending'
+    
+    event = IncidentEvent(
+        incident_id=incident.id,
+        event_type='resolve_pending',
+        actor_id=current_user.id,
+        details={"status": "OTP generated and sent to tourist for verification"}
+    )
+    db.add(event)
+    await db.flush()
+    await BlockchainService.append_event(db, str(incident.id), str(event.id), event.event_type, event.details)
+    await db.commit()
+    
+    await broadcast_incident_update({
+        "id": str(incident.id),
+        "status": incident.status,
+        "updatedAt": int(incident.updated_at.timestamp() * 1000) if incident.updated_at else None,
+        "otp": otp
+    })
+    
+    return {"status": "resolve_pending", "message": "OTP generated"}
+
 @router.post("/{incident_id}/resolve")
 async def resolve_incident(
     incident_id: uuid.UUID,
+    req: SOSResolveRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
@@ -132,8 +253,13 @@ async def resolve_incident(
         
     if incident.status == 'resolved':
         return {"status": "resolved"}
+
+    # Verify OTP
+    if incident.resolution_otp and incident.resolution_otp != req.otp:
+        raise HTTPException(status_code=400, detail="Invalid OTP provided")
         
     incident.status = 'resolved'
+    incident.resolution_otp = None # Clear it after use
     
     sos_res = await db.execute(select(SOSAlert).where(SOSAlert.id == incident.sos_alert_id))
     sos = sos_res.scalars().first()
@@ -144,7 +270,7 @@ async def resolve_incident(
         incident_id=incident.id,
         event_type='resolved',
         actor_id=current_user.id,
-        details={"reason": "Threat cleared"}
+        details={"reason": "Threat cleared with verified OTP"}
     )
     db.add(event)
     await db.flush()

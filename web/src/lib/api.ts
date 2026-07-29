@@ -31,8 +31,18 @@ export const acknowledgeIncident = async (id: string) => {
   return response.data;
 };
 
-export const resolveIncident = async (id: string) => {
-  const response = await apiClient.post(`/incidents/${id}/resolve`);
+export const arriveIncident = async (id: string) => {
+  const response = await apiClient.post(`/incidents/${id}/arrive`);
+  return response.data;
+};
+
+export const requestResolve = async (id: string) => {
+  const response = await apiClient.post(`/incidents/${id}/request_resolve`);
+  return response.data;
+};
+
+export const resolveIncident = async (id: string, otp: string) => {
+  const response = await apiClient.post(`/incidents/${id}/resolve`, { otp });
   return response.data;
 };
 

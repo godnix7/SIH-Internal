@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import DashboardLayout from '../components/DashboardLayout';
-import { getIncidents, acknowledgeIncident, resolveIncident, assignIncident, escalateIncident } from '../../lib/api';
+import { getIncidents, acknowledgeIncident, resolveIncident, assignIncident, escalateIncident, requestResolve, arriveIncident } from '../../lib/api';
 import { useIncidentsSocket } from '../../hooks/useIncidentsSocket';
 import { AlertCircle, EyeOff, MapPin, CheckCircle, X, Loader2 } from 'lucide-react';
 
@@ -70,8 +70,9 @@ export default function ResponderDashboard() {
   const [escalateReason, setEscalateReason] = useState('');
   const [escalateTargetId, setEscalateTargetId] = useState<string | null>(null);
 
-  // Confirm resolve
+  // Confirm resolve & OTP
   const [confirmResolveId, setConfirmResolveId] = useState<string | null>(null);
+  const [resolveOtp, setResolveOtp] = useState('');
 
   useEffect(() => {
     // SLA Timer Tick
@@ -207,15 +208,33 @@ export default function ResponderDashboard() {
       showToast('Cannot resolve an incident that has not been acknowledged yet.', 'error');
       return;
     }
-    setConfirmResolveId(id);
+    setProcessingActionId(id);
+    try {
+      await requestResolve(id);
+      showToast('Safety check initiated. Ask the tourist for their OTP.');
+      setConfirmResolveId(id);
+      setResolveOtp('');
+    } catch (error: any) {
+      if (!error.response) {
+        showToast('Network error. Please try again.', 'error');
+      } else {
+        showToast(error.response?.data?.detail || 'Failed to request resolution.', 'error');
+      }
+    } finally {
+      setProcessingActionId(null);
+    }
   };
 
   const confirmResolve = async () => {
     if (!confirmResolveId) return;
+    if (!resolveOtp.trim() || resolveOtp.trim().length !== 4) {
+      showToast('Please enter the 4-digit OTP from the tourist.', 'error');
+      return;
+    }
     if (processingActionId === confirmResolveId) return;
     setProcessingActionId(confirmResolveId);
     try {
-      await resolveIncident(confirmResolveId);
+      await resolveIncident(confirmResolveId, resolveOtp.trim());
       showToast('Incident resolved and closed.');
       setConfirmResolveId(null);
       await fetchIncidents();
@@ -223,10 +242,32 @@ export default function ResponderDashboard() {
     } catch (error: any) {
       if (error.response?.status === 403) {
         showToast('You do not have permission to resolve incidents.', 'error');
+      } else if (error.response?.status === 400) {
+        showToast('Invalid OTP provided. Please check with the tourist.', 'error');
       } else if (!error.response) {
         showToast('Network error. Please try again.', 'error');
       } else {
         showToast(error.response?.data?.detail || 'Failed to resolve incident.', 'error');
+      }
+    } finally {
+      setProcessingActionId(null);
+    }
+  };
+
+  const handleArrive = async (id: string) => {
+    if (processingActionId === id) return;
+    setProcessingActionId(id);
+    try {
+      await arriveIncident(id);
+      showToast('Unit arrival confirmed.');
+      await fetchIncidents();
+    } catch (error: any) {
+      if (error.response?.status === 403) {
+        showToast('You do not have permission.', 'error');
+      } else if (!error.response) {
+        showToast('Network error.', 'error');
+      } else {
+        showToast(error.response?.data?.detail || 'Failed to update status.', 'error');
       }
     } finally {
       setProcessingActionId(null);
@@ -369,7 +410,12 @@ export default function ResponderDashboard() {
               </div>
               
               <div style={{ padding: '16px', backgroundColor: 'var(--color-background)', borderRadius: '8px' }}>
-                <p style={{ fontWeight: '500', marginBottom: '8px' }}>Tourist Details</p>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <p style={{ fontWeight: '500' }}>Incident Context</p>
+                  <span style={{ fontSize: '11px', background: 'var(--color-surface-variant)', padding: '2px 6px', borderRadius: '4px', fontFamily: 'monospace' }}>
+                    ID: {selectedIncident.id.split('-')[0]}
+                  </span>
+                </div>
                 <div style={{ fontSize: '14px', color: 'var(--color-on-surface-variant)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                   <div><strong>Status:</strong> {selectedIncident.status.toUpperCase()}</div>
                   <div><strong>Severity:</strong> {selectedIncident.severity}</div>
@@ -377,6 +423,19 @@ export default function ResponderDashboard() {
                   <div><strong>Created:</strong> {new Date(selectedIncident.createdAt).toLocaleTimeString()}</div>
                 </div>
               </div>
+
+              {selectedIncident.touristDetails && (
+                <div style={{ padding: '16px', backgroundColor: 'var(--color-background)', borderRadius: '8px' }}>
+                  <p style={{ fontWeight: '500', marginBottom: '8px' }}>Tourist Information</p>
+                  <div style={{ fontSize: '14px', color: 'var(--color-on-surface-variant)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    <div><strong>Name:</strong> {selectedIncident.touristDetails.name || 'Unknown'}</div>
+                    <div><strong>Phone:</strong> {selectedIncident.touristDetails.phone || 'N/A'}</div>
+                    <div><strong>Blood Group:</strong> {selectedIncident.touristDetails.bloodGroup || 'Unknown'}</div>
+                    <div><strong>Allergies:</strong> {selectedIncident.touristDetails.allergies || 'None listed'}</div>
+                    <div style={{ gridColumn: 'span 2' }}><strong>Medications:</strong> {selectedIncident.touristDetails.medications || 'None listed'}</div>
+                  </div>
+                </div>
+              )}
 
               <div style={{ padding: '16px', backgroundColor: 'var(--color-background)', borderRadius: '8px' }}>
                 <p style={{ fontWeight: '500', marginBottom: '8px' }}>Actions</p>
@@ -407,10 +466,17 @@ export default function ResponderDashboard() {
                   </button>
                   <button 
                     className="btn btn-secondary"
-                    disabled={selectedIncident.status === 'created' || processingActionId === selectedIncident.id}
+                    disabled={['created', 'resolved', 'resolve_pending'].includes(selectedIncident.status) || processingActionId === selectedIncident.id}
+                    onClick={() => handleArrive(selectedIncident.id)}
+                  >
+                    Unit Arrived
+                  </button>
+                  <button 
+                    className="btn btn-secondary"
+                    disabled={['created', 'resolve_pending'].includes(selectedIncident.status) || processingActionId === selectedIncident.id}
                     onClick={() => handleResolve(selectedIncident.id)}
                   >
-                    Resolve
+                    Resolve Case
                   </button>
                 </div>
               </div>
@@ -495,11 +561,24 @@ export default function ResponderDashboard() {
       </Modal>
 
       {/* ── Resolve Confirmation Modal ────────────────────────────── */}
-      <Modal open={!!confirmResolveId} onClose={() => setConfirmResolveId(null)} title="Confirm Resolution">
+      <Modal open={!!confirmResolveId} onClose={() => setConfirmResolveId(null)} title="Security Clearance Required">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <p style={{ color: 'var(--color-on-surface-variant)', fontSize: '15px' }}>
-            Are you sure you want to resolve and close this incident? This action will timestamp the resolution and remove it from the active queue.
+            To close this case, you must verify the tourist's safety. An OTP has been sent to their device. Please ask them for the 4-digit code.
           </p>
+          <div>
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', marginBottom: '8px', color: 'var(--color-on-surface-variant)' }}>Tourist OTP</label>
+            <input
+              type="text"
+              maxLength={4}
+              className="input-premium"
+              placeholder="0000"
+              value={resolveOtp}
+              onChange={(e) => setResolveOtp(e.target.value.replace(/\D/g, ''))}
+              style={{ fontSize: '24px', letterSpacing: '4px', textAlign: 'center' }}
+              autoFocus
+            />
+          </div>
           <div style={{ display: 'flex', gap: '12px' }}>
             <button className="btn btn-outline" style={{ flex: 1, padding: '12px' }} onClick={() => setConfirmResolveId(null)}>Cancel</button>
             <button

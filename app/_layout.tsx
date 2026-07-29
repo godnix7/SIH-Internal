@@ -49,11 +49,13 @@ function PinGuard() {
 
 function SafetyRestorer() {
   const restoreSos = useAppStore((state) => state.restoreSos);
+  const restoreTrips = useAppStore((state) => state.restoreTrips);
   useEffect(() => {
+    restoreTrips();
     void restoreSos().then(() => {
       if (isSosActive(useAppStore.getState().sos)) router.replace('/sos/active');
     });
-  }, [restoreSos]);
+  }, [restoreSos, restoreTrips]);
   return null;
 }
 
@@ -68,10 +70,16 @@ function RealtimeBridge() {
           ? 'ACKNOWLEDGED'
           : incident.status === 'responder_enroute'
             ? 'RESPONDER_ENROUTE'
-            : incident.status === 'resolved'
-              ? 'RESOLVED'
-              : 'SENT';
-      if (sos.status !== next) void setSosStatus(next);
+            : incident.status === 'responder_arrived'
+              ? 'RESPONDER_ARRIVED'
+              : incident.status === 'resolve_pending'
+                ? 'RESOLVE_PENDING'
+                : incident.status === 'resolved'
+                  ? 'RESOLVED'
+                  : 'SENT';
+      if (sos.status !== next || (incident as any).otp) {
+        void setSosStatus(next as any, (incident as any).otp);
+      }
     });
     return () => {
       socket.disconnect();

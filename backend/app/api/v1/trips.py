@@ -19,6 +19,19 @@ def create_receipt_hash(user_id: UUID, trip_id: UUID, consent_tier: str, timesta
     payload = f"{user_id}:{trip_id}:{consent_tier}:{timestamp.isoformat()}"
     return hashlib.sha256(payload.encode()).hexdigest()
 
+@router.get("", response_model=list[TripResponse])
+async def list_trips(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(
+        select(Trip)
+        .where(Trip.user_id == current_user.id)
+        .order_by(Trip.created_at.desc())
+    )
+    trips = result.scalars().all()
+    return trips
+
 @router.post("", response_model=TripResponse, status_code=status.HTTP_201_CREATED)
 async def create_trip(
     trip_in: TripCreate,

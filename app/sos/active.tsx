@@ -20,10 +20,15 @@ import { space, type } from '@/src/theme/tokens';
 export default function SosActiveScreen() {
   const c = useAppColors();
   const { t } = useTranslation();
-  const { sos, trips, incidentEvents, setSosStatus, sendSos, cancelSos, resolveSos } =
+  const { sos, trips, incidentEvents } =
     useAppStore();
   const [pin, setPin] = useState('');
   const [cancelOpen, setCancelOpen] = useState(false);
+  const setSosStatus = useAppStore((state) => state.setSosStatus);
+  const sendSos = useAppStore((state) => state.sendSos);
+  const cancelSos = useAppStore((state) => state.cancelSos);
+  const resolutionOtp = useAppStore((state) => state.resolutionOtp);
+  const resolveSos = useAppStore((state) => state.resolveSos);
   const [now, setNow] = useState<number | undefined>();
   const [cancelling, setCancelling] = useState(false);
   const [resolving, setResolving] = useState(false);
@@ -159,6 +164,7 @@ export default function SosActiveScreen() {
 
   return (
     <Screen
+      hideBack
       title={sos.silent ? t('sos.decoyTitle') : t('sos.activeTitle')}
       subtitle={sos.silent ? t('sos.decoySub') : t('sos.statusLine', { status: statusText })}
     >
@@ -166,12 +172,31 @@ export default function SosActiveScreen() {
         <Text style={[type.subtitle, { color: c.critical }]}>
           {sos.status === 'RESPONDER_ENROUTE'
             ? t('sos.enroute')
-            : sos.status === 'ACKNOWLEDGED'
-              ? t('sos.acknowledged')
-              : t('sos.delivering')}
+            : sos.status === 'RESPONDER_ARRIVED'
+              ? 'Police/Medical team has arrived at your location'
+              : sos.status === 'RESOLVE_PENDING'
+                ? 'Incident clearing pending'
+                : sos.status === 'ACKNOWLEDGED'
+                  ? t('sos.acknowledged')
+                  : t('sos.delivering')}
         </Text>
         <Text style={[type.body, { color: c.onSurfaceVariant }]}>{t('sos.sharedLine')}</Text>
       </Card>
+      
+      {sos.status === 'RESOLVE_PENDING' && resolutionOtp && (
+        <Card>
+          <Text style={[type.subtitle, { color: c.onSurface }]}>Security Clearance OTP</Text>
+          <Text style={[type.body, { color: c.onSurfaceVariant, marginBottom: 8 }]}>
+            The responder has requested to close this incident. Please verify their identity and read them the following code to confirm your safety:
+          </Text>
+          <View style={{ backgroundColor: c.surfaceVariant, padding: 16, borderRadius: 8, alignItems: 'center' }}>
+            <Text style={{ fontSize: 32, fontWeight: 'bold', letterSpacing: 8, color: c.primary }}>
+              {resolutionOtp}
+            </Text>
+          </View>
+        </Card>
+      )}
+
       {offline && (
         <View style={{ gap: space.sm }}>
           <OfflineBar />

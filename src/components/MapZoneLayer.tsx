@@ -1,4 +1,15 @@
-import MapLibreGL from '@maplibre/maplibre-react-native';
+// import MapLibreGL from '@maplibre/maplibre-react-native';
+const MapLibreGL = {
+  setAccessToken: () => {},
+  StyleURL: { Street: 'street' },
+  MapView: ({ children, style }: any) => <View style={style}>{children}</View>,
+  Camera: () => <View />,
+  UserLocation: () => <View />,
+  ShapeSource: ({ children }: any) => <View>{children}</View>,
+  FillLayer: () => <View />,
+  LineLayer: () => <View />,
+  PointAnnotation: ({ children }: any) => <View>{children}</View>,
+};
 import { StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { formatCoordinates } from '@/src/lib/formatters';

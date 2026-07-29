@@ -38,6 +38,13 @@ class IncidentEventSchema(BaseModel):
     createdAt: datetime
     details: Optional[Dict[str, Any]] = None
 
+class TouristDetails(BaseModel):
+    name: Optional[str] = None
+    phone: Optional[str] = None
+    bloodGroup: Optional[str] = None
+    allergies: Optional[str] = None
+    medications: Optional[str] = None
+
 class IncidentResponse(BaseModel):
     id: UUID
     sosAlertId: UUID
@@ -47,6 +54,11 @@ class IncidentResponse(BaseModel):
     createdAt: datetime
     updatedAt: datetime
     events: List[IncidentEventSchema] = []
+    locationWkt: Optional[str] = None
+    touristDetails: Optional[TouristDetails] = None
+
+class SOSResolveRequest(BaseModel):
+    otp: str
 
 class SmsIngestRequest(BaseModel):
     sender_phone: str

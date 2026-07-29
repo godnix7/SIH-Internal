@@ -23,6 +23,7 @@ class Incident(Base):
     summary = Column(String)
     merged_into = Column(UUID(as_uuid=True), ForeignKey('incident.incidents.id'))
     chain_head = Column(String)
+    resolution_otp = Column(String)
     created_at = Column(DateTime(timezone=True), default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now(), nullable=False)
     resolved_at = Column(DateTime(timezone=True))

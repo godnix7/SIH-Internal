@@ -63,7 +63,7 @@ const en = {
     holdHint: 'Press and hold for one and a half seconds to begin an emergency alert',
     medical: 'Medical',
     police: 'Police',
-    watch: 'Just watch me',
+    watch: 'General / Both',
     silentTitle: 'Silent SOS',
     silentBody:
       'This feature uses two short vibrations and a discreet weather-card screen after you trigger it.',

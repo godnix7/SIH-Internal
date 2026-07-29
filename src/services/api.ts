@@ -108,6 +108,10 @@ api.interceptors.response.use(
 );
 
 export const tripApi = {
+  getTrips: async () => {
+    const res = await api.get('/trips');
+    return res.data;
+  },
   createTrip: async (data: any) => {
     const payload = {
       destination: data.destination,
@@ -262,7 +266,15 @@ export async function flushOutbox(): Promise<FlushResult> {
   for (const item of otherEvents) {
     try {
       if (item.type === 'sos') {
-        await sosApi.triggerSos(item.payload, item.id);
+        const res = await sosApi.triggerSos(item.payload, item.id);
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const { useAppStore } = require('../stores/useAppStore');
+        const state = useAppStore.getState();
+        if (state.sos && state.sos.id === item.id) {
+          useAppStore.setState({
+            sos: { ...state.sos, id: res.sosId, incidentId: res.incidentId }
+          });
+        }
       } else {
         await api.post('/events', item, {
           headers: { 'Idempotency-Key': item.id },

@@ -98,7 +98,10 @@ export default function HomeScreen() {
         <Text style={[type.display, { color: c.onSurface }]}>
           {profile?.name?.split(' ')[0] ?? t('home.fallbackName')}
         </Text>
-        <MonitoringStatusPill state={state} onPress={() => router.push('/settings/privacy')} />
+        <MonitoringStatusPill 
+          state={state} 
+          onPress={() => state === 'emergency' ? router.push('/sos/active') : router.push('/settings/privacy')} 
+        />
       </View>
       {!online && <OfflineBar />}
       {trip ? (

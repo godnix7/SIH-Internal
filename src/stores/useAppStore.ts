@@ -17,13 +17,19 @@ import type {
   Zone,
 } from '@/src/lib/types';
 import { outboxQueue } from '@/src/services/outboxQueue';
-import { flushOutbox, tripApi, zoneApi } from '@/src/services/api';
+import { flushOutbox, tripApi, zoneApi, sosApi } from '@/src/services/api';
 import { locationEngine } from '@/src/services/locationEngine';
 import { preferences } from '@/src/services/preferences';
+import * as Crypto from 'expo-crypto';
 
 const SOS_KEY = 'yatri-shield.active-sos.v1';
 // The event chain can exceed SecureStore's value limit, so it lives in MMKV beside the record.
 const SOS_EVENTS_KEY = 'yatri-shield.active-sos-events.v1';
+const TRIPS_KEY = 'yatri-shield.trips.v1';
+
+function persistTrips(trips: Trip[]) {
+  preferences.set(TRIPS_KEY, JSON.stringify(trips));
+}
 
 
 type Profile = {
@@ -44,6 +50,7 @@ type AppStore = {
   trips: Trip[];
   alerts: AlertItem[];
   sos?: SOSRecord;
+  resolutionOtp?: string;
   incidentEvents: IncidentEvent[];
   zones: Zone[];
   fetchZones: () => Promise<void>;
@@ -74,10 +81,11 @@ type AppStore = {
   addAlert: (alert: Omit<AlertItem, 'id' | 'createdAt'>) => void;
   beginSos: (type: SOSRecord['type'], silent: boolean, location?: Coordinates) => Promise<void>;
   sendSos: () => Promise<void>;
-  setSosStatus: (status: SOSStatus) => Promise<void>;
+  setSosStatus: (status: SOSStatus, otp?: string) => Promise<void>;
   cancelSos: (pin: string) => Promise<boolean>;
   resolveSos: () => Promise<void>;
   restoreSos: () => Promise<void>;
+  restoreTrips: () => Promise<void>;
 };
 
 function uniqueId(prefix: string): string {
@@ -208,7 +216,11 @@ export const useAppStore = create<AppStore>((set, get) => ({
         { tripId: trip.id, tier: trip.tier, destination: trip.destination },
         'CHECKIN',
       );
-      set((state) => ({ trips: [trip, ...state.trips] }));
+      set((state) => {
+        const newTrips = [trip, ...state.trips];
+        persistTrips(newTrips);
+        return { trips: newTrips };
+      });
       return trip;
     } catch (error) {
       // eslint-disable-next-line no-console
@@ -238,33 +250,34 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
   endTrip: async (tripId) => {
     try {
-      if (get().online) {
-        await tripApi.endTrip(tripId);
-      }
-      set((state) => ({
-        trips: state.trips.map((trip) =>
-          trip.id === tripId ? { ...trip, status: 'ended' } : trip,
-        ),
-      }));
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error('Failed to end trip', error);
+      if (get().online) await tripApi.endTrip(tripId);
+    } catch {
+      // Offline: handled later via sync if needed
     }
+    set((state) => {
+      const newTrips = state.trips.map((t) => (t.id === tripId ? { ...t, status: 'ended' } : t));
+      persistTrips(newTrips);
+      return { trips: newTrips as Trip[] };
+    });
   },
   addAlert: (alert) =>
     set((state) => ({
       alerts: [{ ...alert, id: uniqueId('alert'), createdAt: Date.now() }, ...state.alerts],
     })),
   beginSos: async (type, silent, location) => {
-    const incidentId = uniqueId('incident');
+    // Check for an active trip
+    const trip = activeTrip(get().trips);
+
+    // Initial local record creation (client ID for idempotency)
+    const clientSosId = Crypto.randomUUID();
     const sos: SOSRecord = {
-      id: uniqueId('sos'),
+      id: clientSosId,
       type,
       silent,
       status: 'COUNTDOWN',
       createdAt: Date.now(),
       location,
-      incidentId,
+      incidentId: uniqueId('incident'),
     };
     const event = await appendEvent([], 'sos.created', 'you', { type, silent, location });
     set({ sos, incidentEvents: [event] });
@@ -279,11 +292,19 @@ export const useAppStore = create<AppStore>((set, get) => ({
     await outboxQueue.enqueue(
       'sos.triggered',
       {
-        sosId: sos.id,
+        clientSosId: sos.id,
+        tripId: sos.tripId,
         incidentId: sos.incidentId,
         type: sos.type,
         silent: sos.silent,
-        location: sos.location,
+        location: sos.location
+          ? {
+              lat: sos.location.latitude,
+              lon: sos.location.longitude,
+              accM: sos.location.accuracy,
+              ts: new Date(sos.location.timestamp).toISOString(),
+            }
+          : undefined,
       },
       'SOS',
     );
@@ -292,12 +313,12 @@ export const useAppStore = create<AppStore>((set, get) => ({
       await get().setSosStatus('SENT');
     }
   },
-  setSosStatus: async (status) => {
-    const sos = get().sos;
+  setSosStatus: async (status, otp) => {
+    const { sos, incidentEvents } = get();
     if (!sos) return;
     const nextSos = { ...sos, status };
     const event = await appendEvent(
-      get().incidentEvents,
+      incidentEvents,
       `sos.${status.toLowerCase()}`,
       status === 'ACKNOWLEDGED'
         ? 'operator'
@@ -306,9 +327,9 @@ export const useAppStore = create<AppStore>((set, get) => ({
           : 'system',
       { status },
     );
-    const incidentEvents = [...get().incidentEvents, event];
-    set({ sos: nextSos, incidentEvents });
-    await persistSos(nextSos, incidentEvents);
+    const nextEvents = [...incidentEvents, event];
+    set({ sos: nextSos, incidentEvents: nextEvents, resolutionOtp: otp ?? get().resolutionOtp });
+    await persistSos(nextSos, nextEvents);
     if (status === 'SENT')
       get().addAlert({
         kind: 'incident',
@@ -319,7 +340,17 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
   cancelSos: async (pin) => {
     const storedPin = await storage.getDevicePin();
-    if (!storedPin || pin !== storedPin || !get().sos) return false;
+    const sos = get().sos;
+    if (!storedPin || pin !== storedPin || !sos) return false;
+    
+    try {
+      if (get().online) {
+        await sosApi.cancelSos(sos.id, { reason: 'User cancelled via PIN' });
+      }
+    } catch (e) {
+      console.warn("Failed to notify backend of cancel", e);
+    }
+    
     await get().setSosStatus('CANCELLED');
     await clearPersistedSos();
     await locationEngine.setEmergency(false);
@@ -344,6 +375,38 @@ export const useAppStore = create<AppStore>((set, get) => ({
     const savedEvents = preferences.getString(SOS_EVENTS_KEY);
     const incidentEvents = savedEvents ? (JSON.parse(savedEvents) as IncidentEvent[]) : [];
     set({ sos, incidentEvents });
+  },
+  restoreTrips: async () => {
+    // 1. Load from MMKV immediately for fast UI
+    const savedTrips = preferences.getString(TRIPS_KEY);
+    if (savedTrips) {
+      try {
+        set({ trips: JSON.parse(savedTrips) });
+      } catch {
+        // ignore
+      }
+    }
+    // 2. Sync from backend if online
+    if (get().online) {
+      try {
+        const backendTrips = await tripApi.getTrips();
+        // backendTrips is an array of TripResponse. Map to frontend Trip model
+        const mappedTrips = backendTrips.map((bt: any) => ({
+          id: bt.id,
+          destination: bt.destination,
+          startDate: bt.start_date,
+          endDate: bt.end_date,
+          tier: bt.consent_tier,
+          status: bt.status,
+          partySize: bt.party_size,
+          // other frontend fields aren't strictly returned by simple GET /trips yet, but this suffices for the Trips page.
+        }));
+        persistTrips(mappedTrips);
+        set({ trips: mappedTrips });
+      } catch (e) {
+        // Silent fail on sync
+      }
+    }
   },
 }));
 
