@@ -512,15 +512,26 @@ export function OTPInput({
   );
 }
 
-export function PinPad({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+export function PinPad({ 
+  value, 
+  onChange, 
+  length = 4,
+  error = false 
+}: { 
+  value: string; 
+  onChange: (value: string) => void;
+  length?: number;
+  error?: boolean;
+}) {
   return (
     <Input
-      label="4-digit cancellation PIN"
+      label={`${length}-digit cancellation PIN`}
       value={value}
-      onChangeText={(text) => onChange(text.replace(/\D/g, '').slice(0, 4))}
+      onChangeText={(text) => onChange(text.replace(/\D/g, '').slice(0, length))}
       keyboardType="number-pad"
       secureTextEntry
       placeholder="••••"
+      error={error ? "Invalid PIN" : undefined}
     />
   );
 }

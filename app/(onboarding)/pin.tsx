@@ -61,7 +61,7 @@ export default function PinSetupScreen() {
           </Text>
         )}
       </View>
-      <View style={{ marginTop: space.xxxl }}>
+      <View style={{ marginTop: space.xxl }}>
         <Button
           label={step === 'enter' ? 'Next' : 'Save PIN'}
           disabled={(step === 'enter' ? pin.length : confirmPin.length) !== 4}
