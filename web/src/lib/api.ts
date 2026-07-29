@@ -46,6 +46,11 @@ export const resolveIncident = async (id: string, otp: string) => {
   return response.data;
 };
 
+export const closeIncident = async (id: string) => {
+  const response = await apiClient.post(`/incidents/${id}/close`);
+  return response.data;
+};
+
 export const assignIncident = async (id: string, unitId: string) => {
   const response = await apiClient.post(`/incidents/${id}/assign`, { unitId });
   return response.data;

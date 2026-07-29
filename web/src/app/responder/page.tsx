@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import DashboardLayout from '../components/DashboardLayout';
-import { getIncidents, acknowledgeIncident, resolveIncident, assignIncident, escalateIncident, requestResolve, arriveIncident } from '../../lib/api';
+import { getIncidents, acknowledgeIncident, resolveIncident, assignIncident, escalateIncident, requestResolve, arriveIncident, closeIncident } from '../../lib/api';
 import { useIncidentsSocket } from '../../hooks/useIncidentsSocket';
 import { AlertCircle, EyeOff, MapPin, CheckCircle, X, Loader2 } from 'lucide-react';
 
@@ -279,7 +279,7 @@ export default function ResponderDashboard() {
     if (!window.confirm('Are you sure you want to mark this incident as a false alarm?')) return;
     setProcessingActionId(id);
     try {
-      await api.post(`/incidents/${id}/close`);
+      await closeIncident(id);
       showToast('Incident marked as false alarm and closed.');
       setSelectedIncident(null);
       await fetchIncidents();
