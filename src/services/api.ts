@@ -5,7 +5,7 @@ import { meshService } from './mesh';
 import { smsCrypto } from './smsCrypto';
 import { router } from 'expo-router';
 
-const baseURL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://10.0.2.2:8000/v1';
+const baseURL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://yatri-shield-api.onrender.com/api/v1';
 
 export const api = axios.create({
   baseURL,
