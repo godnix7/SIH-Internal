@@ -130,7 +130,13 @@ async def cancel_sos(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    result = await db.execute(select(SOSAlert).where(SOSAlert.id == sos_id, SOSAlert.user_id == current_user.id))
+    from sqlalchemy import or_
+    result = await db.execute(
+        select(SOSAlert).where(
+            or_(SOSAlert.id == sos_id, SOSAlert.client_sos_id == str(sos_id)),
+            SOSAlert.user_id == current_user.id
+        )
+    )
     sos_alert = result.scalars().first()
     
     if not sos_alert:
