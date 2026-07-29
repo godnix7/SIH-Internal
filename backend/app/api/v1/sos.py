@@ -105,6 +105,9 @@ async def trigger_sos(
     # 5. Dispatch background notifications
     background_tasks.add_task(notify_emergency_contacts, current_user.id, incident.id)
     
+    # Refresh to avoid MissingGreenlet error when accessing attributes after commit
+    await db.refresh(incident)
+
     # 6. Broadcast real-time update
     await broadcast_incident_update({
         "id": str(incident.id),
@@ -158,6 +161,8 @@ async def cancel_sos(
         await BlockchainService.append_event(db, str(incident.id), str(event.id), event.event_type, event.details)
         
     await db.commit()
+    
+    await db.refresh(incident)
     
     if incident:
         await broadcast_incident_update({

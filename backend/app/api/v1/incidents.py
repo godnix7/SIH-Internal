@@ -151,6 +151,7 @@ async def acknowledge_incident(
     await BlockchainService.append_event(db, str(incident.id), str(event.id), event.event_type, event.details)
     
     await db.commit()
+    await db.refresh(incident)
     
     await broadcast_incident_update({
         "id": str(incident.id),
@@ -187,6 +188,7 @@ async def arrive_incident(
     await db.flush()
     await BlockchainService.append_event(db, str(incident.id), str(event.id), event.event_type, event.details)
     await db.commit()
+    await db.refresh(incident)
     
     await broadcast_incident_update({
         "id": str(incident.id),
@@ -225,6 +227,7 @@ async def request_resolve_incident(
     await db.flush()
     await BlockchainService.append_event(db, str(incident.id), str(event.id), event.event_type, event.details)
     await db.commit()
+    await db.refresh(incident)
     
     await broadcast_incident_update({
         "id": str(incident.id),
@@ -279,6 +282,7 @@ async def resolve_incident(
     await BlockchainService.append_event(db, str(incident.id), str(event.id), event.event_type, event.details)
     
     await db.commit()
+    await db.refresh(incident)
     
     await broadcast_incident_update({
         "id": str(incident.id),
@@ -323,6 +327,7 @@ async def assign_incident(
     await db.flush()
     await BlockchainService.append_event(db, str(incident.id), str(event.id), event.event_type, event.details)
     await db.commit()
+    await db.refresh(incident)
     
     await broadcast_incident_update({
         "id": str(incident.id),
@@ -365,6 +370,7 @@ async def escalate_incident(
     await db.flush()
     await BlockchainService.append_event(db, str(incident.id), str(event.id), event.event_type, event.details)
     await db.commit()
+    await db.refresh(incident)
     
     await broadcast_incident_update({
         "id": str(incident.id),
