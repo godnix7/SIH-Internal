@@ -10,9 +10,9 @@ import { useAppStore } from '@/src/stores/useAppStore';
 import { space, type } from '@/src/theme/tokens';
 import { api } from '@/src/services/api';
 
-export default function SettingsScreen() {
+export default function SettingsScreen({ forceScreen }: { forceScreen?: string }) {
   const segments = useSegments();
-  const screen = segments[segments.length - 1] as string;
+  const screen = forceScreen || (segments[segments.length - 1] as string);
   
   const c = useAppColors();
   const { t } = useTranslation();
