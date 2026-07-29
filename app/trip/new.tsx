@@ -17,13 +17,7 @@ import { requestTripPermissions, startMonitoring } from '@/src/services/monitori
 import { useAppStore } from '@/src/stores/useAppStore';
 import { space, type } from '@/src/theme/tokens';
 
-const destinations = [
-  'Jaipur, Rajasthan',
-  'Gangtok, Sikkim',
-  'Sahastra Tal, Uttarakhand',
-  'Triund, Himachal Pradesh',
-  'Shillong, Meghalaya',
-];
+
 
 export default function NewTrip() {
   const c = useAppColors();
@@ -31,7 +25,7 @@ export default function NewTrip() {
   const createTrip = useAppStore((state) => state.createTrip);
   const addAlert = useAppStore((state) => state.addAlert);
   const [step, setStep] = useState(1);
-  const [destination, setDestination] = useState(destinations[0]);
+  const [destination, setDestination] = useState('');
   const [dates, setDates] = useState({ start: '2026-07-12', end: '2026-07-16' });
   const [trek, setTrek] = useState(false);
   const [tier, setTier] = useState<ConsentTier>('checkins');
@@ -104,6 +98,10 @@ export default function NewTrip() {
     }
   };
   const proceed = () => {
+    if (step === 1 && destination.trim().length === 0) {
+      Alert.alert('Destination Required', 'Please enter your destination to continue.');
+      return;
+    }
     if (step === 2) {
       const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
       if (!dateRegex.test(dates.start) || !dateRegex.test(dates.end)) {
@@ -131,14 +129,12 @@ export default function NewTrip() {
       {step === 1 && (
         <View style={{ gap: space.sm }}>
           <Text style={[type.subtitle, { color: c.onSurface }]}>{t('trip.destination')}</Text>
-          {destinations.map((item) => (
-            <Button
-              key={item}
-              label={item}
-              variant={destination === item ? 'primary' : 'secondary'}
-              onPress={() => setDestination(item)}
-            />
-          ))}
+          <Input
+            label="Where are you heading?"
+            value={destination}
+            onChangeText={setDestination}
+            placeholder="e.g. Manali, Himachal Pradesh"
+          />
         </View>
       )}
       {step === 2 && (

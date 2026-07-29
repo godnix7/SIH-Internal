@@ -14,7 +14,7 @@ import {
   useFonts as useInterFonts,
 } from '@expo-google-fonts/inter';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Stack, router } from 'expo-router';
+import { Stack, router, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -27,6 +27,19 @@ import { VerificationPrompt } from '@/src/components/VerificationPrompt';
 import { CustomSplashScreen } from '@/src/components/SplashScreen';
 
 const client = new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 30_000 } } });
+
+function PinGuard() {
+  const isAuthenticated = useAppStore((state) => state.isAuthenticated);
+  const hasSetPin = useAppStore((state) => state.hasSetPin);
+  const segments = useSegments();
+  
+  useEffect(() => {
+    if (isAuthenticated && !hasSetPin && segments[0] !== '(onboarding)') {
+      router.replace('/(onboarding)/pin');
+    }
+  }, [isAuthenticated, hasSetPin, segments]);
+  return null;
+}
 
 function SafetyRestorer() {
   const restoreSos = useAppStore((state) => state.restoreSos);
@@ -136,6 +149,7 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <QueryClientProvider client={client}>
         <SafetyRestorer />
+        <PinGuard />
         <RealtimeBridge />
         <MeshBridge />
         <AIEngineBridge />
