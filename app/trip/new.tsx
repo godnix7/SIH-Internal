@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { router } from 'expo-router';
 import { Text, View, Alert, ActivityIndicator, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import MapView, { Region } from 'react-native-maps';
+import MapLibreGL from '@maplibre/maplibre-react-native';
 import * as Location from 'expo-location';
 
 import { Screen } from '@/src/components/Screen';
@@ -29,7 +29,7 @@ export default function NewTrip() {
   const [step, setStep] = useState(1);
   const [destination, setDestination] = useState('');
   const [geocoding, setGeocoding] = useState(false);
-  const [mapRegion, setMapRegion] = useState<Region>({
+  const [mapRegion, setMapRegion] = useState({
     latitude: 28.6139,
     longitude: 77.2090,
     latitudeDelta: 10.0,
@@ -193,15 +193,32 @@ export default function NewTrip() {
           <Text style={[type.caption, { color: c.onSurfaceVariant, marginBottom: space.sm }]}>
             Pan and zoom the map to pinpoint your destination.
           </Text>
-          <View style={{ height: 350, borderRadius: 16, overflow: 'hidden', backgroundColor: c.surfaceVariant }}>
-            <MapView
-              style={{ flex: 1 }}
-              initialRegion={mapRegion}
-              onRegionChangeComplete={setMapRegion}
-            />
-            {/* Center crosshair */}
-            <View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-              <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: c.primary, borderWidth: 3, borderColor: '#fff', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84, elevation: 5 }} />
+          <View style={styles.mapContainer}>
+            <MapLibreGL.MapView
+              style={styles.map}
+              logoEnabled={false}
+              styleURL={MapLibreGL.StyleURL.Street}
+              onRegionDidChange={(e) => {
+                if (e.geometry && e.geometry.type === 'Point') {
+                  const [longitude, latitude] = e.geometry.coordinates;
+                  setMapRegion(prev => ({ ...prev, latitude, longitude }));
+                }
+              }}
+            >
+              <MapLibreGL.Camera
+                zoomLevel={14}
+                centerCoordinate={[mapRegion.longitude, mapRegion.latitude]}
+              />
+              <MapLibreGL.UserLocation visible={true} />
+              <MapLibreGL.PointAnnotation
+                id="destination"
+                coordinate={[mapRegion.longitude, mapRegion.latitude]}
+              >
+                <View style={[styles.pin, { backgroundColor: c.primary }]} />
+              </MapLibreGL.PointAnnotation>
+            </MapLibreGL.MapView>
+            <View pointerEvents="none" style={styles.mapCrosshair}>
+              <View style={styles.crosshairDot} />
             </View>
             {geocoding && (
               <View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center' }}>

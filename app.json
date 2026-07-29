@@ -21,11 +21,6 @@
     "android": {
       "package": "in.yatrishield.app",
       "versionCode": 1,
-      "config": {
-        "googleMaps": {
-          "apiKey": "AIzaSyDummyKeyPleaseUpdateMeToRealKeyToWork"
-        }
-      },
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0D1B2A"
@@ -49,6 +44,7 @@
     },
     "plugins": [
       "expo-router",
+      "@maplibre/maplibre-react-native",
       [
         "expo-splash-screen",
         {

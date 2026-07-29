@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { router } from 'expo-router';
 import { Alert, View, Text, ActivityIndicator, Image, TouchableOpacity, ScrollView } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
 import { useTranslation } from 'react-i18next';
 import { Screen } from '@/src/components/Screen';
 import { Button, Card, Input, ListRow, useAppColors } from '@/src/components/ui';
@@ -52,18 +51,10 @@ export default function AccountScreen() {
   }, [localProfile]);
 
   const handlePickPhoto = async () => {
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.5,
-    });
-
-    if (!result.canceled && result.assets && result.assets.length > 0) {
-      const uri = result.assets[0].uri;
-      setPhotoUri(uri);
-      preferences.set(PROFILE_PHOTO_KEY, uri);
-    }
+    Alert.alert(
+      "Photo Upload",
+      "Selecting a photo requires a native module that isn't in your current APK. This will work once we build the new APK!"
+    );
   };
 
   const handleSave = async () => {

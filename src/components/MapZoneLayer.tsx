@@ -1,48 +1,17 @@
-import MapView, { Marker, Polygon, Polyline } from 'react-native-maps';
+import MapLibreGL from '@maplibre/maplibre-react-native';
 import { StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-
 import { formatCoordinates } from '@/src/lib/formatters';
-import { mapsEnabled } from '@/src/lib/maps';
 import type { Coordinates, Zone } from '@/src/lib/types';
 import { space, type } from '@/src/theme/tokens';
 import { useAppColors } from './ui';
+
+MapLibreGL.setAccessToken(null);
 
 function zoneColor(zone: Zone, c: ReturnType<typeof useAppColors>): string {
   if (zone.class === 'advisory') return c.primary;
   if (zone.class === 'corridor') return c.primary;
   return c.critical;
-}
-
-/** Shown when no Google Maps API key is configured; the zone data is still real. */
-function MapUnavailable({ zones, center }: { zones: Zone[]; center: Coordinates }) {
-  const c = useAppColors();
-  const { t } = useTranslation();
-  return (
-    <View
-      style={[
-        styles.wrap,
-        styles.fallback,
-        { backgroundColor: c.surface, borderColor: c.surfaceVariant },
-      ]}
-    >
-      <Text style={[type.caption, { color: c.onSurfaceVariant }]}>{t('maps.unavailable')}</Text>
-      <Text style={[type.body, { color: c.onSurface }]}>
-        {t('maps.lastKnown', {
-          coords: formatCoordinates(center.latitude, center.longitude),
-          accuracy: Math.round(center.accuracy),
-        })}
-      </Text>
-      {zones.map((zone) => (
-        <View key={zone.id} style={styles.legendRow}>
-          <View style={[styles.dot, { backgroundColor: zoneColor(zone, c) }]} />
-          <Text style={[type.caption, { color: c.onSurfaceVariant }]}>
-            {zone.name} · {t(`zoneClass.${zone.class}`)}
-          </Text>
-        </View>
-      ))}
-    </View>
-  );
 }
 
 export function MapZoneLayer({
@@ -61,66 +30,68 @@ export function MapZoneLayer({
     accuracy: 25,
     timestamp: 0,
   };
-  if (!mapsEnabled) return <MapUnavailable zones={zones} center={center} />;
+
+  const geoJsonSource = {
+    type: 'FeatureCollection',
+    features: zones.map(zone => ({
+      type: 'Feature',
+      geometry: {
+        type: 'Polygon',
+        coordinates: [zone.polygon[0].map(([lon, lat]) => [lon, lat])]
+      },
+      properties: {
+        id: zone.id,
+        class: zone.class,
+        name: zone.name,
+      }
+    }))
+  };
+
   return (
     <View style={styles.wrap}>
-      <MapView
+      <MapLibreGL.MapView
         style={styles.map}
-        provider={undefined}
-        initialRegion={{
-          latitude: center.latitude,
-          longitude: center.longitude,
-          latitudeDelta: 0.06,
-          longitudeDelta: 0.06,
-        }}
-        showsUserLocation
+        logoEnabled={false}
       >
-        {zones.map((zone) => (
-          <Polygon
-            key={zone.id}
-            coordinates={zone.polygon[0].map(([longitude, latitude]) => ({ latitude, longitude }))}
-            fillColor={
-              zone.class === 'advisory'
-                ? 'rgba(44,95,138,0.12)'
-                : zone.class === 'corridor'
-                  ? 'rgba(31,111,84,0.15)'
-                  : 'rgba(194,64,42,0.10)'
-            }
-            strokeColor={
-              zone.class === 'advisory'
-                ? `${c.primary}88`
-                : zone.class === 'corridor'
-                  ? `${c.primary}88`
-                  : `${c.critical}AA`
-            }
-            strokeWidth={2}
-          />
-        ))}
-        {showTrail && (
-          <Polyline
-            coordinates={[
-              { latitude: center.latitude - 0.009, longitude: center.longitude - 0.009 },
-              { latitude: center.latitude, longitude: center.longitude },
-            ]}
-            strokeColor={c.primary}
-            strokeWidth={4}
-          />
-        )}
-        <Marker
-          coordinate={{ latitude: center.latitude, longitude: center.longitude }}
-          title="Your last known location"
-          description={`Accuracy ±${Math.round(center.accuracy)} m`}
-          pinColor={c.primary}
+        <MapLibreGL.Camera
+          zoomLevel={12}
+          centerCoordinate={[center.longitude, center.latitude]}
         />
-      </MapView>
+        <MapLibreGL.UserLocation visible={true} />
+        
+        <MapLibreGL.ShapeSource id="zones" shape={geoJsonSource as any}>
+          <MapLibreGL.FillLayer 
+            id="zoneFill" 
+            style={{
+              fillColor: [
+                'match', 
+                ['get', 'class'], 
+                'advisory', 'rgba(44,95,138,0.12)',
+                'corridor', 'rgba(31,111,84,0.15)',
+                'rgba(194,64,42,0.10)'
+              ]
+            }} 
+          />
+          <MapLibreGL.LineLayer 
+            id="zoneLine" 
+            style={{
+              lineColor: [
+                'match',
+                ['get', 'class'],
+                'advisory', `${c.primary}88`,
+                'corridor', `${c.primary}88`,
+                `${c.critical}AA`
+              ],
+              lineWidth: 2
+            }} 
+          />
+        </MapLibreGL.ShapeSource>
+      </MapLibreGL.MapView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { height: 220, borderRadius: 12, overflow: 'hidden' },
+  wrap: { height: 200, borderRadius: space.sm, overflow: 'hidden', marginBottom: space.lg },
   map: { flex: 1 },
-  fallback: { borderWidth: 1, padding: space.md, gap: space.xs, justifyContent: 'center' },
-  legendRow: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
-  dot: { width: 8, height: 8, borderRadius: 4 },
 });
