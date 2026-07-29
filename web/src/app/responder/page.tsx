@@ -564,7 +564,7 @@ export default function ResponderDashboard() {
       <Modal open={!!confirmResolveId} onClose={() => setConfirmResolveId(null)} title="Security Clearance Required">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <p style={{ color: 'var(--color-on-surface-variant)', fontSize: '15px' }}>
-            To close this case, you must verify the tourist's safety. An OTP has been sent to their device. Please ask them for the 4-digit code.
+            To close this case, you must verify the tourist&apos;s safety. An OTP has been sent to their device. Please ask them for the 4-digit code.
           </p>
           <div>
             <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', marginBottom: '8px', color: 'var(--color-on-surface-variant)' }}>Tourist OTP</label>
