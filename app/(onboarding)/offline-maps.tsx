@@ -47,7 +47,7 @@ export default function OfflineMaps() {
 
   const handleContinue = () => {
     complete();
-    router.replace('/trip/new');
+    router.replace('/(tabs)/home');
   };
 
   const widthInterpolated = progress.interpolate({

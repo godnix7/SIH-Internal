@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { router, useGlobalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Text, View, Alert, ActivityIndicator } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import * as Notifications from 'expo-notifications';
@@ -11,7 +11,7 @@ import { space, type } from '@/src/theme/tokens';
 import { api } from '@/src/services/api';
 
 export default function SettingsScreen() {
-  const { screen } = useGlobalSearchParams<{ screen: string }>();
+  const { screen } = useLocalSearchParams<{ screen: string }>();
   const c = useAppColors();
   const { t } = useTranslation();
   const [toast, setToast] = useState(false);
@@ -27,7 +27,6 @@ export default function SettingsScreen() {
   const handleDownloadData = async () => {
     try {
       const res = await api.get('/users/me/export');
-      console.log(res.data);
       Alert.alert('Success', 'Data downloaded successfully!');
     } catch (e: any) {
       console.error(e);
@@ -45,8 +44,9 @@ export default function SettingsScreen() {
   if (screen === 'account') return <AccountScreen />;
   if (screen === 'security') return <SecurityScreen />;
   if (screen === 'notifications') return <NotificationsScreen />;
+  if (screen === 'help') return <HelpScreen />;
 
-  const handleSetLanguage = async (lang: string) => {
+  const handleSetLanguage = async (lang: 'en' | 'hi') => {
     try {
       await api.patch(`/users/me/language?language=${lang}`);
       setLanguage(lang);
@@ -306,8 +306,7 @@ function MedicalCard() {
       setAllergies((res.data.allergies || []).join(', '));
       setMedications((res.data.medications || []).join(', '));
     }).catch((e) => {
-      console.error(e);
-      Alert.alert('Error', 'Failed to load medical information.');
+      Alert.alert('Export Failed', 'Unable to download your data at this time.');
     }).finally(() => setInitialLoading(false));
   }, []);
 
@@ -484,7 +483,19 @@ function SecurityScreen() {
   };
 
   return (
-    <Screen title="Security & Sessions" subtitle="Manage your active logins.">
+    <Screen title="Security & Sessions" subtitle="Manage your active logins and security pin.">
+      <Card style={{ marginBottom: space.lg }}>
+        <Text style={[type.subtitle, { color: c.onSurface, marginBottom: space.sm }]}>Device Security</Text>
+        <Text style={[type.caption, { color: c.onSurfaceVariant, marginBottom: space.md }]}>
+          Change the 4-digit PIN used to securely cancel SOS alerts on this device.
+        </Text>
+        <Button 
+          label="Change SOS PIN" 
+          variant="secondary" 
+          onPress={() => router.push('/(onboarding)/pin' as any)}
+        />
+      </Card>
+
       <Card>
         <Text style={[type.subtitle, { color: c.onSurface, marginBottom: space.sm }]}>Active Sessions</Text>
         {loading ? (
@@ -637,6 +648,40 @@ function NotificationsScreen() {
           loading={saving}
         />
       </View>
+    </Screen>
+  );
+}
+
+// ── Help & Support Screen ─────────────────────────────────────────────
+function HelpScreen() {
+  const c = useAppColors();
+
+  return (
+    <Screen title="Help & Support" subtitle="Get assistance and learn about Yatri Shield.">
+      <Card>
+        <Text style={[type.subtitle, { color: c.onSurface }]}>Contact Support</Text>
+        <Text style={[type.body, { color: c.onSurfaceVariant, marginVertical: space.sm }]}>
+          For non-emergency support regarding the app, email us at:
+        </Text>
+        <Button label="support@yatrishield.gov.in" variant="secondary" onPress={() => {}} />
+      </Card>
+
+      <Card>
+        <Text style={[type.subtitle, { color: c.onSurface }]}>Emergency Services</Text>
+        <Text style={[type.body, { color: c.onSurfaceVariant, marginVertical: space.sm }]}>
+          If you are in immediate danger, do not wait for the app. Call national emergency services immediately.
+        </Text>
+        <Button label="Call 112" variant="primary" onPress={() => {}} />
+      </Card>
+      
+      <Card>
+        <Text style={[type.subtitle, { color: c.onSurface }]}>FAQ</Text>
+        <Text style={[type.body, { color: c.onSurface, fontWeight: '600', marginTop: space.sm }]}>How does Silent SOS work?</Text>
+        <Text style={[type.body, { color: c.onSurfaceVariant, marginBottom: space.sm }]}>It discreetly notifies authorities and your emergency contacts without alerting anyone around you. Your screen will display a fake weather app.</Text>
+        
+        <Text style={[type.body, { color: c.onSurface, fontWeight: '600', marginTop: space.sm }]}>Who can see my location?</Text>
+        <Text style={[type.body, { color: c.onSurfaceVariant, marginBottom: space.sm }]}>Your location is only shared during an active trip or if you trigger an SOS. It is encrypted and only accessible by authorized command centers.</Text>
+      </Card>
     </Screen>
   );
 }

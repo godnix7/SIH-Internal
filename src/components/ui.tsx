@@ -31,6 +31,7 @@ type ButtonProps = {
   variant?: 'primary' | 'secondary' | 'ghost' | 'destructive';
   loading?: boolean;
   disabled?: boolean;
+  icon?: ReactNode;
   accessibilityHint?: string;
   testID?: string;
 };
@@ -40,6 +41,7 @@ export function Button({
   variant = 'primary',
   loading,
   disabled,
+  icon,
   accessibilityHint,
   testID,
 }: ButtonProps) {
@@ -71,13 +73,19 @@ export function Button({
           backgroundColor: background,
           borderColor: variant === 'secondary' ? c.surfaceVariant : 'transparent',
           opacity: disabled ? 0.45 : pressed ? 0.82 : 1,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: icon ? 8 : 0,
         },
       ]}
     >
       {loading ? (
         <ActivityIndicator color={color} />
       ) : (
-        <Text style={[type.subtitle, { color }]}>{label}</Text>
+        <>
+          {icon}
+          <Text style={[type.subtitle, { color }]}>{label}</Text>
+        </>
       )}
     </Pressable>
   );
@@ -136,7 +144,7 @@ export function MonitoringStatusPill({
   state,
   onPress,
 }: {
-  state: 'live' | 'offline' | 'limited' | 'paused' | 'emergency';
+  state: 'live' | 'offline' | 'limited' | 'paused' | 'emergency' | 'idle';
   onPress?: () => void;
 }) {
   const c = useAppColors();
@@ -147,6 +155,7 @@ export function MonitoringStatusPill({
     limited: c.warning,
     paused: c.onSurfaceVariant,
     emergency: c.critical,
+    idle: c.onSurfaceVariant,
   } as const;
   const label = t(`status.${state}`);
   const color = colors[state];
@@ -449,13 +458,17 @@ export function Input({
   placeholder,
   secureTextEntry,
   keyboardType = 'default',
+  maxLength,
+  autoCapitalize,
 }: {
   label: string;
   value: string;
   onChangeText: (value: string) => void;
   placeholder?: string;
   secureTextEntry?: boolean;
-  keyboardType?: 'default' | 'phone-pad' | 'number-pad';
+  keyboardType?: 'default' | 'phone-pad' | 'number-pad' | 'email-address';
+  maxLength?: number;
+  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
 }) {
   const c = useAppColors();
   return (
@@ -469,6 +482,8 @@ export function Input({
         placeholderTextColor={c.onSurfaceVariant}
         secureTextEntry={secureTextEntry}
         keyboardType={keyboardType}
+        maxLength={maxLength}
+        autoCapitalize={autoCapitalize}
         style={[
           styles.input,
           type.body,
@@ -497,15 +512,26 @@ export function OTPInput({
   );
 }
 
-export function PinPad({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+export function PinPad({ 
+  value, 
+  onChange, 
+  length = 4,
+  error = false 
+}: { 
+  value: string; 
+  onChange: (value: string) => void;
+  length?: number;
+  error?: boolean;
+}) {
   return (
     <Input
-      label="4-digit cancellation PIN"
+      label={`${length}-digit cancellation PIN`}
       value={value}
-      onChangeText={(text) => onChange(text.replace(/\D/g, '').slice(0, 4))}
+      onChangeText={(text) => onChange(text.replace(/\D/g, '').slice(0, length))}
       keyboardType="number-pad"
       secureTextEntry
       placeholder="••••"
+      error={error ? "Invalid PIN" : undefined}
     />
   );
 }

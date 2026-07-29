@@ -14,7 +14,7 @@ import {
   useFonts as useInterFonts,
 } from '@expo-google-fonts/inter';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Stack, router } from 'expo-router';
+import { Stack, router, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -27,6 +27,25 @@ import { VerificationPrompt } from '@/src/components/VerificationPrompt';
 import { CustomSplashScreen } from '@/src/components/SplashScreen';
 
 const client = new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 30_000 } } });
+
+function PinGuard() {
+  const isAuthenticated = useAppStore((state) => state.isAuthenticated);
+  const hasSetPin = useAppStore((state) => state.hasSetPin);
+  const segments = useSegments();
+  const rootNav = router.canGoBack(); // simple check if router is mounted
+  
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    if (segments[0] === '(onboarding)') return;
+    if (!hasSetPin) {
+      // Small timeout ensures layout is fully mounted before replacing
+      setTimeout(() => {
+        router.replace('/(onboarding)/pin' as any);
+      }, 10);
+    }
+  }, [isAuthenticated, hasSetPin, segments]);
+  return null;
+}
 
 function SafetyRestorer() {
   const restoreSos = useAppStore((state) => state.restoreSos);
@@ -111,10 +130,11 @@ export default function RootLayout() {
   });
   const [authHydrated, setAuthHydrated] = useState(false);
   const hydrateAuth = useAppStore((state) => state.hydrateAuth);
+  const fetchZones = useAppStore((state) => state.fetchZones);
 
   useEffect(() => {
-    hydrateAuth().finally(() => setAuthHydrated(true));
-  }, [hydrateAuth]);
+    Promise.all([hydrateAuth(), fetchZones()]).finally(() => setAuthHydrated(true));
+  }, [hydrateAuth, fetchZones]);
 
   useEffect(() => {
     if (interLoaded || interError) {
@@ -135,6 +155,7 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <QueryClientProvider client={client}>
         <SafetyRestorer />
+        <PinGuard />
         <RealtimeBridge />
         <MeshBridge />
         <AIEngineBridge />
@@ -149,6 +170,8 @@ export default function RootLayout() {
             options={{ presentation: 'fullScreenModal', gestureEnabled: false }}
           />
           <Stack.Screen name="incident/[id]" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="settings/[screen]" />
+          <Stack.Screen name="identity/card" />
         </Stack>
       </QueryClientProvider>
     </SafeAreaProvider>

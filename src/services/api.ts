@@ -109,7 +109,14 @@ api.interceptors.response.use(
 
 export const tripApi = {
   createTrip: async (data: any) => {
-    const res = await api.post('/trips', data);
+    const payload = {
+      destination: data.destination,
+      start_date: data.startDate,
+      end_date: data.endDate,
+      consent_tier: data.tier,
+      party_size: data.partySize || 1,
+    };
+    const res = await api.post('/trips', payload);
     return res.data;
   },
   startTrip: async (tripId: string) => {
@@ -223,7 +230,7 @@ export async function flushOutbox(): Promise<FlushResult> {
         const points = locations.map((loc) => ({
           lat: loc.payload.lat,
           lon: loc.payload.lng, // map lng to lon
-          accM: 10, // dummy acc for MVP unless passed
+          accM: loc.payload.accuracy || 10,
           sampledAt: loc.payload.timestamp,
         }));
 

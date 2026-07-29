@@ -24,9 +24,27 @@ from app.services.sweeper import start_scheduler
 from app.services.anchor_batcher import start_anchor_batcher
 from contextlib import asynccontextmanager
 
+def run_db_migrations():
+    try:
+        import os
+        from alembic.config import Config
+        from alembic import command
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        alembic_ini_path = os.path.join(base_dir, "alembic.ini")
+        if os.path.exists(alembic_ini_path):
+            alembic_cfg = Config(alembic_ini_path)
+            alembic_cfg.set_main_option("script_location", os.path.join(base_dir, "alembic"))
+            if settings.sync_database_url:
+                alembic_cfg.set_main_option("sqlalchemy.url", settings.sync_database_url)
+            command.upgrade(alembic_cfg, "head")
+            logger.info("Database migrations applied successfully on startup!")
+    except Exception as e:
+        logger.warning(f"Database auto-migration/seed warning: {e}")
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
+    run_db_migrations()
     await init_redis()
     start_scheduler()
     start_anchor_batcher()
@@ -45,7 +63,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:3000", "https://yatrishield.gov.in", "http://localhost:8081", "exp://127.0.0.1:8081", "https://sih-altf4.vercel.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -68,7 +86,6 @@ app.include_router(incidents_router, prefix=f"{settings.API_V1_STR}/incidents", 
 app.include_router(facilities_router, prefix=f"{settings.API_V1_STR}/facilities", tags=["facilities"])
 app.include_router(risk_router, prefix=f"{settings.API_V1_STR}/risk", tags=["risk"])
 app.include_router(analytics_router, prefix=f"{settings.API_V1_STR}/analytics", tags=["analytics"])
-app.include_router(system_router, prefix=f"{settings.API_V1_STR}/system", tags=["system"])
 app.include_router(voice_router, prefix=f"{settings.API_V1_STR}/voice", tags=["voice"])
 
 # --- Global Exception Handlers ---
@@ -98,14 +115,44 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     }
     return JSONResponse(status_code=400, content=error_dict)
 
+from fastapi import HTTPException
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "detail": str(exc.detail),
+            "error": {
+                "code": "HTTP_ERROR",
+                "message": str(exc.detail),
+                "details": [],
+                "requestId": request_id,
+                "retryable": False
+            }
+        }
+    )
+
+import logging
+logger = logging.getLogger(__name__)
+
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception):
-    # Log the full traceback here in production
+    logger.exception(f"Unhandled exception during {request.method} {request.url.path}: {exc}")
     request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
-    internal_error = InternalError(message="An unexpected error occurred.")
+    err_msg = f"{type(exc).__name__}: {str(exc)}"
     return JSONResponse(
-        status_code=internal_error.status_code,
-        content=internal_error.to_dict(request_id)
+        status_code=500,
+        content={
+            "error": {
+                "code": "INTERNAL_ERROR",
+                "message": err_msg,
+                "details": [],
+                "requestId": request_id,
+                "retryable": True
+            }
+        }
     )
 
 # --- Middleware ---
@@ -127,6 +174,7 @@ async def add_request_id_and_correlation(request: Request, call_next):
     return response
 
 # --- Basic Health Check ---
+@app.get("/")
 @app.get("/health")
 async def health_check():
     return {"status": "ok", "version": settings.VERSION}

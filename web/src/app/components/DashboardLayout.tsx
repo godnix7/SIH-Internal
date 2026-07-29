@@ -27,7 +27,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const savedRole = localStorage.getItem('userRole');
 
     if (!token || !savedRole) {
-      router.push('/login');
+      router.push('/');
       return;
     }
 

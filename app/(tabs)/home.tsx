@@ -82,13 +82,15 @@ export default function HomeScreen() {
 
   const state = isSosActive(sos)
     ? 'emergency'
-    : trip?.status === 'paused'
-      ? 'paused'
-      : trip?.monitoringLimited
-        ? 'limited'
-        : online
-          ? 'live'
-          : 'offline';
+    : !trip 
+      ? 'idle'
+      : trip?.status === 'paused'
+        ? 'paused'
+        : trip?.monitoringLimited
+          ? 'limited'
+          : online
+            ? 'live'
+            : 'offline';
   return (
     <Screen>
       <View style={{ gap: space.xs }}>
@@ -139,7 +141,30 @@ export default function HomeScreen() {
         <EmptyState
           title={t('home.emptyTitle')}
           body={t('home.emptyBody')}
-          action={<Button label={t('common.planTrip')} onPress={() => router.push('/trip/new')} />}
+          action={
+            <View style={{ width: '100%', gap: space.sm }}>
+              <Button label={t('common.planTrip')} onPress={() => router.push('/trip/new')} />
+              <Button 
+                label="Quick Protect (Today)" 
+                variant="secondary"
+                onPress={async () => {
+                  try {
+                    const today = new Date().toISOString().split('T')[0];
+                    const trip = await useAppStore.getState().createTrip({
+                      destination: 'Quick Protection',
+                      startDate: today,
+                      endDate: today,
+                      tier: 'zones',
+                      partySize: 1,
+                    });
+                    router.push(`/trip/${trip.id}`);
+                  } catch (e) {
+                    console.error('Failed to start quick protect', e);
+                  }
+                }} 
+              />
+            </View>
+          }
         />
       )}
       <View style={{ gap: space.xs }}>
@@ -184,17 +209,6 @@ export default function HomeScreen() {
           />
         </Card>
       </View>
-      <Card>
-        <View style={{ flexDirection: 'row', gap: space.sm, alignItems: 'center' }}>
-          <Umbrella color={c.primary} />
-          <View>
-            <Text style={[type.subtitle, { color: c.onSurface }]}>{t('home.weatherTitle')}</Text>
-            <Text style={[type.caption, { color: c.onSurfaceVariant }]}>
-              {t('home.weatherSub')}
-            </Text>
-          </View>
-        </View>
-      </Card>
     </Screen>
   );
 }

@@ -52,12 +52,8 @@ async def update_language(language: str, current_user: User = Depends(get_curren
     
     # Resolve actual DB user
     if current_user.role == 'tourist':
-        user_uuid = uuid.UUID(current_user.user_id) if isinstance(current_user.user_id, str) else current_user.user_id
-        result = await db.execute(select(User).where(User.id == user_uuid))
-        db_user = result.scalars().first()
-        if db_user:
-            db_user.language = language
-            await db.commit()
+        current_user.language = language
+        await db.commit()
     # Internal users don't store language in DB, we return success and let client store in localStorage
     return {"status": "ok", "language": language}
 
@@ -262,10 +258,29 @@ async def get_my_sessions(current_user: User = Depends(get_current_user), db: As
         })
     return sessions
 
+from fastapi import Request
+import jwt
+from app.config import settings
+
 @router.delete("/me/sessions")
-async def revoke_all_other_sessions(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """Revokes all sessions except the current one (mocking by just deleting all since we don't track current session ID contextually easily here)."""
-    await db.execute(Session.__table__.delete().where(Session.user_id == current_user.id))
+async def revoke_all_other_sessions(request: Request, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Revokes all sessions except the current one."""
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing auth token")
+    token = auth_header[7:]
+    
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM], audience="yatrishield-api")
+        device_id = payload.get("deviceId")
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    if device_id:
+        await db.execute(Session.__table__.delete().where(Session.user_id == current_user.id, Session.device_id != device_id))
+    else:
+        await db.execute(Session.__table__.delete().where(Session.user_id == current_user.id))
+        
     await db.commit()
     return {"status": "ok"}
 

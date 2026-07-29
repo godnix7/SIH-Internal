@@ -37,8 +37,19 @@ class EmergencyVoiceBot:
             except Exception:
                 pass
 
+        user_name = "Your contact"
+        if user:
+            from app.models.identity import Identity
+            from app.core.security import decrypt_pii
+            identity_result = await db.execute(select(Identity).where(Identity.user_id == user.id))
+            identity = identity_result.scalars().first()
+            if identity and identity.name_enc:
+                user_name = decrypt_pii(identity.name_enc)
+            elif user.phone:
+                user_name = f"User ({user.phone[-4:]})"
+
         return {
-            "user_name": "Your contact" if not user else f"User {user.id}", # Placeholder for Identity Name
+            "user_name": user_name,
             "severity": incident.severity,
             "type": incident.type,
             "location": loc_str,

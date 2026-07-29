@@ -7,15 +7,6 @@ dist/
 .env
 *.jks
 *.keystore
-node_modules/
-.expo/
-android/
-ios/
-coverage/
-dist/
-.env
-*.jks
-*.keystore
 
 # Local IDE settings and build/verification scratch output
 .idea/

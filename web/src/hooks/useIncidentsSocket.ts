@@ -12,31 +12,32 @@ export interface IncidentEventPayload {
 export function useIncidentsSocket() {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [lastEvent, setLastEvent] = useState<IncidentEventPayload | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
     // Connect to the Socket.IO server
-    // Note: Since this is an MVP without full auth, we connect and don't immediately validate tokens
+    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
     const socketInstance = io(SOCKET_URL, {
       path: '/socket.io/',
       transports: ['websocket'],
+      auth: { token }
     });
 
     socketInstance.on('connect', () => {
       console.log('Connected to WebSocket server:', socketInstance.id);
-      
-      // In a real app we'd emit an authenticate event here:
-      // socketInstance.emit('authenticate', { token: 'Bearer mock_token' });
+      setIsConnected(true);
     });
 
     // The backend broadcasts generic updates (or specific to org rooms)
     // We listen to the incident_update event based on our backend code
-    socketInstance.on('incident_update', (data: IncidentEventPayload) => {
+    socketInstance.on('incident:update', (data: IncidentEventPayload) => {
       console.log('Received incident update:', data);
       setLastEvent(data);
     });
 
     socketInstance.on('disconnect', () => {
       console.log('Disconnected from WebSocket server');
+      setIsConnected(false);
     });
 
     setSocket(socketInstance);
@@ -46,5 +47,5 @@ export function useIncidentsSocket() {
     };
   }, []);
 
-  return { socket, lastEvent };
+  return { socket, lastEvent, isConnected };
 }

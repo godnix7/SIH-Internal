@@ -3,7 +3,7 @@ import { create } from 'zustand';
 import { storage } from '@/src/lib/storage';
 
 import i18n, { LANGUAGE_KEY, savedLanguage, type Language } from '@/src/i18n';
-import { SOS_CANCEL_PIN, remoteConfig } from '@/src/lib/constants';
+import { remoteConfig } from '@/src/lib/constants';
 import { tierLabel } from '@/src/lib/formatters';
 import { hashEvent } from '@/src/lib/hashChain';
 import type {
@@ -25,18 +25,6 @@ const SOS_KEY = 'yatri-shield.active-sos.v1';
 // The event chain can exceed SecureStore's value limit, so it lives in MMKV beside the record.
 const SOS_EVENTS_KEY = 'yatri-shield.active-sos-events.v1';
 
-const zones: Zone[] = []; // In production, these are fetched from the backend via zoneApi
-
-const initialAlerts: AlertItem[] = [
-  {
-    id: 'welcome',
-    kind: 'system',
-    title: 'Your safety choices stay visible',
-    body: 'Check-ins are the default. You can change the tier for any trip at any time.',
-    createdAt: Date.now(),
-    severity: 'info',
-  },
-];
 
 type Profile = {
   name: string;
@@ -44,6 +32,8 @@ type Profile = {
   homeCity: string;
   idRef: string;
   language: Language;
+  phone?: string;
+  role?: string;
 };
 
 type AppStore = {
@@ -55,6 +45,8 @@ type AppStore = {
   alerts: AlertItem[];
   sos?: SOSRecord;
   incidentEvents: IncidentEvent[];
+  zones: Zone[];
+  fetchZones: () => Promise<void>;
   theme: 'system' | 'light' | 'dark';
   isAuthenticated: boolean;
   userId?: string;
@@ -75,6 +67,8 @@ type AppStore = {
     values: Pick<Trip, 'destination' | 'startDate' | 'endDate' | 'tier'> &
       Partial<Pick<Trip, 'trek' | 'partySize' | 'monitoringLimited'>>,
   ) => Promise<Trip>;
+  hasSetPin: boolean;
+  setHasSetPin: (hasSet: boolean) => void;
   updateTripTier: (tripId: string, tier: ConsentTier) => Promise<void>;
   endTrip: (tripId: string) => void;
   addAlert: (alert: Omit<AlertItem, 'id' | 'createdAt'>) => void;
@@ -113,6 +107,8 @@ async function clearPersistedSos(): Promise<void> {
 
 export const useAppStore = create<AppStore>((set, get) => ({
   isAuthenticated: false,
+  hasSetPin: false,
+  setHasSetPin: (hasSet) => set({ hasSetPin: hasSet }),
   userId: undefined,
   verificationPrompt: undefined,
   isWearableConnected: false,
@@ -121,20 +117,22 @@ export const useAppStore = create<AppStore>((set, get) => ({
   clearVerificationPrompt: () => set({ verificationPrompt: undefined }),
   hydrateAuth: async () => {
     const token = await storage.getAccessToken();
+    const pin = await storage.getDevicePin();
     if (token) {
-      set({ isAuthenticated: true });
+      set({ isAuthenticated: true, hasSetPin: !!pin });
     }
   },
   login: (userId) => set({ isAuthenticated: true, userId }),
   logout: async () => {
     await storage.clearTokens();
-    set({ isAuthenticated: false, userId: undefined });
+    set({ isAuthenticated: false, userId: undefined, hasSetPin: false });
   },
   hasCompletedOnboarding: preferences.getBoolean('onboarding.completed') ?? false,
   online: true,
   profile: undefined,
   trips: [],
-  alerts: initialAlerts,
+  alerts: [],
+  zones: [],
   sos: undefined,
   incidentEvents: [],
   theme: (preferences.getString('theme') as AppStore['theme']) ?? 'system',
@@ -172,6 +170,16 @@ export const useAppStore = create<AppStore>((set, get) => ({
     preferences.set('theme', theme);
     set({ theme });
   },
+  fetchZones: async () => {
+    try {
+      const freshZones = await zoneApi.getZonePack();
+      if (freshZones && freshZones.length > 0) {
+        set({ zones: freshZones });
+      }
+    } catch (e) {
+      console.warn('Failed to fetch zones, using defaults', e);
+    }
+  },
   createTrip: async (values) => {
     try {
       const backendTrip = await tripApi.createTrip(values);
@@ -180,17 +188,18 @@ export const useAppStore = create<AppStore>((set, get) => ({
         ...values,
         status: backendTrip.status,
         nextCheckInAt: Date.now() + 4 * 60 * 60_000,
-        zones, // we could also call zoneApi.getZonePack() here or lazily
+        zones: get().zones, // Use fetched zones from state
         partySize: values.partySize ?? 1,
       };
 
-      // Attempt to fetch fresh zones if online
-      if (get().online) {
+      // Attempt to fetch fresh zones if online and not fetched yet
+      if (get().online && get().zones.length === 0) {
         try {
           const freshZones = await zoneApi.getZonePack();
-          trip.zones = freshZones.length > 0 ? freshZones : zones;
+          trip.zones = freshZones.length > 0 ? freshZones : [];
+          set({ zones: freshZones });
         } catch {
-          // fallback to cached/initial zones
+          // fallback to empty
         }
       }
 
@@ -309,7 +318,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
       });
   },
   cancelSos: async (pin) => {
-    if (pin !== SOS_CANCEL_PIN || !get().sos) return false;
+    const storedPin = await storage.getDevicePin();
+    if (!storedPin || pin !== storedPin || !get().sos) return false;
     await get().setSosStatus('CANCELLED');
     await clearPersistedSos();
     await locationEngine.setEmergency(false);
@@ -346,4 +356,4 @@ export function isSosActive(sos?: SOSRecord): boolean {
   return sos !== undefined && sos.status !== 'RESOLVED' && sos.status !== 'CANCELLED';
 }
 
-export { zones, remoteConfig };
+export { remoteConfig };

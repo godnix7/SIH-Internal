@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { router } from 'expo-router';
-import { Text, View, Alert } from 'react-native';
+import { Text, View, Alert, ActivityIndicator, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import MapView, { Region } from 'react-native-maps';
+import * as Location from 'expo-location';
 
 import { Screen } from '@/src/components/Screen';
 import {
@@ -17,13 +19,7 @@ import { requestTripPermissions, startMonitoring } from '@/src/services/monitori
 import { useAppStore } from '@/src/stores/useAppStore';
 import { space, type } from '@/src/theme/tokens';
 
-const destinations = [
-  'Jaipur, Rajasthan',
-  'Gangtok, Sikkim',
-  'Sahastra Tal, Uttarakhand',
-  'Triund, Himachal Pradesh',
-  'Shillong, Meghalaya',
-];
+
 
 export default function NewTrip() {
   const c = useAppColors();
@@ -31,14 +27,56 @@ export default function NewTrip() {
   const createTrip = useAppStore((state) => state.createTrip);
   const addAlert = useAppStore((state) => state.addAlert);
   const [step, setStep] = useState(1);
-  const [destination, setDestination] = useState(destinations[0]);
-  const [dates, setDates] = useState({ start: '2026-07-12', end: '2026-07-16' });
+  const [destination, setDestination] = useState('');
+  const [geocoding, setGeocoding] = useState(false);
+  const [mapRegion, setMapRegion] = useState<Region>({
+    latitude: 28.6139,
+    longitude: 77.2090,
+    latitudeDelta: 10.0,
+    longitudeDelta: 10.0,
+  });
+  const [dates, setDates] = useState(() => {
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return {
+      start: today.toISOString().split('T')[0],
+      end: tomorrow.toISOString().split('T')[0],
+    };
+  });
   const [trek, setTrek] = useState(false);
   const [tier, setTier] = useState<ConsentTier>('checkins');
   const [primer, setPrimer] = useState(false);
   const [toast, setToast] = useState(false);
   const [permissionBusy, setPermissionBusy] = useState(false);
   const [permissionNotice, setPermissionNotice] = useState<string>();
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const { status } = await Location.getForegroundPermissionsAsync();
+        if (status === 'granted') {
+          const loc = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
+          if (mounted) {
+            setMapRegion({
+              latitude: loc.coords.latitude,
+              longitude: loc.coords.longitude,
+              latitudeDelta: 0.05,
+              longitudeDelta: 0.05,
+            });
+          }
+        }
+      } catch (e) {
+        // Silently fail and fallback to default map region
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const requestPermissionsAndStart = async () => {
     setPermissionBusy(true);
@@ -103,7 +141,28 @@ export default function NewTrip() {
       setPermissionBusy(false);
     }
   };
-  const proceed = () => {
+  const proceed = async () => {
+    if (step === 1) {
+      setGeocoding(true);
+      try {
+        const [result] = await Location.reverseGeocodeAsync({
+          latitude: mapRegion.latitude,
+          longitude: mapRegion.longitude,
+        });
+        if (result) {
+          const parts = [result.city || result.subregion || result.name, result.region].filter(Boolean);
+          setDestination(parts.join(', ') || 'Selected Location');
+        } else {
+          setDestination('Selected Location');
+        }
+      } catch (e) {
+        setDestination('Selected Location');
+      } finally {
+        setGeocoding(false);
+        setStep((value) => value + 1);
+      }
+      return;
+    }
     if (step === 2) {
       const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
       if (!dateRegex.test(dates.start) || !dateRegex.test(dates.end)) {
@@ -130,15 +189,26 @@ export default function NewTrip() {
     <Screen title={t('trip.title')} subtitle={t('trip.step', { step })}>
       {step === 1 && (
         <View style={{ gap: space.sm }}>
-          <Text style={[type.subtitle, { color: c.onSurface }]}>{t('trip.destination')}</Text>
-          {destinations.map((item) => (
-            <Button
-              key={item}
-              label={item}
-              variant={destination === item ? 'primary' : 'secondary'}
-              onPress={() => setDestination(item)}
+          <Text style={[type.subtitle, { color: c.onSurface }]}>Where to?</Text>
+          <Text style={[type.caption, { color: c.onSurfaceVariant, marginBottom: space.sm }]}>
+            Pan and zoom the map to pinpoint your destination.
+          </Text>
+          <View style={{ height: 350, borderRadius: 16, overflow: 'hidden', backgroundColor: c.surfaceVariant }}>
+            <MapView
+              style={{ flex: 1 }}
+              initialRegion={mapRegion}
+              onRegionChangeComplete={setMapRegion}
             />
-          ))}
+            {/* Center crosshair */}
+            <View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+              <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: c.primary, borderWidth: 3, borderColor: '#fff', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84, elevation: 5 }} />
+            </View>
+            {geocoding && (
+              <View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center' }}>
+                <ActivityIndicator size="large" color="#fff" />
+              </View>
+            )}
+          </View>
         </View>
       )}
       {step === 2 && (
