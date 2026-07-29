@@ -25,7 +25,7 @@ export default function PinSetupScreen() {
       if (pin === confirmPin) {
         await storage.setDevicePin(pin);
         setHasSetPin(true);
-        router.replace('/home');
+        router.replace('/' as any);
       } else {
         setError(true);
         setConfirmPin('');
