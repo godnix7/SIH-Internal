@@ -485,13 +485,29 @@ export default function ResponderDashboard() {
                 <p style={{ fontWeight: '500', marginBottom: '8px' }}>Timeline & Integrity</p>
                 <div style={{ fontSize: '12px', color: 'var(--color-on-surface-variant)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {selectedIncident.events?.length > 0 ? (
-                    selectedIncident.events.map((ev: any, idx: number) => (
-                      <div key={idx} style={{ borderLeft: '2px solid var(--color-primary)', paddingLeft: '8px' }}>
-                        <strong>{new Date(ev.createdAt).toLocaleTimeString()}</strong> - {ev.eventType.toUpperCase()}
-                        <br/>
-                        <span style={{ color: '#4CAF50' }}>✓ Hash verified</span>
-                      </div>
-                    ))
+                    selectedIncident.events.map((ev: any, idx: number) => {
+                      let actorStr = "";
+                      const role = ev.details?.resolved_by_role || ev.details?.cancelled_by_role || ev.details?.actor_role;
+                      const org = ev.details?.resolved_by_org || ev.details?.cancelled_by_org;
+                      
+                      if (role === 'tourist') {
+                        actorStr = "(by Self)";
+                      } else if (org) {
+                        actorStr = `(by ${org})`;
+                      } else if (role) {
+                        actorStr = "(by Authority)";
+                      }
+                      
+                      const reasonStr = ev.details?.reason || ev.details?.notes ? `- ${ev.details.reason || ev.details.notes}` : '';
+
+                      return (
+                        <div key={idx} style={{ borderLeft: '2px solid var(--color-primary)', paddingLeft: '8px', marginBottom: '12px' }}>
+                          <strong>{new Date(ev.createdAt).toLocaleTimeString()}</strong> - {ev.eventType.toUpperCase()} <span style={{ color: 'var(--color-primary)', fontWeight: 'bold' }}>{actorStr}</span>
+                          {reasonStr && <div style={{ fontSize: '12px', fontStyle: 'italic', marginTop: '2px' }}>{reasonStr}</div>}
+                          <div style={{ color: '#4CAF50', fontSize: '11px', marginTop: '4px' }}>✓ Blockchain Hash verified</div>
+                        </div>
+                      );
+                    })
                   ) : (
                     <p style={{ color: 'var(--color-on-surface-variant)' }}>No timeline events recorded yet.</p>
                   )}

@@ -21,18 +21,21 @@ router = APIRouter()
 
 @router.get("", response_model=List[IncidentResponse])
 async def list_incidents(
+    status_filter: str = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
-    List active incidents.
-    In a real system, this would filter by the operator's jurisdiction.
-    For this MVP, we return incidents for the current user (if tourist) or all if operator.
+    List incidents. If status_filter='history', returns closed/resolved incidents.
+    Otherwise returns active incidents.
     """
     if current_user.role == 'tourist':
         stmt = select(Incident).where(Incident.user_id == current_user.id)
     else:
-        stmt = select(Incident).where(Incident.status.notin_(['closed', 'cancelled', 'false_alarm', 'merged']))
+        if status_filter == 'history':
+            stmt = select(Incident).where(Incident.status.in_(['closed', 'cancelled', 'false_alarm', 'resolved', 'merged']))
+        else:
+            stmt = select(Incident).where(Incident.status.notin_(['closed', 'cancelled', 'false_alarm', 'resolved', 'merged']))
         
     result = await db.execute(stmt.order_by(Incident.created_at.desc()))
     incidents = result.scalars().all()
@@ -261,8 +264,10 @@ async def resolve_incident(
     if incident.resolution_otp and incident.resolution_otp != req.otp:
         raise HTTPException(status_code=400, detail="Invalid OTP provided")
         
+    from sqlalchemy.sql import func
     incident.status = 'resolved'
     incident.resolution_otp = None # Clear it after use
+    incident.resolved_at = func.now()
     
     sos_res = await db.execute(select(SOSAlert).where(SOSAlert.id == incident.sos_alert_id))
     sos = sos_res.scalars().first()
@@ -273,7 +278,12 @@ async def resolve_incident(
         incident_id=incident.id,
         event_type='resolved',
         actor_id=current_user.id,
-        details={"reason": "Threat cleared with verified OTP"}
+        details={
+            "reason": "Threat cleared with verified OTP", 
+            "resolved_by_role": current_user.role, 
+            "resolved_by_id": str(current_user.id),
+            "resolved_by_org": getattr(current_user, 'organization', None)
+        }
     )
     db.add(event)
     await db.flush()

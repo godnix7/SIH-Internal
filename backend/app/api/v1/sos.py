@@ -139,27 +139,34 @@ async def cancel_sos(
     if sos_alert.status == 'false_alarm':
         return {"status": "cancelled"}
         
-    # We allow cancellation even if acknowledged.
+    from sqlalchemy.sql import func
     sos_alert.status = 'false_alarm'
     
-    # Update incident
-    inc_result = await db.execute(select(Incident).where(Incident.id == sos_alert.incident_id))
-    incident = inc_result.scalars().first()
-    if incident:
-        incident.status = 'false_alarm'
-        
-        event = IncidentEvent(
-            incident_id=incident.id,
-            event_type='cancelled',
-            actor_id=current_user.id,
-            details={"reason": req.reason, "notes": req.notes}
-        )
-        db.add(event)
-        await db.flush()
-        
-        # Anchor to cryptographic chain
-        await BlockchainService.append_event(db, str(incident.id), str(event.id), event.event_type, event.details)
-        
+    incident = None
+    if sos_alert.incident_id:
+        inc_result = await db.execute(select(Incident).where(Incident.id == sos_alert.incident_id))
+        incident = inc_result.scalars().first()
+        if incident:
+            incident.status = 'false_alarm'
+            incident.closed_at = func.now()
+            
+            event = IncidentEvent(
+                incident_id=incident.id,
+                event_type='cancelled',
+                actor_id=current_user.id,
+                details={
+                    "reason": req.reason, 
+                    "notes": req.notes, 
+                    "cancelled_by_role": current_user.role, 
+                    "cancelled_by_id": str(current_user.id),
+                    "cancelled_by_org": getattr(current_user, 'organization', None)
+                }
+            )
+            db.add(event)
+            await db.flush()
+            
+            await BlockchainService.append_event(db, str(incident.id), str(event.id), event.event_type, event.details)
+    
     await db.commit()
     
     await db.refresh(incident)
