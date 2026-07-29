@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { router, useGlobalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Text, View, Alert, ActivityIndicator } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import * as Notifications from 'expo-notifications';
@@ -11,7 +11,7 @@ import { space, type } from '@/src/theme/tokens';
 import { api } from '@/src/services/api';
 
 export default function SettingsScreen() {
-  const { screen } = useGlobalSearchParams<{ screen: string }>();
+  const { screen } = useLocalSearchParams<{ screen: string }>();
   const c = useAppColors();
   const { t } = useTranslation();
   const [toast, setToast] = useState(false);

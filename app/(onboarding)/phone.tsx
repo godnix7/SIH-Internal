@@ -42,6 +42,11 @@ export default function Login() {
       if (isNewUser) {
         router.push('/kyc');
       } else {
+        const pin = await storage.getDevicePin();
+        if (!pin) {
+          router.replace('/(onboarding)/pin' as any);
+          return;
+        }
         const complete = useAppStore.getState().hasCompletedOnboarding;
         if (complete) {
           router.replace('/');

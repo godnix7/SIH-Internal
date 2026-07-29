@@ -32,10 +32,16 @@ function PinGuard() {
   const isAuthenticated = useAppStore((state) => state.isAuthenticated);
   const hasSetPin = useAppStore((state) => state.hasSetPin);
   const segments = useSegments();
+  const rootNav = router.canGoBack(); // simple check if router is mounted
   
   useEffect(() => {
-    if (isAuthenticated && !hasSetPin && segments[0] !== '(onboarding)') {
-      router.replace('/(onboarding)/pin' as any);
+    if (!isAuthenticated) return;
+    if (segments[0] === '(onboarding)') return;
+    if (!hasSetPin) {
+      // Small timeout ensures layout is fully mounted before replacing
+      setTimeout(() => {
+        router.replace('/(onboarding)/pin' as any);
+      }, 10);
     }
   }, [isAuthenticated, hasSetPin, segments]);
   return null;

@@ -207,17 +207,6 @@ export default function HomeScreen() {
           />
         </Card>
       </View>
-      <Card>
-        <View style={{ flexDirection: 'row', gap: space.sm, alignItems: 'center' }}>
-          <Umbrella color={c.primary} />
-          <View>
-            <Text style={[type.subtitle, { color: c.onSurface }]}>{t('home.weatherTitle')}</Text>
-            <Text style={[type.caption, { color: c.onSurfaceVariant }]}>
-              {t('home.weatherSub')}
-            </Text>
-          </View>
-        </View>
-      </Card>
     </Screen>
   );
 }
