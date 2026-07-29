@@ -274,6 +274,28 @@ export default function ResponderDashboard() {
     }
   };
 
+  const handleFalseAlarm = async (id: string) => {
+    if (processingActionId === id) return;
+    if (!window.confirm('Are you sure you want to mark this incident as a false alarm?')) return;
+    setProcessingActionId(id);
+    try {
+      await api.post(`/incidents/${id}/close`);
+      showToast('Incident marked as false alarm and closed.');
+      setSelectedIncident(null);
+      await fetchIncidents();
+    } catch (error: any) {
+      if (error.response?.status === 403) {
+        showToast('You do not have permission.', 'error');
+      } else if (!error.response) {
+        showToast('Network error.', 'error');
+      } else {
+        showToast(error.response?.data?.detail || 'Failed to close incident.', 'error');
+      }
+    } finally {
+      setProcessingActionId(null);
+    }
+  };
+
   const activeIncidents = incidents.filter(inc => !['closed', 'resolved', 'false_alarm', 'merged'].includes(inc.status));
 
   return (
@@ -477,6 +499,14 @@ export default function ResponderDashboard() {
                     onClick={() => handleResolve(selectedIncident.id)}
                   >
                     Resolve Case
+                  </button>
+                  <button 
+                    className="btn btn-secondary"
+                    disabled={processingActionId === selectedIncident.id}
+                    onClick={() => handleFalseAlarm(selectedIncident.id)}
+                    style={{ color: '#f44336', borderColor: '#f44336' }}
+                  >
+                    Close as False Alarm
                   </button>
                 </div>
               </div>
