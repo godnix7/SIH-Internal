@@ -144,7 +144,7 @@ export function MonitoringStatusPill({
   state,
   onPress,
 }: {
-  state: 'live' | 'offline' | 'limited' | 'paused' | 'emergency';
+  state: 'live' | 'offline' | 'limited' | 'paused' | 'emergency' | 'idle';
   onPress?: () => void;
 }) {
   const c = useAppColors();
@@ -155,6 +155,7 @@ export function MonitoringStatusPill({
     limited: c.warning,
     paused: c.onSurfaceVariant,
     emergency: c.critical,
+    idle: c.onSurfaceVariant,
   } as const;
   const label = t(`status.${state}`);
   const color = colors[state];

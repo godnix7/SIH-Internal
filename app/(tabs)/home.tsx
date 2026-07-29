@@ -82,13 +82,15 @@ export default function HomeScreen() {
 
   const state = isSosActive(sos)
     ? 'emergency'
-    : trip?.status === 'paused'
-      ? 'paused'
-      : trip?.monitoringLimited
-        ? 'limited'
-        : online
-          ? 'live'
-          : 'offline';
+    : !trip 
+      ? 'idle'
+      : trip?.status === 'paused'
+        ? 'paused'
+        : trip?.monitoringLimited
+          ? 'limited'
+          : online
+            ? 'live'
+            : 'offline';
   return (
     <Screen>
       <View style={{ gap: space.xs }}>

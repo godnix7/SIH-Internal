@@ -22,6 +22,7 @@ const en = {
     limited: 'Limited — background off',
     paused: 'Paused',
     emergency: 'EMERGENCY',
+    idle: 'No active trip',
     label: 'Monitoring status: {{label}}',
   },
   offline: {
@@ -254,6 +255,7 @@ const hi: typeof en = {
     limited: 'सीमित — बैकग्राउंड बंद है',
     paused: 'रुका हुआ',
     emergency: 'आपातकाल',
+    idle: 'कोई सक्रिय यात्रा नहीं',
     label: 'निगरानी की स्थिति: {{label}}',
   },
   offline: {
