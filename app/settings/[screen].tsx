@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { router, useLocalSearchParams, usePathname } from 'expo-router';
+import { router, useSegments } from 'expo-router';
 import { Text, View, Alert, ActivityIndicator } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import * as Notifications from 'expo-notifications';
@@ -11,9 +11,8 @@ import { space, type } from '@/src/theme/tokens';
 import { api } from '@/src/services/api';
 
 export default function SettingsScreen() {
-  const params = useLocalSearchParams<{ screen: string }>();
-  const pathname = usePathname();
-  const screen = params.screen || pathname.split('/').pop();
+  const segments = useSegments();
+  const screen = segments[segments.length - 1] as string;
   
   const c = useAppColors();
   const { t } = useTranslation();
