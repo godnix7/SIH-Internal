@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { router } from 'expo-router';
 import { Text, View, Alert, ActivityIndicator, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -50,6 +50,33 @@ export default function NewTrip() {
   const [toast, setToast] = useState(false);
   const [permissionBusy, setPermissionBusy] = useState(false);
   const [permissionNotice, setPermissionNotice] = useState<string>();
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const { status } = await Location.getForegroundPermissionsAsync();
+        if (status === 'granted') {
+          const loc = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
+          if (mounted) {
+            setMapRegion({
+              latitude: loc.coords.latitude,
+              longitude: loc.coords.longitude,
+              latitudeDelta: 0.05,
+              longitudeDelta: 0.05,
+            });
+          }
+        }
+      } catch (e) {
+        // Silently fail and fallback to default map region
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const requestPermissionsAndStart = async () => {
     setPermissionBusy(true);
