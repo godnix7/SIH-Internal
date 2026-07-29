@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { router } from 'expo-router';
-import { Text, View, Alert } from 'react-native';
+import { Text, View, Alert, ActivityIndicator, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import MapView, { Region } from 'react-native-maps';
+import * as Location from 'expo-location';
 
 import { Screen } from '@/src/components/Screen';
 import {
@@ -26,6 +28,13 @@ export default function NewTrip() {
   const addAlert = useAppStore((state) => state.addAlert);
   const [step, setStep] = useState(1);
   const [destination, setDestination] = useState('');
+  const [geocoding, setGeocoding] = useState(false);
+  const [mapRegion, setMapRegion] = useState<Region>({
+    latitude: 28.6139,
+    longitude: 77.2090,
+    latitudeDelta: 10.0,
+    longitudeDelta: 10.0,
+  });
   const [dates, setDates] = useState({ start: '2026-07-12', end: '2026-07-16' });
   const [trek, setTrek] = useState(false);
   const [tier, setTier] = useState<ConsentTier>('checkins');
@@ -97,9 +106,26 @@ export default function NewTrip() {
       setPermissionBusy(false);
     }
   };
-  const proceed = () => {
-    if (step === 1 && destination.trim().length === 0) {
-      Alert.alert('Destination Required', 'Please enter your destination to continue.');
+  const proceed = async () => {
+    if (step === 1) {
+      setGeocoding(true);
+      try {
+        const [result] = await Location.reverseGeocodeAsync({
+          latitude: mapRegion.latitude,
+          longitude: mapRegion.longitude,
+        });
+        if (result) {
+          const parts = [result.city || result.subregion || result.name, result.region].filter(Boolean);
+          setDestination(parts.join(', ') || 'Selected Location');
+        } else {
+          setDestination('Selected Location');
+        }
+      } catch (e) {
+        setDestination('Selected Location');
+      } finally {
+        setGeocoding(false);
+        setStep((value) => value + 1);
+      }
       return;
     }
     if (step === 2) {
@@ -128,13 +154,26 @@ export default function NewTrip() {
     <Screen title={t('trip.title')} subtitle={t('trip.step', { step })}>
       {step === 1 && (
         <View style={{ gap: space.sm }}>
-          <Text style={[type.subtitle, { color: c.onSurface }]}>{t('trip.destination')}</Text>
-          <Input
-            label="Where are you heading?"
-            value={destination}
-            onChangeText={setDestination}
-            placeholder="e.g. Manali, Himachal Pradesh"
-          />
+          <Text style={[type.subtitle, { color: c.onSurface }]}>Where to?</Text>
+          <Text style={[type.caption, { color: c.onSurfaceVariant, marginBottom: space.sm }]}>
+            Pan and zoom the map to pinpoint your destination.
+          </Text>
+          <View style={{ height: 350, borderRadius: 16, overflow: 'hidden', backgroundColor: c.surfaceVariant }}>
+            <MapView
+              style={{ flex: 1 }}
+              initialRegion={mapRegion}
+              onRegionChangeComplete={setMapRegion}
+            />
+            {/* Center crosshair */}
+            <View style={{ ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+              <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: c.primary, borderWidth: 3, borderColor: '#fff', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84, elevation: 5 }} />
+            </View>
+            {geocoding && (
+              <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center' }}>
+                <ActivityIndicator size="large" color="#fff" />
+              </View>
+            )}
+          </View>
         </View>
       )}
       {step === 2 && (
