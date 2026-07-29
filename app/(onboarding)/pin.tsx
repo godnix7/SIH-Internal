@@ -11,61 +11,65 @@ export default function PinSetupScreen() {
   const c = useAppColors();
   const [pin, setPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
-  const [step, setStep] = useState<'enter' | 'confirm'>('enter');
   const [error, setError] = useState(false);
   const { setHasSetPin } = useAppStore();
 
-  const handleNext = async () => {
-    if (step === 'enter') {
-      if (pin.length === 4) {
-        setStep('confirm');
-        setError(false);
-      }
-    } else {
-      if (pin === confirmPin) {
-        await storage.setDevicePin(pin);
-        setHasSetPin(true);
-        router.replace('/' as any);
-      } else {
-        setError(true);
-        setConfirmPin('');
-      }
+  const handleSave = async () => {
+    if (pin !== confirmPin) {
+      setError(true);
+      return;
     }
+    await storage.setDevicePin(pin);
+    setHasSetPin(true);
+    router.replace('/' as any);
   };
 
   return (
     <Screen
       title="Secure this device"
-      subtitle={
-        step === 'enter'
-          ? 'Set a 4-digit PIN to securely cancel any SOS alerts from this device.'
-          : 'Please confirm your 4-digit PIN.'
-      }
+      subtitle="Set a 4-digit PIN to securely cancel any SOS alerts from this device."
     >
-      <View style={{ alignItems: 'center', marginTop: space.xl }}>
-        <PinPad
-          length={4}
-          value={step === 'enter' ? pin : confirmPin}
-          onChange={(val) => {
-            if (step === 'enter') setPin(val);
-            else {
+      <View style={{ gap: space.xl, marginTop: space.lg }}>
+        <View style={{ alignItems: 'center' }}>
+          <Text style={[type.subtitle, { color: c.onSurface, marginBottom: space.md }]}>
+            Enter PIN
+          </Text>
+          <PinPad
+            length={4}
+            value={pin}
+            onChange={(val) => {
+              setPin(val);
+              setError(false);
+            }}
+          />
+        </View>
+
+        <View style={{ alignItems: 'center' }}>
+          <Text style={[type.subtitle, { color: c.onSurface, marginBottom: space.md }]}>
+            Confirm PIN
+          </Text>
+          <PinPad
+            length={4}
+            value={confirmPin}
+            onChange={(val) => {
               setConfirmPin(val);
               setError(false);
-            }
-          }}
-          error={error}
-        />
-        {error && (
-          <Text style={[type.caption, { color: c.critical, marginTop: space.sm }]}>
-            PINs do not match. Please try again.
-          </Text>
-        )}
+            }}
+            error={error}
+          />
+          {error && (
+            <Text style={[type.caption, { color: c.critical, marginTop: space.sm }]}>
+              PINs do not match. Please try again.
+            </Text>
+          )}
+        </View>
       </View>
+
       <View style={{ marginTop: space.xxl }}>
         <Button
-          label={step === 'enter' ? 'Next' : 'Save PIN'}
-          disabled={(step === 'enter' ? pin.length : confirmPin.length) !== 4}
-          onPress={handleNext}
+          label="Save PIN"
+          disabled={pin.length !== 4 || confirmPin.length !== 4}
+          onPress={handleSave}
         />
       </View>
     </Screen>
