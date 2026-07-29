@@ -265,7 +265,7 @@ export async function flushOutbox(): Promise<FlushResult> {
 
   for (const item of otherEvents) {
     try {
-      if (item.type === 'sos') {
+      if (item.type === 'sos.triggered') {
         const res = await sosApi.triggerSos(item.payload, item.id);
         // eslint-disable-next-line @typescript-eslint/no-require-imports
         const { useAppStore } = require('../stores/useAppStore');
@@ -288,7 +288,7 @@ export async function flushOutbox(): Promise<FlushResult> {
       failed += 1;
 
       // Phase 8: Offline SMS Fallback for SOS
-      if (item.type === 'sos') {
+      if (item.type === 'sos.triggered') {
         // eslint-disable-next-line @typescript-eslint/no-require-imports
         const SMS = require('expo-sms');
         const isAvailable = await SMS.isAvailableAsync();

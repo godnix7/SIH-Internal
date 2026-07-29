@@ -70,21 +70,30 @@ export default function SosActiveScreen() {
   // Handle cancel with PIN — with error feedback
   const handleCancelWithPin = async () => {
     if (cancelling) return;
-    setCancelling(true);
-    setPinError(false);
-    try {
-      const ok = await cancelSos(pin);
-      if (ok) {
-        router.replace('/shield');
-      } else {
-        setPinError(true);
-        setPin('');
-      }
-    } catch {
-      Alert.alert('Error', 'Failed to cancel SOS. Please try again.');
-    } finally {
-      setCancelling(false);
-    }
+    Alert.alert(
+      'Cancel SOS',
+      'Are you sure you want to cancel the SOS? This will stop emergency tracking.',
+      [
+        { text: 'No', style: 'cancel' },
+        { text: 'Yes, Cancel', style: 'destructive', onPress: async () => {
+          setCancelling(true);
+          setPinError(false);
+          try {
+            const ok = await cancelSos(pin);
+            if (ok) {
+              router.replace('/shield');
+            } else {
+              setPinError(true);
+              setPin('');
+            }
+          } catch {
+            Alert.alert('Error', 'Failed to cancel SOS. Please try again.');
+          } finally {
+            setCancelling(false);
+          }
+        }}
+      ]
+    );
   };
 
   // Handle resolve with confirmation
@@ -147,7 +156,7 @@ export default function SosActiveScreen() {
                 Enter your 4-digit security PIN to cancel
               </Text>
               <Button
-                label={cancelling ? 'Cancelling…' : t('sos.cancelButton')}
+                label={cancelling ? 'Cancelling…' : 'Cancel'}
                 variant="destructive"
                 disabled={cancelling || pin.length < 4}
                 onPress={handleCancelWithPin}
@@ -254,7 +263,7 @@ export default function SosActiveScreen() {
             </Text>
           )}
           <Button
-            label={cancelling ? 'Cancelling…' : t('sos.cancelButton')}
+            label={cancelling ? 'Cancelling…' : 'Cancel'}
             variant="destructive"
             disabled={cancelling || pin.length < 4}
             onPress={handleCancelWithPin}
