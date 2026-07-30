@@ -94,7 +94,7 @@ export default function SosActiveScreen() {
     return () => {
       if (socket) socket.disconnect();
     };
-  }, [sos?.id, sos?.status]);
+  }, [sos?.id, sos?.incidentId]);
 
   // Backs the "trying every 10 s" promise shown on the offline card.
   useEffect(() => {
