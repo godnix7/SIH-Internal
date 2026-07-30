@@ -5,6 +5,7 @@ import { router } from 'expo-router';
 import { ShieldAlert } from 'lucide-react-native';
 import { connectRealtime } from '@/src/services/realtime';
 import { locationEngine } from '@/src/services/locationEngine';
+import * as SecureStore from 'expo-secure-store';
 
 import { MapZoneLayer } from '@/src/components/MapZoneLayer';
 import { Screen } from '@/src/components/Screen';
@@ -70,17 +71,13 @@ export default function SosActiveScreen() {
     if (!sos || sos.status === 'COUNTDOWN' || sos.status === 'OFFLINE_QUEUED') return;
 
     let socket: ReturnType<typeof connectRealtime> | undefined;
-    import('expo-secure-store').then((SecureStore) => {
-      SecureStore.getItemAsync('accessToken').then((token) => {
-        if (!token) return;
-        import('@/src/services/realtime').then(({ connectRealtime }) => {
-          socket = connectRealtime(token, (update) => {
-            if (update.id === sos.incidentId) {
-              const state = useAppStore.getState();
-              state.setSosStatus(update.status.toUpperCase() as any, update.otp);
-            }
-          });
-        });
+    SecureStore.getItemAsync('accessToken').then((token) => {
+      if (!token) return;
+      socket = connectRealtime(token, (update) => {
+        if (update.id === sos.incidentId) {
+          const state = useAppStore.getState();
+          state.setSosStatus(update.status.toUpperCase() as any, update.otp);
+        }
       });
     });
 
