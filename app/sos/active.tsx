@@ -77,14 +77,7 @@ export default function SosActiveScreen() {
           socket = connectRealtime(token, (update) => {
             if (update.id === sos.incidentId) {
               const state = useAppStore.getState();
-              // Create nextEvents (mocking since we just want to force a re-render/update)
-              const nextEvents = [...state.incidentEvents];
-              // Use setSosStatus conceptually, or we can just update the store directly.
-              // We'll update the store directly to keep it simple.
-              state.setSosStatus(update.status.toUpperCase() as any);
-              if (update.otp) {
-                useAppStore.setState({ resolutionOtp: update.otp });
-              }
+              state.setSosStatus(update.status.toUpperCase() as any, update.otp);
             }
           });
         });

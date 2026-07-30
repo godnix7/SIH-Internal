@@ -264,6 +264,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       alerts: [{ ...alert, id: uniqueId('alert'), createdAt: Date.now() }, ...state.alerts],
     })),
   beginSos: async (type, silent, location) => {
+    if (get().sos) return;
     // Check for an active trip
     const trip = activeTrip(get().trips);
 
