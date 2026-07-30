@@ -1,4 +1,5 @@
 import CryptoJS from 'crypto-js';
+import * as Crypto from 'expo-crypto';
 
 // We use the same AES key as the backend. In production, this should be properly populated.
 // If EXPO_PUBLIC_SMS_ENCRYPTION_KEY is missing, we fall back to a 32-byte default key.
@@ -11,7 +12,9 @@ export const smsCrypto = {
    */
   encrypt: (plaintext: string): string => {
     // Generate a random 16-byte Initialization Vector
-    const iv = CryptoJS.lib.WordArray.random(16);
+    const randomBytes = Crypto.getRandomBytes(16);
+    const hexIv = Array.from(randomBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+    const iv = CryptoJS.enc.Hex.parse(hexIv);
     
     // Parse the 32-byte key
     const key = CryptoJS.enc.Utf8.parse(SMS_AES_KEY);
