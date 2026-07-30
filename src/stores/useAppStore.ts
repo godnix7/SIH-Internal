@@ -354,12 +354,14 @@ export const useAppStore = create<AppStore>((set, get) => ({
     await get().setSosStatus('CANCELLED');
     await clearPersistedSos();
     await locationEngine.setEmergency(false);
+    set({ sos: undefined, incidentEvents: [] });
     return true;
   },
   resolveSos: async () => {
     await get().setSosStatus('RESOLVED');
     await clearPersistedSos();
     await locationEngine.setEmergency(false);
+    set({ sos: undefined, incidentEvents: [] });
   },
   restoreSos: async () => {
     const saved = await SecureStore.getItemAsync(SOS_KEY);
