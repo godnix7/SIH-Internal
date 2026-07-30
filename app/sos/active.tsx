@@ -4,15 +4,12 @@ import { useTranslation } from 'react-i18next';
 import { router } from 'expo-router';
 import { ShieldAlert } from 'lucide-react-native';
 import { connectRealtime } from '@/src/services/realtime';
+import { locationEngine } from '@/src/services/locationEngine';
 
 import { MapZoneLayer } from '@/src/components/MapZoneLayer';
 import { Screen } from '@/src/components/Screen';
 import { Button, Card, OfflineBar, PinPad, TimelineItem, useAppColors } from '@/src/components/ui';
-import {
-  SMS_SHORTCODE,
-  EMERGENCY_NUMBER,
-  OFFLINE_RETRY_MS,
-} from '@/src/lib/constants';
+import { SMS_SHORTCODE, EMERGENCY_NUMBER, OFFLINE_RETRY_MS } from '@/src/lib/constants';
 import { integrityKey, useChainIntegrity } from '@/src/lib/useChainIntegrity';
 import { flushOutbox } from '@/src/services/api';
 import { activeTrip, useAppStore } from '@/src/stores/useAppStore';
@@ -21,8 +18,7 @@ import { space, type } from '@/src/theme/tokens';
 export default function SosActiveScreen() {
   const c = useAppColors();
   const { t } = useTranslation();
-  const { sos, trips, incidentEvents } =
-    useAppStore();
+  const { sos, trips, incidentEvents } = useAppStore();
   const [pin, setPin] = useState('');
   const [cancelOpen, setCancelOpen] = useState(false);
   const setSosStatus = useAppStore((state) => state.setSosStatus);
@@ -48,10 +44,24 @@ export default function SosActiveScreen() {
       router.replace('/shield');
       return;
     }
+    // Auto-navigate away when SOS reaches a terminal state via server push
+    if (sos.status === 'FALSE_ALARM' || sos.status === 'RESOLVED' || sos.status === 'CANCELLED') {
+      const label =
+        sos.status === 'FALSE_ALARM'
+          ? 'The control room has closed this incident as a false alarm.'
+          : sos.status === 'RESOLVED'
+            ? 'This emergency has been resolved.'
+            : 'SOS cancelled.';
+      Alert.alert('Incident Closed', label, [
+        { text: 'OK', onPress: () => router.replace('/home') },
+      ]);
+      void resolveSos();
+      return;
+    }
     if (sos.status !== 'COUNTDOWN') return;
     const timer = setInterval(() => setNow(Date.now()), 250);
     return () => clearInterval(timer);
-  }, [sos]);
+  }, [sos, sos?.status]);
   useEffect(() => {
     if (sos?.status === 'COUNTDOWN' && secondsLeft === 0) void sendSos();
   }, [secondsLeft, sendSos, sos?.status]);
@@ -60,8 +70,8 @@ export default function SosActiveScreen() {
     if (!sos || sos.status === 'COUNTDOWN' || sos.status === 'OFFLINE_QUEUED') return;
 
     let socket: ReturnType<typeof connectRealtime> | undefined;
-    import('expo-secure-store').then(SecureStore => {
-      SecureStore.getItemAsync('accessToken').then(token => {
+    import('expo-secure-store').then((SecureStore) => {
+      SecureStore.getItemAsync('accessToken').then((token) => {
         if (!token) return;
         import('@/src/services/realtime').then(({ connectRealtime }) => {
           socket = connectRealtime(token, (update) => {
@@ -73,7 +83,7 @@ export default function SosActiveScreen() {
               // We'll update the store directly to keep it simple.
               state.setSosStatus(update.status.toUpperCase() as any);
               if (update.otp) {
-                 useAppStore.setState({ resolutionOtp: update.otp });
+                useAppStore.setState({ resolutionOtp: update.otp });
               }
             }
           });
@@ -107,24 +117,28 @@ export default function SosActiveScreen() {
       'Are you sure you want to cancel the SOS? This will stop emergency tracking.',
       [
         { text: 'No', style: 'cancel' },
-        { text: 'Yes, Cancel', style: 'destructive', onPress: async () => {
-          setCancelling(true);
-          setPinError(false);
-          try {
-            const ok = await cancelSos(pin);
-            if (ok) {
-              router.replace('/shield');
-            } else {
-              setPinError(true);
-              setPin('');
+        {
+          text: 'Yes, Cancel',
+          style: 'destructive',
+          onPress: async () => {
+            setCancelling(true);
+            setPinError(false);
+            try {
+              const ok = await cancelSos(pin);
+              if (ok) {
+                router.replace('/shield');
+              } else {
+                setPinError(true);
+                setPin('');
+              }
+            } catch {
+              Alert.alert('Error', 'Failed to cancel SOS. Please try again.');
+            } finally {
+              setCancelling(false);
             }
-          } catch {
-            Alert.alert('Error', 'Failed to cancel SOS. Please try again.');
-          } finally {
-            setCancelling(false);
-          }
-        }}
-      ]
+          },
+        },
+      ],
     );
   };
 
@@ -150,7 +164,7 @@ export default function SosActiveScreen() {
             }
           },
         },
-      ]
+      ],
     );
   };
 
@@ -178,7 +192,13 @@ export default function SosActiveScreen() {
           <Button label={t('sos.cancel')} variant="secondary" onPress={() => setCancelOpen(true)} />
           {cancelOpen && (
             <Card>
-              <PinPad value={pin} onChange={(val) => { setPin(val); setPinError(false); }} />
+              <PinPad
+                value={pin}
+                onChange={(val) => {
+                  setPin(val);
+                  setPinError(false);
+                }}
+              />
               {pinError && (
                 <Text style={[type.caption, { color: c.critical }]}>
                   Incorrect PIN. Please try again.
@@ -211,26 +231,36 @@ export default function SosActiveScreen() {
     >
       <Card>
         <Text style={[type.subtitle, { color: c.critical }]}>
-          {sos.status === 'RESPONDER_ENROUTE'
-            ? t('sos.enroute')
-            : sos.status === 'RESPONDER_ARRIVED'
-              ? 'Police/Medical team has arrived at your location'
-              : sos.status === 'RESOLVE_PENDING'
-                ? 'Incident clearing pending'
-                : sos.status === 'ACKNOWLEDGED'
-                  ? t('sos.acknowledged')
-                  : t('sos.delivering')}
+          {sos.status === 'FALSE_ALARM'
+            ? 'This incident has been closed as a false alarm by the control room.'
+            : sos.status === 'RESPONDER_ENROUTE'
+              ? t('sos.enroute')
+              : sos.status === 'RESPONDER_ARRIVED'
+                ? 'Police/Medical team has arrived at your location'
+                : sos.status === 'RESOLVE_PENDING'
+                  ? 'Incident clearing pending'
+                  : sos.status === 'ACKNOWLEDGED'
+                    ? t('sos.acknowledged')
+                    : t('sos.delivering')}
         </Text>
         <Text style={[type.body, { color: c.onSurfaceVariant }]}>{t('sos.sharedLine')}</Text>
       </Card>
-      
+
       {sos.status === 'RESOLVE_PENDING' && resolutionOtp && (
         <Card>
           <Text style={[type.subtitle, { color: c.onSurface }]}>Security Clearance OTP</Text>
           <Text style={[type.body, { color: c.onSurfaceVariant, marginBottom: 8 }]}>
-            The responder has requested to close this incident. Please verify their identity and read them the following code to confirm your safety:
+            The responder has requested to close this incident. Please verify their identity and
+            read them the following code to confirm your safety:
           </Text>
-          <View style={{ backgroundColor: c.surfaceVariant, padding: 16, borderRadius: 8, alignItems: 'center' }}>
+          <View
+            style={{
+              backgroundColor: c.surfaceVariant,
+              padding: 16,
+              borderRadius: 8,
+              alignItems: 'center',
+            }}
+          >
             <Text style={{ fontSize: 32, fontWeight: 'bold', letterSpacing: 8, color: c.primary }}>
               {resolutionOtp}
             </Text>
@@ -279,16 +309,23 @@ export default function SosActiveScreen() {
           {t(integrityKey(integrity), { count: incidentEvents.length })}
         </Text>
       </Card>
-      {['SENT', 'ACKNOWLEDGED', 'RESPONDER_ENROUTE'].includes(sos.status) && (
-        <Button
-          label={t('sos.cancelWithPin')}
-          variant="ghost"
-          onPress={() => setCancelOpen((value) => !value)}
-        />
-      )}
+      {['SENT', 'ACKNOWLEDGED', 'RESPONDER_ENROUTE'].includes(sos.status) &&
+        sos.status !== 'FALSE_ALARM' && (
+          <Button
+            label={t('sos.cancelWithPin')}
+            variant="ghost"
+            onPress={() => setCancelOpen((value) => !value)}
+          />
+        )}
       {cancelOpen && (
         <Card>
-          <PinPad value={pin} onChange={(val) => { setPin(val); setPinError(false); }} />
+          <PinPad
+            value={pin}
+            onChange={(val) => {
+              setPin(val);
+              setPinError(false);
+            }}
+          />
           {pinError && (
             <Text style={[type.caption, { color: c.critical }]}>
               Incorrect PIN. Please try again.

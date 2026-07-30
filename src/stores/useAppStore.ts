@@ -31,7 +31,6 @@ function persistTrips(trips: Trip[]) {
   preferences.set(TRIPS_KEY, JSON.stringify(trips));
 }
 
-
 type Profile = {
   name: string;
   nationality: string;
@@ -57,7 +56,7 @@ type AppStore = {
   theme: 'system' | 'light' | 'dark';
   isAuthenticated: boolean;
   userId?: string;
-  verificationPrompt?: { countdown: number, vector: any };
+  verificationPrompt?: { countdown: number; vector: any };
   isWearableConnected: boolean;
   setWearableConnected: (connected: boolean) => void;
   showVerificationPrompt: (countdown: number, vector: any) => void;
@@ -342,15 +341,15 @@ export const useAppStore = create<AppStore>((set, get) => ({
     const storedPin = await storage.getDevicePin();
     const sos = get().sos;
     if (!storedPin || pin !== storedPin || !sos) return false;
-    
+
     try {
       if (get().online) {
         await sosApi.cancelSos(sos.id, { reason: 'User cancelled via PIN' });
       }
     } catch (e) {
-      console.warn("Failed to notify backend of cancel", e);
+      console.warn('Failed to notify backend of cancel', e);
     }
-    
+
     await get().setSosStatus('CANCELLED');
     await clearPersistedSos();
     await locationEngine.setEmergency(false);
@@ -414,9 +413,14 @@ export function activeTrip(trips: Trip[]): Trip | undefined {
   return trips.find((trip) => trip.status === 'active' || trip.status === 'paused');
 }
 
-/** A resolved or cancelled SOS stays in the store for its timeline; it is not live. */
+/** A resolved, cancelled, or false-alarm SOS stays in the store for its timeline; it is not live. */
 export function isSosActive(sos?: SOSRecord): boolean {
-  return sos !== undefined && sos.status !== 'RESOLVED' && sos.status !== 'CANCELLED';
+  return (
+    sos !== undefined &&
+    sos.status !== 'RESOLVED' &&
+    sos.status !== 'CANCELLED' &&
+    sos.status !== 'FALSE_ALARM'
+  );
 }
 
 export { remoteConfig };

@@ -2,14 +2,16 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, Asyn
 from sqlalchemy.orm import declarative_base
 from app.config import settings
 
-# Async Engine for FastAPI
+engine_kwargs = {"echo": False, "future": True}
+if "postgresql" in settings.async_database_url:
+    engine_kwargs["pool_size"] = 50
+    engine_kwargs["max_overflow"] = 20
+
 engine = create_async_engine(
     settings.async_database_url,
-    echo=False,
-    future=True,
-    pool_size=50,
-    max_overflow=20
+    **engine_kwargs
 )
+
 
 # Async Session Factory
 AsyncSessionLocal = async_sessionmaker(

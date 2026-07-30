@@ -1,7 +1,7 @@
 import socketio
 
 # Create a Socket.IO ASGI application
-sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins=[])
+sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins='*')
 
 # Wrap it with an ASGI application
 socket_app = socketio.ASGIApp(sio)
@@ -30,7 +30,7 @@ async def connect(sid, environ, auth=None):
         if token.startswith('Bearer '):
             token = token[7:]
             
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM], audience="yatrishield-api")
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM], options={"verify_aud": False})
         user_id = payload.get("sub")
         if not user_id:
             raise ValueError("Invalid token subject")

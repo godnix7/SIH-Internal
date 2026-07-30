@@ -388,3 +388,66 @@ async def escalate_incident(
         "event": "escalated"
     })
     return {"status": "escalated"}
+
+
+@router.post("/{incident_id}/close")
+async def close_incident(
+    incident_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Operator closes an incident as a false alarm.
+    This updates both the incident and the underlying SOS alert,
+    then broadcasts to all connected clients (including the tourist's mobile app).
+    """
+    if current_user.role == 'tourist':
+        raise HTTPException(status_code=403, detail="Only operators can close incidents")
+        
+    result = await db.execute(select(Incident).where(Incident.id == incident_id))
+    incident = result.scalars().first()
+    
+    if not incident:
+        raise HTTPException(status_code=404, detail="Incident not found")
+        
+    if incident.status in ('false_alarm', 'closed', 'resolved'):
+        return {"status": incident.status}
+        
+    from sqlalchemy.sql import func
+    incident.status = 'false_alarm'
+    incident.closed_at = func.now()
+    
+    # Also update the underlying SOS alert
+    if incident.sos_alert_id:
+        sos_res = await db.execute(select(SOSAlert).where(SOSAlert.id == incident.sos_alert_id))
+        sos = sos_res.scalars().first()
+        if sos:
+            sos.status = 'false_alarm'
+    
+    event = IncidentEvent(
+        incident_id=incident.id,
+        event_type='false_alarm',
+        actor_id=current_user.id,
+        details={
+            "reason": "Closed as false alarm by operator",
+            "closed_by_role": current_user.role,
+            "closed_by_id": str(current_user.id),
+            "closed_by_org": getattr(current_user, 'organization', None)
+        }
+    )
+    db.add(event)
+    await db.flush()
+    
+    # Anchor to cryptographic chain
+    await BlockchainService.append_event(db, str(incident.id), str(event.id), event.event_type, event.details)
+    
+    await db.commit()
+    await db.refresh(incident)
+    
+    await broadcast_incident_update({
+        "id": str(incident.id),
+        "status": incident.status,
+        "updatedAt": int(incident.updated_at.timestamp() * 1000) if incident.updated_at else None
+    })
+    
+    return {"status": "false_alarm"}

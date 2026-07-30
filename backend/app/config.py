@@ -33,8 +33,11 @@ class Settings(BaseSettings):
             url = self.DATABASE_URL
             if url.startswith("postgres://"):
                 url = url.replace("postgres://", "postgresql://", 1)
+            elif url.startswith("sqlite+aiosqlite://"):
+                url = url.replace("sqlite+aiosqlite://", "sqlite://", 1)
             return url
         return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+
     
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
