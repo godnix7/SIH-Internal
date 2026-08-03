@@ -254,9 +254,11 @@ export const useAppStore = create<AppStore>((set, get) => ({
       // Offline: handled later via sync if needed
     }
     set((state) => {
-      const newTrips = state.trips.map((t) => (t.id === tripId ? { ...t, status: 'ended' } : t));
+      const newTrips: Trip[] = state.trips.map((t): Trip =>
+        t.id === tripId ? { ...t, status: 'ended' as const } : t,
+      );
       persistTrips(newTrips);
-      return { trips: newTrips as Trip[] };
+      return { trips: newTrips };
     });
   },
   addAlert: (alert) =>
@@ -293,7 +295,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       'sos.triggered',
       {
         clientSosId: sos.id,
-        tripId: sos.tripId,
+        tripId: activeTrip(get().trips)?.id || 'EMERGENCY_DIRECT',
         incidentId: sos.incidentId,
         type: sos.type,
         silent: sos.silent,
@@ -345,13 +347,15 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
     try {
       if (get().online) {
-        await sosApi.cancelSos(sos.id, { reason: 'User cancelled via PIN' });
+        await sosApi.cancelSos(sos.id, {
+          reason: 'User verified safety via Safe PIN - Cancelled by User',
+        });
       }
     } catch (e) {
       console.warn('Failed to notify backend of cancel', e);
     }
 
-    await get().setSosStatus('CANCELLED');
+    await get().setSosStatus('CANCELLED_BY_USER');
     await clearPersistedSos();
     await locationEngine.setEmergency(false);
     set({ sos: undefined, incidentEvents: [] });
@@ -367,7 +371,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
     const saved = await SecureStore.getItemAsync(SOS_KEY);
     if (!saved) return;
     const sos = JSON.parse(saved) as SOSRecord;
-    if (['RESOLVED', 'CANCELLED'].includes(sos.status)) {
+    if (['RESOLVED', 'CANCELLED', 'CANCELLED_BY_USER'].includes(sos.status)) {
       await clearPersistedSos();
       return;
     }
@@ -422,6 +426,7 @@ export function isSosActive(sos?: SOSRecord): boolean {
     sos !== undefined &&
     sos.status !== 'RESOLVED' &&
     sos.status !== 'CANCELLED' &&
+    sos.status !== 'CANCELLED_BY_USER' &&
     sos.status !== 'FALSE_ALARM'
   );
 }

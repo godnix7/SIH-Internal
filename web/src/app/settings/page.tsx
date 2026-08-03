@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { useEffect, useState } from 'react';
 import DashboardLayout from '../components/DashboardLayout';
@@ -69,20 +69,51 @@ export default function SettingsPage() {
         <h2 style={{ fontSize: '24px', fontWeight: 'bold' }}>Settings</h2>
       </header>
 
-      <div className="card" style={{ maxWidth: '600px', backgroundColor: 'var(--color-surface)', padding: '24px', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
-        <h3 style={{ fontSize: '18px', fontWeight: '500', marginBottom: '20px' }}>Application Preferences</h3>
-        
+      <div
+        className="card"
+        style={{
+          maxWidth: '600px',
+          backgroundColor: 'var(--color-surface)',
+          padding: '24px',
+          borderRadius: '12px',
+          border: '1px solid var(--color-border)',
+        }}
+      >
+        <h3 style={{ fontSize: '18px', fontWeight: '500', marginBottom: '20px' }}>
+          Application Preferences
+        </h3>
+
         {error && (
-          <div style={{ backgroundColor: 'var(--color-error-container)', color: 'var(--color-error)', padding: '12px', borderRadius: '8px', marginBottom: '20px', fontSize: '14px', fontWeight: '500' }}>
+          <div
+            style={{
+              backgroundColor: 'var(--color-error-container)',
+              color: 'var(--color-error)',
+              padding: '12px',
+              borderRadius: '8px',
+              marginBottom: '20px',
+              fontSize: '14px',
+              fontWeight: '500',
+            }}
+          >
             {error}
           </div>
         )}
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div>
-            <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', marginBottom: '8px', color: 'var(--color-on-surface-variant)' }}>Portal Language</label>
-            <select 
-              className="input-premium" 
+            <label
+              style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '600',
+                marginBottom: '8px',
+                color: 'var(--color-on-surface-variant)',
+              }}
+            >
+              Portal Language
+            </label>
+            <select
+              className="input-premium"
               style={{ appearance: 'none', width: '100%' }}
               value={language}
               onChange={(e) => setLanguage(e.target.value)}
@@ -92,11 +123,21 @@ export default function SettingsPage() {
               <option value="hi">Hindi (हिंदी)</option>
             </select>
           </div>
-          
+
           <div>
-            <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', marginBottom: '8px', color: 'var(--color-on-surface-variant)' }}>Appearance Theme</label>
-            <select 
-              className="input-premium" 
+            <label
+              style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '600',
+                marginBottom: '8px',
+                color: 'var(--color-on-surface-variant)',
+              }}
+            >
+              Appearance Theme
+            </label>
+            <select
+              className="input-premium"
               style={{ appearance: 'none', width: '100%' }}
               value={theme}
               onChange={(e) => setTheme(e.target.value)}
@@ -107,10 +148,12 @@ export default function SettingsPage() {
             </select>
           </div>
 
-          <hr style={{ border: 'none', borderTop: '1px solid var(--color-border)', margin: '10px 0' }} />
+          <hr
+            style={{ border: 'none', borderTop: '1px solid var(--color-border)', margin: '10px 0' }}
+          />
 
-          <button 
-            className="btn btn-primary" 
+          <button
+            className="btn btn-primary"
             onClick={handleSave}
             disabled={loading}
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
@@ -124,15 +167,26 @@ export default function SettingsPage() {
               'Save Changes'
             )}
           </button>
-          
+
           {success && (
-            <p style={{ color: 'var(--color-success)', fontSize: '14px', marginTop: '8px', fontWeight: '500' }}>
+            <p
+              style={{
+                color: 'var(--color-success)',
+                fontSize: '14px',
+                marginTop: '8px',
+                fontWeight: '500',
+              }}
+            >
               ✓ Settings saved and applied successfully.
             </p>
           )}
         </div>
       </div>
-      <style dangerouslySetInnerHTML={{__html: `@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}} />
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`,
+        }}
+      />
     </DashboardLayout>
   );
 }

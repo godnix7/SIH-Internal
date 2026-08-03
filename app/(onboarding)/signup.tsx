@@ -53,7 +53,7 @@ export default function Signup() {
       const { accessToken, refreshToken, sosToken, userId } = res.data;
 
       await storage.setTokens(accessToken, refreshToken, sosToken);
-      
+
       // Save device PIN
       await storage.setDevicePin(pin.replace(/\D/g, ''));
       setHasSetPin(true);
@@ -69,12 +69,12 @@ export default function Signup() {
       if (!e.response) {
         Alert.alert(
           'No Connection',
-          'Could not reach the server. Please check your internet connection and try again.'
+          'Could not reach the server. Please check your internet connection and try again.',
         );
       } else if (e.response.status === 409) {
         Alert.alert(
           'Email Already Registered',
-          'An account with this email already exists. Please sign in instead.'
+          'An account with this email already exists. Please sign in instead.',
         );
       } else if (e.response.status === 422) {
         const details = e.response.data?.error?.details;
@@ -82,16 +82,10 @@ export default function Signup() {
           const messages = details.map((d: any) => d.issue || d.msg).join('\n');
           Alert.alert('Validation Error', messages);
         } else {
-          Alert.alert(
-            'Validation Error',
-            'Please check your information and try again.'
-          );
+          Alert.alert('Validation Error', 'Please check your information and try again.');
         }
       } else if (e.response.status === 429) {
-        Alert.alert(
-          'Too Many Attempts',
-          'Please wait a moment before trying again.'
-        );
+        Alert.alert('Too Many Attempts', 'Please wait a moment before trying again.');
       } else {
         Alert.alert('Signup Failed', 'Something went wrong. Please try again.');
       }
@@ -101,10 +95,7 @@ export default function Signup() {
   };
 
   return (
-    <Screen
-      title="Create your account"
-      subtitle="Sign up to start your safe travel experience."
-    >
+    <Screen title="Create your account" subtitle="Sign up to start your safe travel experience.">
       <TouchableOpacity
         onPress={() => router.back()}
         style={{
@@ -116,9 +107,7 @@ export default function Signup() {
         activeOpacity={0.7}
       >
         <ArrowLeft color={c.primary} size={20} />
-        <Text style={[type.body, { color: c.primary, fontWeight: '600' }]}>
-          Back to Sign In
-        </Text>
+        <Text style={[type.body, { color: c.primary, fontWeight: '600' }]}>Back to Sign In</Text>
       </TouchableOpacity>
 
       <Input
@@ -201,9 +190,7 @@ export default function Signup() {
       </View>
 
       {password.length > 0 && confirmPassword.length > 0 && password !== confirmPassword && (
-        <Text style={[type.caption, { color: c.error || '#EF4444' }]}>
-          Passwords do not match.
-        </Text>
+        <Text style={[type.caption, { color: c.error || '#EF4444' }]}>Passwords do not match.</Text>
       )}
 
       <TouchableOpacity
@@ -223,8 +210,8 @@ export default function Signup() {
           <Square color={c.onSurfaceVariant} size={24} />
         )}
         <Text style={[type.caption, { color: c.onSurfaceVariant, flex: 1 }]}>
-          I consent to the collection of my location and identity data strictly
-          for emergency response purposes in accordance with the DPDP Act.
+          I consent to the collection of my location and identity data strictly for emergency
+          response purposes in accordance with the DPDP Act.
         </Text>
       </TouchableOpacity>
 

@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -22,7 +22,8 @@ export default function ProfilePage() {
 
   const handleRevokeAllSessions = async () => {
     if (revokingAll) return;
-    if (!window.confirm('This will log you out of all devices including this one. Continue?')) return;
+    if (!window.confirm('This will log you out of all devices including this one. Continue?'))
+      return;
 
     setRevokingAll(true);
     setRevokeError(null);
@@ -48,19 +49,22 @@ export default function ProfilePage() {
       } else if (!err.response) {
         setRevokeError('Network error. Please check your connection and try again.');
       } else {
-        setRevokeError(err.response?.data?.detail || 'Failed to revoke sessions. Please try again.');
+        setRevokeError(
+          err.response?.data?.detail || 'Failed to revoke sessions. Please try again.',
+        );
       }
     } finally {
       setRevokingAll(false);
     }
   };
 
-  const roleDisplay = {
-    'operator': 'Police / SDRF Operator',
-    'hospital': 'Hospital Staff',
-    'tourism_admin': 'Tourism Authority',
-    'sys_admin': 'System Administrator'
-  }[role] || 'Staff Member';
+  const roleDisplay =
+    {
+      operator: 'Police / SDRF Operator',
+      hospital: 'Hospital Staff',
+      tourism_admin: 'Tourism Authority',
+      sys_admin: 'System Administrator',
+    }[role] || 'Staff Member';
 
   return (
     <DashboardLayout>
@@ -70,7 +74,20 @@ export default function ProfilePage() {
 
       <div className="card" style={{ maxWidth: '600px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '24px', marginBottom: '32px' }}>
-          <div style={{ width: '80px', height: '80px', borderRadius: '40px', backgroundColor: 'var(--color-primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px', fontWeight: 'bold' }}>
+          <div
+            style={{
+              width: '80px',
+              height: '80px',
+              borderRadius: '40px',
+              backgroundColor: 'var(--color-primary)',
+              color: 'white',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '32px',
+              fontWeight: 'bold',
+            }}
+          >
             {role ? role[0].toUpperCase() : 'U'}
           </div>
           <div>
@@ -113,9 +130,7 @@ export default function ProfilePage() {
           )}
 
           {revokeError && (
-            <p style={{ color: 'var(--color-error)', fontSize: '14px' }}>
-              {revokeError}
-            </p>
+            <p style={{ color: 'var(--color-error)', fontSize: '14px' }}>{revokeError}</p>
           )}
 
           {/* Standard logout from this device */}
@@ -145,7 +160,11 @@ export default function ProfilePage() {
           </button>
         </div>
       </div>
-      <style dangerouslySetInnerHTML={{__html: `@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}} />
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`,
+        }}
+      />
     </DashboardLayout>
   );
 }

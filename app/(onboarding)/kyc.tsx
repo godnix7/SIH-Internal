@@ -21,22 +21,32 @@ export default function Kyc() {
     try {
       setLoading(true);
       // The backend expects specific payload structures for KYC validation
-      const payload = method === 'aadhaar' 
-        ? { type: 'aadhaar', digilockerToken: JSON.stringify({ name, dob: "1990-01-01" }) }
-        : { type: 'passport', mrzData: JSON.stringify({ name, dob: "1990-01-01" }) };
-        
+      const payload =
+        method === 'aadhaar'
+          ? { type: 'aadhaar', digilockerToken: JSON.stringify({ name, dob: '1990-01-01' }) }
+          : { type: 'passport', mrzData: JSON.stringify({ name, dob: '1990-01-01' }) };
+
       await api.post('/identity/verify', payload);
-      
+
       save({ name, nationality, homeCity: city });
       router.push('/success');
     } catch (e: any) {
       console.error(e);
       if (!e.response) {
-        Alert.alert('No Connection', 'Could not reach the verification server. Please check your internet connection and try again.');
+        Alert.alert(
+          'No Connection',
+          'Could not reach the verification server. Please check your internet connection and try again.',
+        );
       } else if (e.response.status === 422) {
-        Alert.alert('Verification Failed', 'The document details could not be verified. Please check your information and try again.');
+        Alert.alert(
+          'Verification Failed',
+          'The document details could not be verified. Please check your information and try again.',
+        );
       } else {
-        Alert.alert('Verification Error', 'Something went wrong during verification. Please try again.');
+        Alert.alert(
+          'Verification Error',
+          'Something went wrong during verification. Please try again.',
+        );
       }
     } finally {
       setLoading(false);
@@ -78,7 +88,12 @@ export default function Kyc() {
         onChangeText={setNationality}
         placeholder="Enter nationality"
       />
-      <Input label="Home city" value={city} onChangeText={setCity} placeholder="Enter your home city" />
+      <Input
+        label="Home city"
+        value={city}
+        onChangeText={setCity}
+        placeholder="Enter your home city"
+      />
       <Text style={[type.caption, { color: c.onSurfaceVariant }]}>
         {method === 'aadhaar'
           ? 'DigiLocker verification takes about two seconds.'
@@ -86,7 +101,7 @@ export default function Kyc() {
         Medical details remain self-declared.
       </Text>
       <Button
-        label={loading ? "Verifying…" : "Verify and issue ID"}
+        label={loading ? 'Verifying…' : 'Verify and issue ID'}
         disabled={!name || !city || loading}
         loading={loading}
         onPress={handleVerify}

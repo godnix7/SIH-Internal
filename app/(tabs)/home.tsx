@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { router } from 'expo-router';
-import { MapPin, ShieldCheck, Umbrella, Building2, Phone } from 'lucide-react-native';
+import { MapPin, ShieldCheck, Umbrella, Building2, Phone, Sparkles } from 'lucide-react-native';
 import { Text, View, ActivityIndicator } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import * as Location from 'expo-location';
@@ -61,7 +61,7 @@ export default function HomeScreen() {
         // Default to Bengaluru if location fails
         let lat = 12.9716;
         let lng = 77.5946;
-        
+
         let { status } = await Location.requestForegroundPermissionsAsync();
         if (status === 'granted') {
           let location = await Location.getCurrentPositionAsync({});
@@ -82,7 +82,7 @@ export default function HomeScreen() {
 
   const state = isSosActive(sos)
     ? 'emergency'
-    : !trip 
+    : !trip
       ? 'idle'
       : trip?.status === 'paused'
         ? 'paused'
@@ -98,23 +98,39 @@ export default function HomeScreen() {
         <Text style={[type.display, { color: c.onSurface }]}>
           {profile?.name?.split(' ')[0] ?? t('home.fallbackName')}
         </Text>
-        <MonitoringStatusPill 
-          state={state} 
-          onPress={() => state === 'emergency' ? router.push('/sos/active') : router.push('/settings/privacy')} 
+        <MonitoringStatusPill
+          state={state}
+          onPress={() =>
+            state === 'emergency' ? router.push('/sos/active') : router.push('/settings/privacy')
+          }
         />
       </View>
       {!online && <OfflineBar />}
       {trip ? (
         <Card>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: space.sm }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: space.sm,
+            }}
+          >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs }}>
-              <View style={{ 
-                width: 8, 
-                height: 8, 
-                borderRadius: 4, 
-                backgroundColor: gpsActive ? c.success : c.critical 
-              }} />
-              <Text style={[type.caption, { color: gpsActive ? c.success : c.critical, fontWeight: '600' }]}>
+              <View
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: 4,
+                  backgroundColor: gpsActive ? c.success : c.critical,
+                }}
+              />
+              <Text
+                style={[
+                  type.caption,
+                  { color: gpsActive ? c.success : c.critical, fontWeight: '600' },
+                ]}
+              >
                 {gpsActive ? 'GPS ACTIVE' : 'GPS LOST'}
               </Text>
             </View>
@@ -147,8 +163,8 @@ export default function HomeScreen() {
           action={
             <View style={{ width: '100%', gap: space.sm }}>
               <Button label={t('common.planTrip')} onPress={() => router.push('/trip/new')} />
-              <Button 
-                label="Quick Protect (Today)" 
+              <Button
+                label="Quick Protect (Today)"
                 variant="secondary"
                 onPress={async () => {
                   try {
@@ -164,12 +180,39 @@ export default function HomeScreen() {
                   } catch (e) {
                     console.error('Failed to start quick protect', e);
                   }
-                }} 
+                }}
               />
             </View>
           }
         />
       )}
+      <Card
+        style={{
+          borderColor: c.primary,
+          borderWidth: 1,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingVertical: space.md,
+        }}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, flex: 1 }}>
+          <Sparkles color={c.primary} size={24} />
+          <View style={{ flex: 1 }}>
+            <Text style={[type.subtitle, { color: c.onSurface, fontWeight: '700' }]}>
+              Offline Edge AI Triage & First-Aid
+            </Text>
+            <Text style={[type.caption, { color: '#16a34a', fontWeight: 'bold' }]}>
+              ● ZERO-CONNECTIVITY READY
+            </Text>
+          </View>
+        </View>
+        <Button
+          label="Open"
+          variant="secondary"
+          onPress={() => router.push('/emergency-ai' as any)}
+        />
+      </Card>
       <View style={{ gap: space.xs }}>
         <Text style={[type.title, { color: c.onSurface }]}>{t('home.nearby')}</Text>
         <Card>
@@ -178,10 +221,16 @@ export default function HomeScreen() {
               <ActivityIndicator size="small" color={c.primary} />
             </View>
           ) : facilities.length > 0 ? (
-            facilities.map(f => (
+            facilities.map((f) => (
               <ListRow
                 key={f.id}
-                icon={f.type === 'hospital' ? <Building2 color={c.critical} /> : <MapPin color={c.primary} />}
+                icon={
+                  f.type === 'hospital' ? (
+                    <Building2 color={c.critical} />
+                  ) : (
+                    <MapPin color={c.primary} />
+                  )
+                }
                 title={f.name}
                 sub={f.address || t('home.policeAidPostSub')}
                 trailing={f.phone ? <Phone size={16} color={c.onSurfaceVariant} /> : undefined}

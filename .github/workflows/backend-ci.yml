@@ -1,0 +1,56 @@
+name: Backend CI/CD
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'backend/**'
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+    # Add this back if you have pytest tests:
+    # - name: Run Tests
+    #   run: |
+    #     pip install pytest
+    #     pytest
+
+  deploy-to-render:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Trigger Render Deploy
+        # Only run if the RENDER_DEPLOY_HOOK secret is set
+        env:
+          deploy_url: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$deploy_url" ]; then
+            echo "No RENDER_DEPLOY_HOOK secret found. Skipping automatic deploy."
+            echo "Please add a RENDER_DEPLOY_HOOK repository secret in GitHub to enable CD."
+            exit 0
+          fi
+          curl -X POST "$deploy_url"
+          echo "Deploy triggered successfully!"

@@ -26,6 +26,11 @@ export const getIncidents = async () => {
   return response.data;
 };
 
+export const getAllIncidents = async (statusFilter = 'all') => {
+  const response = await apiClient.get('/incidents', { params: { status_filter: statusFilter } });
+  return response.data;
+};
+
 export const acknowledgeIncident = async (id: string) => {
   const response = await apiClient.post(`/incidents/${id}/acknowledge`, {});
   return response.data;
@@ -86,13 +91,16 @@ export const deleteInternalUser = async (userId: string) => {
   return response.data;
 };
 
-export const updateInternalUser = async (userId: string, data: {
-  name?: string;
-  phone?: string;
-  organization?: string;
-  role?: string;
-  status?: string;
-}) => {
+export const updateInternalUser = async (
+  userId: string,
+  data: {
+    name?: string;
+    phone?: string;
+    organization?: string;
+    role?: string;
+    status?: string;
+  },
+) => {
   const response = await apiClient.put(`/system/admin/users/${userId}`, data);
   return response.data;
 };

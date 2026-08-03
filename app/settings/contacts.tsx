@@ -16,13 +16,16 @@ export default function ContactsScreen() {
   const [initialLoading, setInitialLoading] = useState(true);
 
   const loadContacts = () => {
-    api.get('/users/me/contacts')
-      .then(res => setContacts(res.data))
+    api
+      .get('/users/me/contacts')
+      .then((res) => setContacts(res.data))
       .catch(() => Alert.alert('Error', 'Failed to load contacts.'))
       .finally(() => setInitialLoading(false));
   };
-  
-  useEffect(() => { loadContacts(); }, []);
+
+  useEffect(() => {
+    loadContacts();
+  }, []);
 
   const handleAdd = async () => {
     const normalizedPhone = phone.replace(/\D/g, '');
@@ -33,16 +36,30 @@ export default function ContactsScreen() {
 
     try {
       setLoading(true);
-      await api.post('/users/me/contacts', { name, phone: normalizedPhone, relationship: relation, notifyTrip: true, notifyDailyOk: true });
+      await api.post('/users/me/contacts', {
+        name,
+        phone: normalizedPhone,
+        relationship: relation,
+        notifyTrip: true,
+        notifyDailyOk: true,
+      });
       setShowAdd(false);
-      setName(''); setPhone(''); setRelation('');
+      setName('');
+      setPhone('');
+      setRelation('');
       loadContacts();
     } catch (e: any) {
       console.error(e);
       if (!e.response) {
-        Alert.alert('No Connection', 'Could not reach the server. Please check your internet connection.');
+        Alert.alert(
+          'No Connection',
+          'Could not reach the server. Please check your internet connection.',
+        );
       } else {
-        Alert.alert('Error', e.response?.data?.detail || 'Failed to add contact. Please try again.');
+        Alert.alert(
+          'Error',
+          e.response?.data?.detail || 'Failed to add contact. Please try again.',
+        );
       }
     } finally {
       setLoading(false);
@@ -60,7 +77,7 @@ export default function ContactsScreen() {
           style: 'destructive',
           onPress: async () => {
             const previousContacts = [...contacts];
-            setContacts(contacts.filter(c => c.id !== id));
+            setContacts(contacts.filter((c) => c.id !== id));
             try {
               await api.delete(`/users/me/contacts/${id}`);
             } catch (e) {
@@ -70,48 +87,84 @@ export default function ContactsScreen() {
             }
           },
         },
-      ]
+      ],
     );
   };
 
   return (
-      <Screen
-        title="Emergency contacts"
-        subtitle="Contacts receive an escalation, not your location history."
-      >
-        <Card>
-          {initialLoading ? (
-            <View style={{ padding: space.md, alignItems: 'center' }}>
-              <ActivityIndicator size="small" color={c.primary} />
-            </View>
-          ) : contacts.length > 0 ? (
-            contacts.map(contact => (
-              <View key={contact.id} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: space.sm }}>
-                 <View style={{ flex: 1 }}>
-                   <ListRow title={contact.name} sub={`${contact.relationship} · ${contact.phone}`} />
-                 </View>
-                 <Button label="X" variant="secondary" onPress={() => handleDelete(contact.id, contact.name)} />
+    <Screen
+      title="Emergency contacts"
+      subtitle="Contacts receive an escalation, not your location history."
+    >
+      <Card>
+        {initialLoading ? (
+          <View style={{ padding: space.md, alignItems: 'center' }}>
+            <ActivityIndicator size="small" color={c.primary} />
+          </View>
+        ) : contacts.length > 0 ? (
+          contacts.map((contact) => (
+            <View
+              key={contact.id}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: space.sm,
+              }}
+            >
+              <View style={{ flex: 1 }}>
+                <ListRow title={contact.name} sub={`${contact.relationship} · ${contact.phone}`} />
               </View>
-            ))
-          ) : (
-            <Text style={{color: c.onSurfaceVariant}}>No emergency contacts added yet. Adding at least one contact is recommended for trip safety.</Text>
-          )}
-          <Text style={[type.caption, { color: c.onSurfaceVariant, marginTop: space.sm }]}>
-            You can silently remove any contact. They are never told that they were removed.
-          </Text>
-        </Card>
-        
-        {showAdd ? (
-          <Card>
-            <Input label="Name" value={name} onChangeText={setName} placeholder="Enter contact's name" />
-            <Input label="Phone" value={phone} onChangeText={setPhone} placeholder="Enter phone number" keyboardType="phone-pad" />
-            <Input label="Relationship" value={relation} onChangeText={setRelation} placeholder="Enter relationship" />
-            <Button label={loading ? "Adding…" : "Save Contact"} disabled={!name || !phone || !relation || loading} loading={loading} onPress={handleAdd} />
-            <Button label="Cancel" variant="secondary" onPress={() => setShowAdd(false)} />
-          </Card>
+              <Button
+                label="X"
+                variant="secondary"
+                onPress={() => handleDelete(contact.id, contact.name)}
+              />
+            </View>
+          ))
         ) : (
-          <Button label="Add another contact" variant="secondary" onPress={() => setShowAdd(true)} />
+          <Text style={{ color: c.onSurfaceVariant }}>
+            No emergency contacts added yet. Adding at least one contact is recommended for trip
+            safety.
+          </Text>
         )}
-      </Screen>
+        <Text style={[type.caption, { color: c.onSurfaceVariant, marginTop: space.sm }]}>
+          You can silently remove any contact. They are never told that they were removed.
+        </Text>
+      </Card>
+
+      {showAdd ? (
+        <Card>
+          <Input
+            label="Name"
+            value={name}
+            onChangeText={setName}
+            placeholder="Enter contact's name"
+          />
+          <Input
+            label="Phone"
+            value={phone}
+            onChangeText={setPhone}
+            placeholder="Enter phone number"
+            keyboardType="phone-pad"
+          />
+          <Input
+            label="Relationship"
+            value={relation}
+            onChangeText={setRelation}
+            placeholder="Enter relationship"
+          />
+          <Button
+            label={loading ? 'Adding…' : 'Save Contact'}
+            disabled={!name || !phone || !relation || loading}
+            loading={loading}
+            onPress={handleAdd}
+          />
+          <Button label="Cancel" variant="secondary" onPress={() => setShowAdd(false)} />
+        </Card>
+      ) : (
+        <Button label="Add another contact" variant="secondary" onPress={() => setShowAdd(true)} />
+      )}
+    </Screen>
   );
 }

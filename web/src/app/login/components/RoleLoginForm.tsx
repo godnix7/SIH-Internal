@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -39,8 +39,8 @@ export default function RoleLoginForm({
       const response = await apiClient.post('/auth/login/internal', {
         email,
         password,
-        deviceFingerprint: "web-dashboard-fingerprint",
-        platform: "web"
+        deviceFingerprint: 'web-dashboard-fingerprint',
+        platform: 'web',
       });
 
       // Parse JWT payload
@@ -58,7 +58,7 @@ export default function RoleLoginForm({
       if (!allowedRoles.includes(role) && role !== 'sys_admin') {
         setError(
           roleMismatchMessage ||
-            `Your account does not have ${roleTitle} access. Please use the correct portal for your role.`
+            `Your account does not have ${roleTitle} access. Please use the correct portal for your role.`,
         );
         setLoading(false);
         return;
@@ -74,27 +74,21 @@ export default function RoleLoginForm({
     } catch (err: any) {
       if (!err.response) {
         setError(
-          'Unable to reach the server. Please check your internet connection and try again.'
+          'Unable to reach the server. Please check your internet connection and try again.',
         );
       } else if (err.response.status === 401) {
         const detail = err.response.data?.detail;
         if (detail === 'ACCOUNT_SUSPENDED') {
-          setError(
-            'Your account has been suspended. Please contact your administrator.'
-          );
+          setError('Your account has been suspended. Please contact your administrator.');
         } else {
-          setError(
-            'Invalid email or password. Please check your credentials and try again.'
-          );
+          setError('Invalid email or password. Please check your credentials and try again.');
         }
       } else if (err.response.status === 429) {
         setError('Too many login attempts. Please wait a moment and try again.');
       } else if (err.response.status >= 500) {
         setError('The server is experiencing issues. Please try again later.');
       } else {
-        setError(
-          err.response?.data?.detail || 'Login failed. Please try again.'
-        );
+        setError(err.response?.data?.detail || 'Login failed. Please try again.');
       }
       setLoading(false);
     }
@@ -140,10 +134,7 @@ export default function RoleLoginForm({
           </Link>
         </div>
 
-        <div
-          className="glass-card animate-fade-in"
-          style={{ maxWidth: '420px', width: '100%' }}
-        >
+        <div className="glass-card animate-fade-in" style={{ maxWidth: '420px', width: '100%' }}>
           <div
             style={{
               display: 'flex',
@@ -302,10 +293,7 @@ export default function RoleLoginForm({
             >
               {loading ? (
                 <>
-                  <Loader2
-                    size={18}
-                    style={{ animation: 'spin 1s linear infinite' }}
-                  />
+                  <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />
                   Authenticating…
                 </>
               ) : (
@@ -377,7 +365,13 @@ export default function RoleLoginForm({
             backdropFilter: 'blur(10px)',
           }}
         >
-          <div style={{ fontSize: '96px', marginBottom: '32px', filter: 'drop-shadow(0 12px 24px var(--color-primary-glow))' }}>
+          <div
+            style={{
+              fontSize: '96px',
+              marginBottom: '32px',
+              filter: 'drop-shadow(0 12px 24px var(--color-primary-glow))',
+            }}
+          >
             {roleIcon}
           </div>
           <h2

@@ -2,7 +2,13 @@
 
 import { useEffect, useState, type CSSProperties } from 'react';
 import DashboardLayout from '../components/DashboardLayout';
-import { deleteInternalUser, getInternalUsers, getSystemHealth, updateInternalUser, resetUserPassword } from '../../lib/api';
+import {
+  deleteInternalUser,
+  getInternalUsers,
+  getSystemHealth,
+  updateInternalUser,
+  resetUserPassword,
+} from '../../lib/api';
 import {
   Activity,
   AlertTriangle,
@@ -73,7 +79,13 @@ export default function AdminDashboard() {
   // Edit modal
   const [showEditModal, setShowEditModal] = useState(false);
   const [editUser, setEditUser] = useState<any>(null);
-  const [editForm, setEditForm] = useState({ name: '', phone: '', organization: '', role: '', status: '' });
+  const [editForm, setEditForm] = useState({
+    name: '',
+    phone: '',
+    organization: '',
+    role: '',
+    status: '',
+  });
   const [editError, setEditError] = useState<string | null>(null);
   const [editLoading, setEditLoading] = useState(false);
 
@@ -181,7 +193,14 @@ export default function AdminDashboard() {
   const handleCancelProvision = () => {
     if (isProvisionFormDirty && !window.confirm('You have unsaved changes. Discard them?')) return;
     setShowProvisionModal(false);
-    setProvisionForm({ email: '', password: '', role: 'operator', organization: '', name: '', phone: '' });
+    setProvisionForm({
+      email: '',
+      password: '',
+      role: 'operator',
+      organization: '',
+      name: '',
+      phone: '',
+    });
     setProvisionError(null);
   };
 
@@ -220,7 +239,14 @@ export default function AdminDashboard() {
       }
 
       setShowProvisionModal(false);
-      setProvisionForm({ email: '', password: '', role: 'operator', organization: '', name: '', phone: '' });
+      setProvisionForm({
+        email: '',
+        password: '',
+        role: 'operator',
+        organization: '',
+        name: '',
+        phone: '',
+      });
       showNotice('Internal user provisioned successfully.');
       await fetchDashboardData();
     } catch (error: any) {
@@ -262,7 +288,9 @@ export default function AdminDashboard() {
     } catch (error: any) {
       setEditError(
         error.response?.data?.detail ??
-          (error.response ? 'Failed to update user.' : 'Network error. Please check your connection.'),
+          (error.response
+            ? 'Failed to update user.'
+            : 'Network error. Please check your connection.'),
       );
     } finally {
       setEditLoading(false);
@@ -281,10 +309,7 @@ export default function AdminDashboard() {
       showNotice(`User ${action}d successfully.`);
       await fetchDashboardData();
     } catch (error: any) {
-      alert(
-        error.response?.data?.detail ??
-          `Failed to ${action} user. Please try again.`,
-      );
+      alert(error.response?.data?.detail ?? `Failed to ${action} user. Please try again.`);
     }
   };
 
@@ -463,14 +488,28 @@ export default function AdminDashboard() {
               </div>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 <div style={{ position: 'relative' }}>
-                  <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-on-surface-variant)' }} />
+                  <Search
+                    size={16}
+                    style={{
+                      position: 'absolute',
+                      left: '12px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      color: 'var(--color-on-surface-variant)',
+                    }}
+                  />
                   <input
                     type="text"
                     className="input-premium"
                     placeholder="Search users…"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    style={{ paddingLeft: '36px', minWidth: '200px', height: '38px', fontSize: '13px' }}
+                    style={{
+                      paddingLeft: '36px',
+                      minWidth: '200px',
+                      height: '38px',
+                      fontSize: '13px',
+                    }}
                     id="user-search"
                   />
                 </div>
@@ -523,7 +562,9 @@ export default function AdminDashboard() {
                                 <p className={styles.personName}>{user.name || 'Unnamed user'}</p>
                                 <p className={styles.personEmail}>{user.email}</p>
                                 {user.phone && (
-                                  <p className={styles.personEmail} style={{ fontSize: '11px' }}>{user.phone}</p>
+                                  <p className={styles.personEmail} style={{ fontSize: '11px' }}>
+                                    {user.phone}
+                                  </p>
                                 )}
                               </div>
                             </div>
@@ -532,7 +573,14 @@ export default function AdminDashboard() {
                             <span className={styles.rolePill}>{roleLabel(user.role)}</span>
                           </td>
                           <td>
-                            <span style={{ fontSize: '13px', color: user.organization ? 'var(--color-on-surface)' : 'var(--color-on-surface-variant)' }}>
+                            <span
+                              style={{
+                                fontSize: '13px',
+                                color: user.organization
+                                  ? 'var(--color-on-surface)'
+                                  : 'var(--color-on-surface-variant)',
+                              }}
+                            >
                               {user.organization || '—'}
                             </span>
                           </td>
@@ -575,7 +623,9 @@ export default function AdminDashboard() {
                                     fontSize: 12,
                                     color: active ? 'var(--color-warning)' : 'var(--color-success)',
                                   }}
-                                  aria-label={active ? `Suspend ${user.email}` : `Reactivate ${user.email}`}
+                                  aria-label={
+                                    active ? `Suspend ${user.email}` : `Reactivate ${user.email}`
+                                  }
                                   title={active ? 'Suspend user' : 'Reactivate user'}
                                 >
                                   {active ? <ToggleRight size={13} /> : <ToggleLeft size={13} />}
@@ -864,7 +914,9 @@ export default function AdminDashboard() {
               <form className={styles.form} onSubmit={handleEditSubmit}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                   <div>
-                    <label className={styles.fieldLabel} htmlFor="edit-name">Name</label>
+                    <label className={styles.fieldLabel} htmlFor="edit-name">
+                      Name
+                    </label>
                     <input
                       id="edit-name"
                       type="text"
@@ -874,7 +926,9 @@ export default function AdminDashboard() {
                     />
                   </div>
                   <div>
-                    <label className={styles.fieldLabel} htmlFor="edit-phone">Phone</label>
+                    <label className={styles.fieldLabel} htmlFor="edit-phone">
+                      Phone
+                    </label>
                     <input
                       id="edit-phone"
                       type="tel"
@@ -884,7 +938,9 @@ export default function AdminDashboard() {
                     />
                   </div>
                   <div>
-                    <label className={styles.fieldLabel} htmlFor="edit-role">Role</label>
+                    <label className={styles.fieldLabel} htmlFor="edit-role">
+                      Role
+                    </label>
                     <select
                       id="edit-role"
                       className="input-premium"
@@ -901,7 +957,9 @@ export default function AdminDashboard() {
                     </select>
                   </div>
                   <div>
-                    <label className={styles.fieldLabel} htmlFor="edit-status">Status</label>
+                    <label className={styles.fieldLabel} htmlFor="edit-status">
+                      Status
+                    </label>
                     <select
                       id="edit-status"
                       className="input-premium"
@@ -913,7 +971,9 @@ export default function AdminDashboard() {
                     </select>
                   </div>
                   <div style={{ gridColumn: '1 / -1' }}>
-                    <label className={styles.fieldLabel} htmlFor="edit-organization">Organization</label>
+                    <label className={styles.fieldLabel} htmlFor="edit-organization">
+                      Organization
+                    </label>
                     <input
                       id="edit-organization"
                       type="text"
@@ -969,7 +1029,8 @@ export default function AdminDashboard() {
                 Reset password
               </h2>
               <p className={styles.modalSubtitle}>
-                Set a new temporary password for <strong>{resetUser.email}</strong>. They will need to use this password to log in.
+                Set a new temporary password for <strong>{resetUser.email}</strong>. They will need
+                to use this password to log in.
               </p>
               {resetError && (
                 <div className={styles.errorState} role="alert">

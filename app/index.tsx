@@ -8,10 +8,10 @@ export default function Index() {
 
   if (isAuthenticated) {
     if (!hasSetPin) {
-      return <Redirect href={"/(onboarding)/pin" as any} />;
+      return <Redirect href={'/(onboarding)/pin' as any} />;
     }
     if (!complete) {
-      return <Redirect href={"/offline-maps" as any} />;
+      return <Redirect href={'/offline-maps' as any} />;
     }
     return <Redirect href="/home" />;
   }

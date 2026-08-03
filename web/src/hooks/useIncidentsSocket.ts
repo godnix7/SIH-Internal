@@ -20,7 +20,7 @@ export function useIncidentsSocket() {
     const socketInstance = io(SOCKET_URL, {
       path: '/socket.io/',
       transports: ['websocket'],
-      auth: { token }
+      auth: { token },
     });
 
     socketInstance.on('connect', () => {

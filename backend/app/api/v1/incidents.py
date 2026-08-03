@@ -12,10 +12,11 @@ from app.models.incident import Incident, IncidentEvent
 from app.models.sos import SOSAlert
 from app.models.identity import Identity, MedicalCard
 from app.schemas.sos import IncidentResponse, IncidentEventSchema, SOSAcknowledgeRequest, TouristDetails, SOSResolveRequest
-from app.core.socket import broadcast_incident_update
+from app.core.socket import broadcast_incident_update, broadcast_notification
 from app.core.security import decrypt_pii
 from app.services.blockchain import BlockchainService
 import random
+import secrets
 
 router = APIRouter()
 
@@ -33,9 +34,11 @@ async def list_incidents(
         stmt = select(Incident).where(Incident.user_id == current_user.id)
     else:
         if status_filter == 'history':
-            stmt = select(Incident).where(Incident.status.in_(['closed', 'cancelled', 'false_alarm', 'resolved', 'merged']))
+            stmt = select(Incident).where(Incident.status.in_(['closed', 'cancelled', 'cancelled_by_user', 'false_alarm', 'resolved', 'merged']))
+        elif status_filter == 'all':
+            stmt = select(Incident)
         else:
-            stmt = select(Incident).where(Incident.status.notin_(['closed', 'cancelled', 'false_alarm', 'resolved', 'merged']))
+            stmt = select(Incident).where(Incident.status.notin_(['closed', 'cancelled', 'cancelled_by_user', 'false_alarm', 'resolved', 'merged']))
         
     result = await db.execute(stmt.order_by(Incident.created_at.desc()))
     incidents = result.scalars().all()
@@ -215,8 +218,8 @@ async def request_resolve_incident(
     if not incident:
         raise HTTPException(status_code=404, detail="Incident not found")
         
-    # Generate 4-digit OTP
-    otp = str(random.randint(1000, 9999))
+    # Generate secure 6-digit cryptographic OTP
+    otp = str(secrets.randbelow(900000) + 100000)
     incident.resolution_otp = otp
     incident.status = 'resolve_pending'
     
@@ -224,7 +227,7 @@ async def request_resolve_incident(
         incident_id=incident.id,
         event_type='resolve_pending',
         actor_id=current_user.id,
-        details={"status": "OTP generated and sent to tourist for verification"}
+        details={"status": "6-digit OTP generated and sent to tourist for verification", "otp_length": 6}
     )
     db.add(event)
     await db.flush()
@@ -238,8 +241,15 @@ async def request_resolve_incident(
         "updatedAt": int(incident.updated_at.timestamp() * 1000) if incident.updated_at else None,
         "otp": otp
     })
+    await broadcast_notification({
+        "type": "OTP_GENERATED",
+        "title": "Verification OTP Generated",
+        "message": f"6-digit verification code sent to victim screen for incident {str(incident.id)[:8]}",
+        "incidentId": str(incident.id),
+        "priority": "HIGH"
+    })
     
-    return {"status": "resolve_pending", "message": "OTP generated"}
+    return {"status": "resolve_pending", "message": "6-digit OTP generated and sent to victim's display"}
 
 @router.post("/{incident_id}/resolve")
 async def resolve_incident(
@@ -298,6 +308,13 @@ async def resolve_incident(
         "id": str(incident.id),
         "status": incident.status,
         "updatedAt": int(incident.updated_at.timestamp() * 1000) if incident.updated_at else None
+    })
+    await broadcast_notification({
+        "type": "SOS_RESOLVED",
+        "title": "Incident Resolved",
+        "message": f"Incident {str(incident.id)[:8]} resolved successfully with verified OTP by {current_user.role}",
+        "incidentId": str(incident.id),
+        "priority": "NORMAL"
     })
     
     return {"status": "resolved"}

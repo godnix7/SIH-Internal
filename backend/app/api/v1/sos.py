@@ -11,7 +11,7 @@ from app.models.sos import SOSAlert
 from app.models.incident import Incident, IncidentEvent
 from app.schemas.sos import SOSCreateRequest, SOSResponse, SOSCancelRequest, SOSAcknowledgeRequest, SmsIngestRequest, MeshIngestRequest
 from app.services.notification import notify_emergency_contacts
-from app.core.socket import broadcast_incident_update
+from app.core.socket import broadcast_incident_update, broadcast_notification
 from app.services.blockchain import BlockchainService
 
 router = APIRouter()
@@ -108,11 +108,18 @@ async def trigger_sos(
     # Refresh to avoid MissingGreenlet error when accessing attributes after commit
     await db.refresh(incident)
 
-    # 6. Broadcast real-time update
+    # 6. Broadcast real-time update and critical notification
     await broadcast_incident_update({
         "id": str(incident.id),
         "status": incident.status,
         "updatedAt": int(incident.updated_at.timestamp() * 1000) if incident.updated_at else None
+    })
+    await broadcast_notification({
+        "type": "SOS_TRIGGERED",
+        "title": "CRITICAL: New SOS Alert Triggered",
+        "message": f"Emergency SOS triggered (ID: {str(incident.id)[:8]}, Type: {incident.type})",
+        "incidentId": str(incident.id),
+        "priority": "CRITICAL"
     })
     
     return SOSResponse(
@@ -142,26 +149,26 @@ async def cancel_sos(
     if not sos_alert:
         raise HTTPException(status_code=404, detail="SOS not found")
         
-    if sos_alert.status == 'false_alarm':
-        return {"status": "cancelled"}
+    if sos_alert.status in ('cancelled', 'cancelled_by_user'):
+        return {"status": "cancelled_by_user"}
         
     from sqlalchemy.sql import func
-    sos_alert.status = 'false_alarm'
+    sos_alert.status = 'cancelled_by_user'
     
     incident = None
     if sos_alert.incident_id:
         inc_result = await db.execute(select(Incident).where(Incident.id == sos_alert.incident_id))
         incident = inc_result.scalars().first()
         if incident:
-            incident.status = 'false_alarm'
+            incident.status = 'cancelled_by_user'
             incident.closed_at = func.now()
             
             event = IncidentEvent(
                 incident_id=incident.id,
-                event_type='cancelled',
+                event_type='cancelled_by_user',
                 actor_id=current_user.id,
                 details={
-                    "reason": req.reason, 
+                    "reason": req.reason or "User verified safety via Safe PIN", 
                     "notes": req.notes, 
                     "cancelled_by_role": current_user.role, 
                     "cancelled_by_id": str(current_user.id),
@@ -175,16 +182,22 @@ async def cancel_sos(
     
     await db.commit()
     
-    await db.refresh(incident)
-    
     if incident:
+        await db.refresh(incident)
         await broadcast_incident_update({
             "id": str(incident.id),
             "status": incident.status,
             "updatedAt": int(incident.updated_at.timestamp() * 1000) if incident.updated_at else None
         })
+        await broadcast_notification({
+            "type": "SOS_CANCELLED_BY_USER",
+            "title": "SOS Cancelled by User",
+            "message": f"Incident {str(incident.id)[:8]} has been explicitly cancelled by user via Safe PIN",
+            "incidentId": str(incident.id),
+            "priority": "HIGH"
+        })
         
-    return {"status": "cancelled"}
+    return {"status": "cancelled_by_user"}
 
 @router.post("/sms-ingest")
 async def sms_ingest(

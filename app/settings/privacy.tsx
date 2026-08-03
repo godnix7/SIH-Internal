@@ -41,19 +41,20 @@ export default function PrivacyScreen() {
       <Card>
         <Text style={[type.subtitle, { color: c.onSurface }]}>Notice & Data Minimization</Text>
         <Text style={[type.body, { color: c.onSurfaceVariant, marginBottom: space.sm }]}>
-          Under the DPDP Act, Yatri Shield only collects your location, identity, and medical data strictly for emergency response purposes. 
-          Trips on this device: {trips?.length || 0}. Full-monitoring trails are automatically erased 30 days after a trip ends.
+          Under the DPDP Act, Yatri Shield only collects your location, identity, and medical data
+          strictly for emergency response purposes. Trips on this device: {trips?.length || 0}.
+          Full-monitoring trails are automatically erased 30 days after a trip ends.
         </Text>
       </Card>
-      
+
       <Card>
         <Text style={[type.subtitle, { color: c.onSurface }]}>Your Data Rights</Text>
         <Text style={[type.body, { color: c.onSurfaceVariant, marginBottom: space.md }]}>
           You have the right to access your data and the Right to Erasure.
         </Text>
-        <Button 
-          label={downloading ? "Downloading…" : "Export My Data (Portability)"} 
-          variant="secondary" 
+        <Button
+          label={downloading ? 'Downloading…' : 'Export My Data (Portability)'}
+          variant="secondary"
           onPress={handleDownload}
           disabled={downloading}
           loading={downloading}
@@ -69,7 +70,7 @@ export default function PrivacyScreen() {
                 title: 'Data Erasure Requested',
                 body: 'Active trip trails erased. Open incidents are preserved for legal-hold review.',
                 id: Date.now().toString(),
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
               });
               showToast('Eligible data erased according to DPDP policies.');
             }}
@@ -84,10 +85,7 @@ export default function PrivacyScreen() {
         </View>
       </Card>
 
-      <Toast
-        visible={toast}
-        message={toastMessage}
-      />
+      <Toast visible={toast} message={toastMessage} />
     </Screen>
   );
 }

@@ -1,59 +1,60 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
 
-:root, html[data-theme='light'] {
+:root,
+html[data-theme='light'] {
   /* Light Theme - Sleek and clean */
-  --color-primary: #0F172A;
+  --color-primary: #0f172a;
   --color-primary-glow: rgba(15, 23, 42, 0.4);
   --color-surface: rgba(255, 255, 255, 0.85);
   --color-surface-variant: rgba(241, 245, 249, 0.6);
-  --color-on-surface: #0F172A;
+  --color-on-surface: #0f172a;
   --color-on-surface-variant: #475569;
-  --color-error: #EF4444;
-  --color-error-container: #FEE2E2;
-  --color-success: #10B981;
-  --color-warning: #F59E0B;
-  
+  --color-error: #ef4444;
+  --color-error-container: #fee2e2;
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+
   --color-border: rgba(15, 23, 42, 0.08);
-  --color-background-start: #F8FAFC;
-  --color-background-end: #E2E8F0;
+  --color-background-start: #f8fafc;
+  --color-background-end: #e2e8f0;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     /* Dark Theme - Deep, premium, glowing */
-    --color-primary: #38BDF8;
+    --color-primary: #38bdf8;
     --color-primary-glow: rgba(56, 189, 248, 0.5);
     --color-surface: rgba(30, 41, 59, 0.75);
     --color-surface-variant: rgba(15, 23, 42, 0.6);
-    --color-on-surface: #F8FAFC;
-    --color-on-surface-variant: #94A3B8;
-    --color-error: #F87171;
+    --color-on-surface: #f8fafc;
+    --color-on-surface-variant: #94a3b8;
+    --color-error: #f87171;
     --color-error-container: rgba(127, 29, 29, 0.4);
-    --color-success: #34D399;
-    --color-warning: #FBBF24;
-    
+    --color-success: #34d399;
+    --color-warning: #fbbf24;
+
     --color-border: rgba(255, 255, 255, 0.1);
     --color-background-start: #020617;
-    --color-background-end: #0F172A;
+    --color-background-end: #0f172a;
   }
 }
 
 html[data-theme='dark'] {
   /* Force Dark Theme */
-  --color-primary: #38BDF8;
+  --color-primary: #38bdf8;
   --color-primary-glow: rgba(56, 189, 248, 0.5);
   --color-surface: rgba(30, 41, 59, 0.75);
   --color-surface-variant: rgba(15, 23, 42, 0.6);
-  --color-on-surface: #F8FAFC;
-  --color-on-surface-variant: #94A3B8;
-  --color-error: #F87171;
+  --color-on-surface: #f8fafc;
+  --color-on-surface-variant: #94a3b8;
+  --color-error: #f87171;
   --color-error-container: rgba(127, 29, 29, 0.4);
-  --color-success: #34D399;
-  --color-warning: #FBBF24;
-  
+  --color-success: #34d399;
+  --color-warning: #fbbf24;
+
   --color-border: rgba(255, 255, 255, 0.1);
   --color-background-start: #020617;
-  --color-background-end: #0F172A;
+  --color-background-end: #0f172a;
 }
 
 * {
@@ -62,10 +63,19 @@ html[data-theme='dark'] {
   margin: 0;
 }
 
-html, body {
-  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+html,
+body {
+  font-family:
+    'Outfit',
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
   color: var(--color-on-surface);
-  background: linear-gradient(135deg, var(--color-background-start) 0%, var(--color-background-end) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--color-background-start) 0%,
+    var(--color-background-end) 100%
+  );
   background-attachment: fixed;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
@@ -93,12 +103,16 @@ a {
   border-radius: 16px;
   padding: 24px;
   box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.1);
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition:
+    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .glass-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 12px 32px -4px rgba(0, 0, 0, 0.15), 0 0 0 1px var(--color-border);
+  box-shadow:
+    0 12px 32px -4px rgba(0, 0, 0, 0.15),
+    0 0 0 1px var(--color-border);
 }
 
 /* Modern Inputs */
@@ -142,7 +156,9 @@ a {
   box-shadow: 0 4px 14px var(--color-primary-glow);
 }
 @media (prefers-color-scheme: dark) {
-  .btn-primary { color: #020617; }
+  .btn-primary {
+    color: #020617;
+  }
 }
 
 .btn-primary:hover {

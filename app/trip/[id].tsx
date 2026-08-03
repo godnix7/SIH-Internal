@@ -27,7 +27,7 @@ export default function TripDetail() {
   const addAlert = useAppStore((state) => state.addAlert);
   const [toast, setToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('Your trip remains in your control.');
-  const [riskData, setRiskData] = useState<{total_score: number, events: any[]} | null>(null);
+  const [riskData, setRiskData] = useState<{ total_score: number; events: any[] } | null>(null);
   const [endingTrip, setEndingTrip] = useState(false);
   const [checkingIn, setCheckingIn] = useState(false);
   const [pausing, setPausing] = useState(false);
@@ -41,9 +41,12 @@ export default function TripDetail() {
 
   useEffect(() => {
     if (trip) {
-      api.get(`/risk/trip/${trip.id}/events`)
-        .then(res => setRiskData(res.data))
-        .catch(() => { /* Risk data is optional — don't block the screen */ });
+      api
+        .get(`/risk/trip/${trip.id}/events`)
+        .then((res) => setRiskData(res.data))
+        .catch(() => {
+          /* Risk data is optional — don't block the screen */
+        });
     }
   }, [trip]);
 
@@ -142,7 +145,7 @@ export default function TripDetail() {
             }
           },
         },
-      ]
+      ],
     );
   };
 
@@ -159,11 +162,18 @@ export default function TripDetail() {
         state={trip.status === 'paused' ? 'paused' : trip.monitoringLimited ? 'limited' : 'live'}
       />
       <MapZoneLayer zones={trip.zones} showTrail />
-      
+
       {riskData && riskData.events.length > 0 && (
-        <Card style={{ backgroundColor: riskData.total_score >= 75 ? c.errorContainer : c.surface }}>
-          <Text style={[type.subtitle, { color: riskData.total_score >= 75 ? c.critical : c.onSurface }]}>
-            {riskData.total_score >= 75 ? "⚠️ CHALLENGE PROTOCOL ACTIVE" : "Active Risk Factors"}
+        <Card
+          style={{ backgroundColor: riskData.total_score >= 75 ? c.errorContainer : c.surface }}
+        >
+          <Text
+            style={[
+              type.subtitle,
+              { color: riskData.total_score >= 75 ? c.critical : c.onSurface },
+            ]}
+          >
+            {riskData.total_score >= 75 ? '⚠️ CHALLENGE PROTOCOL ACTIVE' : 'Active Risk Factors'}
           </Text>
           {riskData.events.map((e, idx) => (
             <Text key={idx} style={[type.body, { color: c.onSurfaceVariant, marginTop: 4 }]}>
@@ -192,7 +202,7 @@ export default function TripDetail() {
       <View style={{ flexDirection: 'row', gap: space.sm }}>
         <View style={{ flex: 1 }}>
           <Button
-            label={checkingIn ? "Checking in…" : "I'm OK"}
+            label={checkingIn ? 'Checking in…' : "I'm OK"}
             onPress={handleCheckIn}
             disabled={checkingIn}
             loading={checkingIn}
@@ -200,7 +210,7 @@ export default function TripDetail() {
         </View>
         <View style={{ flex: 1 }}>
           <Button
-            label={pausing ? "Pausing…" : "Pause 1 h"}
+            label={pausing ? 'Pausing…' : 'Pause 1 h'}
             variant="secondary"
             onPress={handlePause}
             disabled={pausing}
@@ -208,17 +218,10 @@ export default function TripDetail() {
           />
         </View>
       </View>
-      <Button
-        label="Share live link"
-        variant="ghost"
-        onPress={handleShareLink}
-      />
+      <Button label="Share live link" variant="ghost" onPress={handleShareLink} />
       <Card>
         <Text style={[type.subtitle, { color: c.onSurface }]}>Change monitoring for this trip</Text>
-        <TierSelector
-          value={trip.tier}
-          onChange={handleTierChange}
-        />
+        <TierSelector value={trip.tier} onChange={handleTierChange} />
         {changingTier && (
           <Text style={[type.caption, { color: c.primary, marginTop: 4 }]}>
             Updating monitoring tier…
@@ -226,7 +229,7 @@ export default function TripDetail() {
         )}
       </Card>
       <Button
-        label={endingTrip ? "Ending trip…" : "End trip"}
+        label={endingTrip ? 'Ending trip…' : 'End trip'}
         variant="destructive"
         onPress={handleEndTrip}
         disabled={endingTrip}

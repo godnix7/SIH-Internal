@@ -5,7 +5,8 @@ import { meshService } from './mesh';
 import { smsCrypto } from './smsCrypto';
 import { router } from 'expo-router';
 
-const baseURL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://yatri-shield-api.onrender.com/api/v1';
+const baseURL =
+  process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://yatri-shield-api.onrender.com/api/v1';
 
 export const api = axios.create({
   baseURL,
@@ -219,108 +220,116 @@ export async function flushOutbox(): Promise<FlushResult> {
   try {
     const due = await outboxQueue.due();
     const sentTypes: string[] = [];
-  let sent = 0;
-  let failed = 0;
+    let sent = 0;
+    let failed = 0;
 
-  // Group locations
-  const locations = due.filter((i) => i.type === 'location');
-  const otherEvents = due.filter((i) => i.type !== 'location');
+    // Group locations
+    const locations = due.filter((i) => i.type === 'location');
+    const otherEvents = due.filter((i) => i.type !== 'location');
 
-  if (locations.length > 0) {
-    // Dynamic import to avoid circular dependency if useAppStore imports api
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { useAppStore } = require('../stores/useAppStore');
-    const state = useAppStore.getState();
-    const activeTrip = state.trips.find((t: any) => t.status === 'active');
+    if (locations.length > 0) {
+      // Dynamic import to avoid circular dependency if useAppStore imports api
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { useAppStore } = require('../stores/useAppStore');
+      const state = useAppStore.getState();
+      const activeTrip = state.trips.find((t: any) => t.status === 'active');
 
-    if (activeTrip) {
-      try {
-        const batchId = locations[0].id; // Use first item's ID as idempotency key
-        const points = locations.map((loc) => ({
-          lat: loc.payload.lat,
-          lon: loc.payload.lng, // map lng to lon
-          accM: loc.payload.accuracy || 10,
-          sampledAt: loc.payload.timestamp,
-        }));
+      if (activeTrip) {
+        try {
+          const batchId = locations[0].id; // Use first item's ID as idempotency key
+          const points = locations.map((loc) => ({
+            lat: loc.payload.lat,
+            lon: loc.payload.lng, // map lng to lon
+            accM: loc.payload.accuracy || 10,
+            sampledAt: loc.payload.timestamp,
+          }));
 
-        await locationApi.uploadBatch(batchId, {
-          tripId: activeTrip.id,
-          points,
-        });
-
-        for (const loc of locations) {
-          await outboxQueue.acknowledge(loc.id);
-          sentTypes.push('location');
-          sent += 1;
-        }
-      } catch {
-        for (const loc of locations) {
-          await outboxQueue.retry(loc);
-          failed += 1;
-        }
-      }
-    } else {
-      // If no active trip, just acknowledge to clear them
-      for (const loc of locations) {
-        await outboxQueue.acknowledge(loc.id);
-        sent += 1;
-      }
-    }
-  }
-
-  for (const item of otherEvents) {
-    try {
-      if (item.type === 'sos.triggered') {
-        const res = await sosApi.triggerSos(item.payload, item.id);
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const { useAppStore } = require('../stores/useAppStore');
-        const state = useAppStore.getState();
-        if (state.sos && state.sos.id === item.id) {
-          useAppStore.setState({
-            sos: { ...state.sos, id: res.sosId, incidentId: res.incidentId }
+          await locationApi.uploadBatch(batchId, {
+            tripId: activeTrip.id,
+            points,
           });
+
+          for (const loc of locations) {
+            await outboxQueue.acknowledge(loc.id);
+            sentTypes.push('location');
+            sent += 1;
+          }
+        } catch {
+          for (const loc of locations) {
+            await outboxQueue.retry(loc);
+            failed += 1;
+          }
         }
       } else {
-        await api.post('/events', item, {
-          headers: { 'Idempotency-Key': item.id },
-        });
-      }
-      await outboxQueue.acknowledge(item.id);
-      sentTypes.push(item.type);
-      sent += 1;
-    } catch {
-      await outboxQueue.retry(item);
-      failed += 1;
-
-      // Phase 8: Offline SMS Fallback for SOS
-      if (item.type === 'sos.triggered') {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const SMS = require('expo-sms');
-        const isAvailable = await SMS.isAvailableAsync();
-        if (isAvailable) {
-          const lat = (item.payload as any).location?.lat || 0;
-          const lon = (item.payload as any).location?.lon || 0;
-          const acc = (item.payload as any).location?.accM || 0;
-          const ts = (item.payload as any).location?.ts || new Date().toISOString();
-
-          const rawPayload = `SOS|v1|${item.id}|${lat}|${lon}|${acc}|${new Date(ts).getTime()}`;
-          const payload = smsCrypto.encrypt(rawPayload);
-          
-          // The government emergency shortcode
-          await SMS.sendSMSAsync(['112'], payload);
-          
-          // Phase 5.2: Activate BLE Mesh Broadcasting
-          await meshService.startBroadcastingSOS(item.id, lat, lon);
-        } else {
-          // If SMS is not available (e.g. iPad, no SIM), immediately rely on BLE Mesh
-          const lat = (item.payload as any).location?.lat || 0;
-          const lon = (item.payload as any).location?.lon || 0;
-          await meshService.startBroadcastingSOS(item.id, lat, lon);
+        // If no active trip, just acknowledge to clear them
+        for (const loc of locations) {
+          await outboxQueue.acknowledge(loc.id);
+          sent += 1;
         }
       }
     }
-  }
-  return { sent, failed, sentTypes };
+
+    for (const item of otherEvents) {
+      try {
+        if (item.type === 'sos.triggered') {
+          const res = await sosApi.triggerSos(item.payload, item.id);
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
+          const { useAppStore } = require('../stores/useAppStore');
+          const state = useAppStore.getState();
+          if (state.sos && state.sos.id === item.id) {
+            useAppStore.setState({
+              sos: { ...state.sos, id: res.sosId, incidentId: res.incidentId },
+            });
+          }
+        } else if (item.type === 'media.upload' || item.type === 'media') {
+          await api.post(
+            '/events/media/sync',
+            { ...item.payload, original_capture_timestamp: item.createdAt },
+            {
+              headers: { 'Idempotency-Key': item.id },
+            },
+          );
+        } else {
+          await api.post('/events', item, {
+            headers: { 'Idempotency-Key': item.id },
+          });
+        }
+        await outboxQueue.acknowledge(item.id);
+        sentTypes.push(item.type);
+        sent += 1;
+      } catch {
+        await outboxQueue.retry(item);
+        failed += 1;
+
+        // Phase 8: Offline SMS Fallback for SOS
+        if (item.type === 'sos.triggered') {
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
+          const SMS = require('expo-sms');
+          const isAvailable = await SMS.isAvailableAsync();
+          if (isAvailable) {
+            const lat = (item.payload as any).location?.lat || 0;
+            const lon = (item.payload as any).location?.lon || 0;
+            const acc = (item.payload as any).location?.accM || 0;
+            const ts = (item.payload as any).location?.ts || new Date().toISOString();
+
+            const rawPayload = `SOS|v1|${item.id}|${lat}|${lon}|${acc}|${new Date(ts).getTime()}`;
+            const payload = smsCrypto.encrypt(rawPayload);
+
+            // The government emergency shortcode
+            await SMS.sendSMSAsync(['112'], payload);
+
+            // Phase 5.2: Activate BLE Mesh Broadcasting
+            await meshService.startBroadcastingSOS(item.id, lat, lon);
+          } else {
+            // If SMS is not available (e.g. iPad, no SIM), immediately rely on BLE Mesh
+            const lat = (item.payload as any).location?.lat || 0;
+            const lon = (item.payload as any).location?.lon || 0;
+            await meshService.startBroadcastingSOS(item.id, lat, lon);
+          }
+        }
+      }
+    }
+    return { sent, failed, sentTypes };
   } finally {
     isFlushing = false;
   }

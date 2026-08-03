@@ -14,15 +14,17 @@ class WearableService {
   private manager: BleManager;
   private connectedDevice: Device | null = null;
   private bpmHistory: BPMRecord[] = [];
-  
+
   // Rolling window of 30 seconds
   private readonly WINDOW_MS = 30000;
-  
+
   constructor() {
     try {
       this.manager = new BleManager();
     } catch (e) {
-      console.warn("BleManager could not be initialized in WearableService (likely running in Expo Go). BLE features will be disabled.");
+      console.warn(
+        'BleManager could not be initialized in WearableService (likely running in Expo Go). BLE features will be disabled.',
+      );
       this.manager = null as any;
     }
   }
@@ -33,7 +35,7 @@ class WearableService {
       return;
     }
     console.log('[WEARABLE] Scanning for Heart Rate Monitors...');
-    
+
     // We only scan for devices that advertise the standard Heart Rate Service
     this.manager.startDeviceScan([HR_SERVICE_UUID], null, async (error, device) => {
       if (error) {
@@ -54,12 +56,12 @@ class WearableService {
       const connectedDevice = await device.connect();
       this.connectedDevice = connectedDevice;
       console.log(`[WEARABLE] Connected to ${connectedDevice.name || connectedDevice.id}`);
-      
+
       // Update Global State
       useAppStore.getState().setWearableConnected(true);
 
       const deviceWithServices = await connectedDevice.discoverAllServicesAndCharacteristics();
-      
+
       // Subscribe to the Heart Rate Measurement Characteristic
       deviceWithServices.monitorCharacteristicForService(
         HR_SERVICE_UUID,
@@ -73,7 +75,7 @@ class WearableService {
           if (characteristic?.value) {
             this.parseHeartRate(characteristic.value);
           }
-        }
+        },
       );
     } catch (e) {
       console.error('[WEARABLE] Connection failed:', e);
@@ -92,11 +94,11 @@ class WearableService {
       }
 
       // BLE Heart Rate Profile standard parsing:
-      // First byte is flags. 
+      // First byte is flags.
       // Bit 0 determines if the BPM format is UINT8 (0) or UINT16 (1).
       const flags = bytes[0];
       const is16Bit = (flags & 0x01) !== 0;
-      
+
       let bpm = 0;
       if (is16Bit && bytes.length >= 3) {
         bpm = bytes[1] | (bytes[2] << 8);
@@ -115,10 +117,10 @@ class WearableService {
   private logBpm(bpm: number) {
     const now = Date.now();
     this.bpmHistory.push({ bpm, timestamp: now });
-    
+
     // Prune history older than 30 seconds
     const cutoff = now - this.WINDOW_MS;
-    this.bpmHistory = this.bpmHistory.filter(record => record.timestamp >= cutoff);
+    this.bpmHistory = this.bpmHistory.filter((record) => record.timestamp >= cutoff);
   }
 
   /**
@@ -129,10 +131,10 @@ class WearableService {
     if (this.bpmHistory.length === 0) {
       return { isSpiking: false, currentBpm: null };
     }
-    
+
     const currentBpm = this.bpmHistory[this.bpmHistory.length - 1].bpm;
-    
-    // Simple spike detection: 
+
+    // Simple spike detection:
     // If current BPM is > 120 and the delta from the lowest in the window is high
     let lowest = currentBpm;
     for (const record of this.bpmHistory) {
@@ -140,13 +142,13 @@ class WearableService {
         lowest = record.bpm;
       }
     }
-    
+
     // A sudden increase of 30+ BPM or absolute BPM > 120 during an impact is suspicious.
-    const isSpiking = currentBpm > 120 || (currentBpm - lowest > 30);
+    const isSpiking = currentBpm > 120 || currentBpm - lowest > 30;
 
     return {
       isSpiking,
-      currentBpm
+      currentBpm,
     };
   }
 

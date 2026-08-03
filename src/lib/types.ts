@@ -13,6 +13,7 @@ export type SOSStatus =
   | 'RESOLVE_PENDING'
   | 'RESOLVED'
   | 'CANCELLED'
+  | 'CANCELLED_BY_USER'
   | 'FALSE_ALARM'
   | 'OFFLINE_QUEUED';
 export type QueuePriority = 'SOS' | 'GEOFENCE_CRITICAL' | 'CHECKIN' | 'LOCATION_BATCH' | 'MEDIA';

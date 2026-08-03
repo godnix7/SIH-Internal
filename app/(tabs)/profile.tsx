@@ -12,7 +12,7 @@ import {
   ShieldCheck,
   User,
   HelpCircle,
-  UserCircle2
+  UserCircle2,
 } from 'lucide-react-native';
 import { Text, View, ActivityIndicator, Alert, Image } from 'react-native';
 import { Screen } from '@/src/components/Screen';
@@ -49,7 +49,7 @@ export default function ProfileScreen() {
       try {
         const { data } = await api.get('/users/me');
         setUserData(data);
-        
+
         const storedPhoto = preferences.getString('yatri-shield.profile-photo');
         if (storedPhoto) setPhotoUri(storedPhoto);
       } catch (e) {
@@ -78,13 +78,13 @@ export default function ProfileScreen() {
             } catch {
               // Server invalidation failed — continue anyway
             }
-            
+
             // Step 2: Clear local tokens
             await storage.clearTokens();
-            
+
             // Step 3: Reset app state
             await logout();
-            
+
             // Step 4: Redirect
             router.replace('/(onboarding)/phone');
           } catch (e) {
@@ -93,9 +93,7 @@ export default function ProfileScreen() {
             Alert.alert(
               'Logout Issue',
               'There was an issue during logout. You have been signed out locally.',
-              [
-                { text: 'OK', onPress: () => router.replace('/(onboarding)/phone') }
-              ]
+              [{ text: 'OK', onPress: () => router.replace('/(onboarding)/phone') }],
             );
           }
         },
@@ -106,11 +104,30 @@ export default function ProfileScreen() {
   return (
     <Screen
       title="Profile"
-      subtitle={loading ? 'Loading...' : userData?.name ? userData.name : userData?.phone ? `+${userData.phone}` : 'Set up your Digital Tourist ID'}
+      subtitle={
+        loading
+          ? 'Loading...'
+          : userData?.name
+            ? userData.name
+            : userData?.phone
+              ? `+${userData.phone}`
+              : 'Set up your Digital Tourist ID'
+      }
     >
       {/* Profile Header */}
       <View style={{ alignItems: 'center', marginBottom: space.lg, marginTop: space.sm }}>
-        <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: c.surface, alignItems: 'center', justifyContent: 'center', marginBottom: space.sm, overflow: 'hidden' }}>
+        <View
+          style={{
+            width: 80,
+            height: 80,
+            borderRadius: 40,
+            backgroundColor: c.surface,
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: space.sm,
+            overflow: 'hidden',
+          }}
+        >
           {photoUri ? (
             <Image source={{ uri: photoUri }} style={{ width: 80, height: 80 }} />
           ) : (
@@ -123,8 +140,12 @@ export default function ProfileScreen() {
           <Text style={[type.caption, { color: c.critical }]}>Failed to load profile data</Text>
         ) : (
           <>
-            <Text style={[type.title, { color: c.onSurface }]}>{userData?.name ? userData.name : userData?.phone ? `+${userData.phone}` : 'Tourist'}</Text>
-            <Text style={[type.caption, { color: c.onSurfaceVariant, marginTop: 2 }]}>{userData?.role ? userData.role.toUpperCase() : 'USER'}</Text>
+            <Text style={[type.title, { color: c.onSurface }]}>
+              {userData?.name ? userData.name : userData?.phone ? `+${userData.phone}` : 'Tourist'}
+            </Text>
+            <Text style={[type.caption, { color: c.onSurfaceVariant, marginTop: 2 }]}>
+              {userData?.role ? userData.role.toUpperCase() : 'USER'}
+            </Text>
           </>
         )}
       </View>
@@ -132,7 +153,7 @@ export default function ProfileScreen() {
         <ListRow
           icon={<CreditCard color={c.primary} />}
           title="Digital Tourist ID"
-          sub={userData?.identity?.nameVerified ? "Verified ID" : "Set up your verified identity"}
+          sub={userData?.identity?.nameVerified ? 'Verified ID' : 'Set up your verified identity'}
           onPress={() => router.push('/identity/card')}
           trailing={<ChevronRight color={c.onSurfaceVariant} />}
         />
@@ -185,18 +206,17 @@ export default function ProfileScreen() {
           onPress={() => router.push('/settings/help')}
         />
       </Card>
-      
+
       <View style={{ marginVertical: space.md }}>
-        <Button 
-          label={loggingOut ? "Logging out…" : "Log out"}
-          variant="secondary" 
+        <Button
+          label={loggingOut ? 'Logging out…' : 'Log out'}
+          variant="secondary"
           onPress={handleLogout}
           disabled={loggingOut}
           loading={loggingOut}
           icon={<LogOut color={c.onSurfaceVariant} size={18} />}
         />
       </View>
-
     </Screen>
   );
 }

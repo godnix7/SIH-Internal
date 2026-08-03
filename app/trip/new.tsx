@@ -31,8 +31,6 @@ import { api } from '@/src/services/api';
 import { useAppStore } from '@/src/stores/useAppStore';
 import { space, type } from '@/src/theme/tokens';
 
-
-
 export default function NewTrip() {
   const c = useAppColors();
   const { t } = useTranslation();
@@ -43,7 +41,7 @@ export default function NewTrip() {
   const [geocoding, setGeocoding] = useState(false);
   const [mapRegion, setMapRegion] = useState({
     latitude: 28.6139,
-    longitude: 77.2090,
+    longitude: 77.209,
     latitudeDelta: 10.0,
     longitudeDelta: 10.0,
   });
@@ -69,9 +67,10 @@ export default function NewTrip() {
   useEffect(() => {
     if (step === 4) {
       setContactsLoading(true);
-      api.get('/users/me/contacts')
-        .then(res => setContacts(res.data))
-        .catch(err => console.error(err))
+      api
+        .get('/users/me/contacts')
+        .then((res) => setContacts(res.data))
+        .catch((err) => console.error(err))
         .finally(() => setContactsLoading(false));
     }
   }, [step]);
@@ -129,12 +128,12 @@ export default function NewTrip() {
           monitoringLimited,
         });
 
-        // The backend creates trips in 'draft' status by default. 
+        // The backend creates trips in 'draft' status by default.
         // We must start it immediately so it becomes 'active' and appears on the Home screen.
         const res = await api.post(`/trips/${trip.id}/start`);
         trip = { ...trip, status: res.data.status };
-        useAppStore.setState(state => ({
-          trips: state.trips.map(t => t.id === trip.id ? trip : t)
+        useAppStore.setState((state) => ({
+          trips: state.trips.map((t) => (t.id === trip.id ? trip : t)),
         }));
       } catch {
         setPermissionNotice(t('trip.saveFailed'));
@@ -183,7 +182,9 @@ export default function NewTrip() {
           longitude: mapRegion.longitude,
         });
         if (result) {
-          const parts = [result.city || result.subregion || result.name, result.region].filter(Boolean);
+          const parts = [result.city || result.subregion || result.name, result.region].filter(
+            Boolean,
+          );
           setDestination(parts.join(', ') || 'Selected Location');
         } else {
           setDestination('Selected Location');
@@ -199,13 +200,19 @@ export default function NewTrip() {
     if (step === 2) {
       const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
       if (!dateRegex.test(dates.start) || !dateRegex.test(dates.end)) {
-        Alert.alert('Invalid Date Format', 'Please enter dates in YYYY-MM-DD format (e.g. 2026-07-12).');
+        Alert.alert(
+          'Invalid Date Format',
+          'Please enter dates in YYYY-MM-DD format (e.g. 2026-07-12).',
+        );
         return;
       }
       const startTime = Date.parse(dates.start);
       const endTime = Date.parse(dates.end);
       if (isNaN(startTime) || isNaN(endTime)) {
-        Alert.alert('Invalid Date', 'One of the entered dates is invalid. Please check the values.');
+        Alert.alert(
+          'Invalid Date',
+          'One of the entered dates is invalid. Please check the values.',
+        );
         return;
       }
       if (endTime < startTime) {
@@ -264,14 +271,14 @@ export default function NewTrip() {
         <View style={{ gap: space.sm }}>
           <Text style={[type.subtitle, { color: c.onSurface }]}>{t('trip.contacts')}</Text>
           <Text style={[type.body, { color: c.onSurfaceVariant }]}>
-            {contacts.length > 0 
-              ? `${contacts.map(c => c.name).join(' and ')} will receive an escalation only if you miss two check-ins or trigger an SOS. They cannot see your location history.`
+            {contacts.length > 0
+              ? `${contacts.map((c) => c.name).join(' and ')} will receive an escalation only if you miss two check-ins or trigger an SOS. They cannot see your location history.`
               : 'You have no emergency contacts to notify.'}
           </Text>
           {contactsLoading ? (
             <ActivityIndicator size="small" color={c.primary} />
           ) : contacts.length > 0 ? (
-            contacts.map(contact => (
+            contacts.map((contact) => (
               <Button
                 key={contact.id}
                 label={`${contact.name} is my emergency contact`}
@@ -285,7 +292,8 @@ export default function NewTrip() {
           ) : (
             <View style={{ gap: space.sm }}>
               <Text style={[type.body, { color: c.onSurfaceVariant }]}>
-                You don't have any emergency contacts set up yet. It is highly recommended to add one before starting a trip.
+                You don't have any emergency contacts set up yet. It is highly recommended to add
+                one before starting a trip.
               </Text>
               <Button
                 label="Add Emergency Contact"
@@ -347,10 +355,7 @@ export default function NewTrip() {
           </View>
         </View>
       )}
-      <Toast
-        visible={toast}
-        message={step === 4 ? toastMessage : t('trip.toastCreated')}
-      />
+      <Toast visible={toast} message={step === 4 ? toastMessage : t('trip.toastCreated')} />
     </Screen>
   );
 }
@@ -373,7 +378,23 @@ const styles = StyleSheet.create({
   },
   mapContainer: { height: 350, borderRadius: 16, overflow: 'hidden', backgroundColor: '#e2e2e2' },
   map: { flex: 1 },
-  mapCrosshair: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, alignItems: 'center', justifyContent: 'center' },
-  crosshairDot: { width: 16, height: 16, borderRadius: 8, backgroundColor: '#1F6F54', borderWidth: 3, borderColor: '#fff', elevation: 5 },
-  pin: { width: 24, height: 24, borderRadius: 12, borderWidth: 3, borderColor: '#fff' }
+  mapCrosshair: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  crosshairDot: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#1F6F54',
+    borderWidth: 3,
+    borderColor: '#fff',
+    elevation: 5,
+  },
+  pin: { width: 24, height: 24, borderRadius: 12, borderWidth: 3, borderColor: '#fff' },
 });

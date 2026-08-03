@@ -4,18 +4,18 @@ import { useAppStore } from '../stores/useAppStore';
 import { escalationManager } from '../services/escalationManager';
 
 export function VerificationPrompt() {
-  const prompt = useAppStore(state => state.verificationPrompt);
-  const clearPrompt = useAppStore(state => state.clearVerificationPrompt);
-  
+  const prompt = useAppStore((state) => state.verificationPrompt);
+  const clearPrompt = useAppStore((state) => state.clearVerificationPrompt);
+
   const [timeLeft, setTimeLeft] = useState(15);
-  
+
   useEffect(() => {
     if (!prompt) return;
-    
+
     setTimeLeft(prompt.countdown);
-    
+
     const interval = setInterval(() => {
-      setTimeLeft(prev => {
+      setTimeLeft((prev) => {
         if (prev <= 1) {
           clearInterval(interval);
           clearPrompt(); // Prompt goes away, escalationManager handles the trigger
@@ -24,7 +24,7 @@ export function VerificationPrompt() {
         return prev - 1;
       });
     }, 1000);
-    
+
     return () => clearInterval(interval);
   }, [prompt, clearPrompt]);
 
@@ -36,12 +36,13 @@ export function VerificationPrompt() {
         <View style={styles.card}>
           <Text style={styles.title}>Are you safe?</Text>
           <Text style={styles.subtitle}>
-            We detected a severe impact. If you do not respond, we will automatically dispatch emergency services to your location.
+            We detected a severe impact. If you do not respond, we will automatically dispatch
+            emergency services to your location.
           </Text>
-          
+
           <Text style={styles.timer}>{timeLeft}s</Text>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={styles.safeButton}
             onPress={() => {
               escalationManager.cancelVerification();
@@ -102,5 +103,5 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
-  }
+  },
 });

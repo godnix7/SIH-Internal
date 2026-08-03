@@ -10,17 +10,17 @@ import { space, type } from '@/src/theme/tokens';
 export default function OfflineMaps() {
   const complete = useAppStore((state) => state.completeOnboarding);
   const c = useAppColors();
-  
+
   const [progress] = useState(new Animated.Value(0));
   const [downloadState, setDownloadState] = useState<'idle' | 'downloading' | 'completed'>('idle');
   const [statusText, setStatusText] = useState('Ready to download local map packages.');
 
   const handleDownload = () => {
     if (downloadState !== 'idle') return;
-    
+
     setDownloadState('downloading');
     setStatusText('Downloading Base Tiles...');
-    
+
     Animated.timing(progress, {
       toValue: 0.4,
       duration: 1500,
@@ -69,13 +69,20 @@ export default function OfflineMaps() {
           )}
         </View>
 
-        <Text style={[type.subtitle, { color: c.onSurface, textAlign: 'center', marginBottom: space.sm }]}>
+        <Text
+          style={[
+            type.subtitle,
+            { color: c.onSurface, textAlign: 'center', marginBottom: space.sm },
+          ]}
+        >
           {statusText}
         </Text>
-        
+
         {downloadState !== 'idle' && (
           <View style={[styles.progressBarContainer, { backgroundColor: c.surfaceVariant }]}>
-            <Animated.View style={[styles.progressBar, { backgroundColor: c.primary, width: widthInterpolated }]} />
+            <Animated.View
+              style={[styles.progressBar, { backgroundColor: c.primary, width: widthInterpolated }]}
+            />
           </View>
         )}
       </Card>
@@ -84,20 +91,20 @@ export default function OfflineMaps() {
         {downloadState === 'completed' ? (
           <Button label="Continue to Dashboard" onPress={handleContinue} />
         ) : (
-          <Button 
-            label={downloadState === 'downloading' ? 'Downloading...' : 'Download Map Assets'} 
+          <Button
+            label={downloadState === 'downloading' ? 'Downloading...' : 'Download Map Assets'}
             onPress={handleDownload}
             disabled={downloadState === 'downloading'}
             loading={downloadState === 'downloading'}
           />
         )}
       </View>
-      
+
       {downloadState === 'idle' && (
-        <Button 
-          label="Skip for now (Not Recommended)" 
-          variant="secondary" 
-          onPress={handleContinue} 
+        <Button
+          label="Skip for now (Not Recommended)"
+          variant="secondary"
+          onPress={handleContinue}
         />
       )}
     </Screen>
@@ -115,5 +122,5 @@ const styles = StyleSheet.create({
   progressBar: {
     height: '100%',
     borderRadius: 4,
-  }
+  },
 });

@@ -33,7 +33,7 @@ function PinGuard() {
   const hasSetPin = useAppStore((state) => state.hasSetPin);
   const segments = useSegments();
   const rootNav = router.canGoBack(); // simple check if router is mounted
-  
+
   useEffect(() => {
     if (!isAuthenticated) return;
     if (segments[0] === '(onboarding)') return;
@@ -100,11 +100,11 @@ function MeshBridge() {
 }
 
 function AIEngineBridge() {
-  const trips = useAppStore(state => state.trips);
-  
+  const trips = useAppStore((state) => state.trips);
+
   useEffect(() => {
     const currentTrip = activeTrip(trips);
-    
+
     // Only monitor the accelerometer/sensors if the user is on an active trip
     if (currentTrip) {
       escalationManager.initialize();
@@ -112,12 +112,12 @@ function AIEngineBridge() {
     } else {
       aiEngine.stopMonitoring();
     }
-    
+
     return () => {
       aiEngine.stopMonitoring();
     };
   }, [trips]);
-  
+
   return null;
 }
 

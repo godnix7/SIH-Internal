@@ -1,6 +1,14 @@
 import { useState, useEffect } from 'react';
 import { router } from 'expo-router';
-import { Alert, View, Text, ActivityIndicator, Image, TouchableOpacity, ScrollView } from 'react-native';
+import {
+  Alert,
+  View,
+  Text,
+  ActivityIndicator,
+  Image,
+  TouchableOpacity,
+  ScrollView,
+} from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Screen } from '@/src/components/Screen';
 import { Button, Card, Input, ListRow, useAppColors } from '@/src/components/ui';
@@ -15,11 +23,11 @@ export default function AccountScreen() {
   const { logout, profile: localProfile, saveProfile } = useAppStore();
   const c = useAppColors();
   const { t } = useTranslation();
-  
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  
+
   const [name, setName] = useState('');
   const [dob, setDob] = useState('');
   const [email, setEmail] = useState('');
@@ -37,7 +45,7 @@ export default function AccountScreen() {
         setEmail(data.email || '');
         setPhone(data.phone ? `+${data.phone}` : '');
         setRole(data.role || 'tourist');
-        
+
         // Load photo from local storage
         const storedPhoto = preferences.getString(PROFILE_PHOTO_KEY);
         if (storedPhoto) setPhotoUri(storedPhoto);
@@ -52,8 +60,8 @@ export default function AccountScreen() {
 
   const handlePickPhoto = async () => {
     Alert.alert(
-      "Photo Upload",
-      "Selecting a photo requires a native module that isn't in your current APK. This will work once we build the new APK!"
+      'Photo Upload',
+      "Selecting a photo requires a native module that isn't in your current APK. This will work once we build the new APK!",
     );
   };
 
@@ -63,7 +71,7 @@ export default function AccountScreen() {
       await api.patch('/users/me/profile', {
         name,
         dob,
-        email
+        email,
       });
       // Update local zustand store
       if (localProfile) {
@@ -71,7 +79,10 @@ export default function AccountScreen() {
       } else {
         saveProfile({ name, nationality: '', homeCity: '' });
       }
-      Alert.alert(t('success', 'Success'), t('settings.account.saved', 'Profile saved successfully!'));
+      Alert.alert(
+        t('success', 'Success'),
+        t('settings.account.saved', 'Profile saved successfully!'),
+      );
     } catch (e) {
       Alert.alert(t('error', 'Error'), 'Failed to save profile.');
     } finally {
@@ -81,41 +92,37 @@ export default function AccountScreen() {
 
   const handleDelete = () => {
     Alert.alert(
-      "Delete Account", 
-      "This will permanently delete your account and erase all data. This action cannot be undone.",
+      'Delete Account',
+      'This will permanently delete your account and erase all data. This action cannot be undone.',
       [
-        { text: "Cancel", style: "cancel" },
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: "I Understand, Delete",
-          style: "destructive",
+          text: 'I Understand, Delete',
+          style: 'destructive',
           onPress: () => {
-            Alert.alert(
-              "Final Confirmation",
-              "Type DELETE to confirm account deletion.",
-              [
-                { text: "Cancel", style: "cancel" },
-                {
-                  text: "Delete Permanently",
-                  style: "destructive",
-                  onPress: async () => {
-                    setDeleting(true);
-                    try {
-                      await api.delete('/users/me');
-                      preferences.delete(PROFILE_PHOTO_KEY);
-                      await logout();
-                      router.replace('/(onboarding)/phone');
-                    } catch(e: any) {
-                      Alert.alert("Error", "Failed to delete account. Please try again.");
-                    } finally {
-                      setDeleting(false);
-                    }
+            Alert.alert('Final Confirmation', 'Type DELETE to confirm account deletion.', [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Delete Permanently',
+                style: 'destructive',
+                onPress: async () => {
+                  setDeleting(true);
+                  try {
+                    await api.delete('/users/me');
+                    preferences.delete(PROFILE_PHOTO_KEY);
+                    await logout();
+                    router.replace('/(onboarding)/phone');
+                  } catch (e: any) {
+                    Alert.alert('Error', 'Failed to delete account. Please try again.');
+                  } finally {
+                    setDeleting(false);
                   }
-                }
-              ]
-            );
-          }
-        }
-      ]
+                },
+              },
+            ]);
+          },
+        },
+      ],
     );
   };
 
@@ -130,16 +137,25 @@ export default function AccountScreen() {
   }
 
   return (
-    <Screen title={t('settings.account', 'Account settings')} subtitle="Manage your account profile.">
+    <Screen
+      title={t('settings.account', 'Account settings')}
+      subtitle="Manage your account profile."
+    >
       <ScrollView>
         <Card style={{ alignItems: 'center', marginBottom: space.md }}>
           <TouchableOpacity onPress={handlePickPhoto}>
-            <View style={{
-              width: 100, height: 100, borderRadius: 50, 
-              backgroundColor: c.surfaceVariant, 
-              alignItems: 'center', justifyContent: 'center',
-              overflow: 'hidden', marginBottom: space.sm
-            }}>
+            <View
+              style={{
+                width: 100,
+                height: 100,
+                borderRadius: 50,
+                backgroundColor: c.surfaceVariant,
+                alignItems: 'center',
+                justifyContent: 'center',
+                overflow: 'hidden',
+                marginBottom: space.sm,
+              }}
+            >
               {photoUri ? (
                 <Image source={{ uri: photoUri }} style={{ width: 100, height: 100 }} />
               ) : (
@@ -151,27 +167,49 @@ export default function AccountScreen() {
         </Card>
 
         <Card>
-          <Text style={[type.subtitle, { color: c.onSurface, marginBottom: space.md }]}>Personal Details</Text>
+          <Text style={[type.subtitle, { color: c.onSurface, marginBottom: space.md }]}>
+            Personal Details
+          </Text>
           <Input label="Name" value={name} onChangeText={setName} placeholder="Your full name" />
           <Input label="Date of Birth" value={dob} onChangeText={setDob} placeholder="YYYY-MM-DD" />
-          <Input label="Email ID" value={email} onChangeText={setEmail} placeholder="your@email.com" autoCapitalize="none" keyboardType="email-address" />
-          
-          <Text style={[type.subtitle, { color: c.onSurface, marginTop: space.sm, marginBottom: space.sm }]}>Account Information</Text>
-          <ListRow title="Phone Number" sub={phone || "Not set"} />
+          <Input
+            label="Email ID"
+            value={email}
+            onChangeText={setEmail}
+            placeholder="your@email.com"
+            autoCapitalize="none"
+            keyboardType="email-address"
+          />
+
+          <Text
+            style={[
+              type.subtitle,
+              { color: c.onSurface, marginTop: space.sm, marginBottom: space.sm },
+            ]}
+          >
+            Account Information
+          </Text>
+          <ListRow title="Phone Number" sub={phone || 'Not set'} />
           <ListRow title="Account Role" sub={role.toUpperCase()} />
         </Card>
-        
+
         <View style={{ marginTop: space.md }}>
-          <Button label={saving ? "Saving…" : "Save Profile"} onPress={handleSave} disabled={saving} loading={saving} />
+          <Button
+            label={saving ? 'Saving…' : 'Save Profile'}
+            onPress={handleSave}
+            disabled={saving}
+            loading={saving}
+          />
         </View>
 
         <View style={{ marginTop: space.xl, marginBottom: space.xxl }}>
           <Text style={[type.caption, { color: c.onSurfaceVariant, marginBottom: space.sm }]}>
-            Deleting your account will permanently erase your profile and anonymize all historical data.
+            Deleting your account will permanently erase your profile and anonymize all historical
+            data.
           </Text>
-          <Button 
-            label={deleting ? "Deleting…" : "Delete Account"} 
-            variant="destructive" 
+          <Button
+            label={deleting ? 'Deleting…' : 'Delete Account'}
+            variant="destructive"
             onPress={handleDelete}
             disabled={deleting}
             loading={deleting}

@@ -47,9 +47,35 @@ async def connect(sid, environ, auth=None):
 async def disconnect(sid):
     print(f"Socket.IO client disconnected: {sid}")
 
+import datetime
+
 async def broadcast_incident_update(incident_data: dict):
     """
     Helper function to broadcast incident updates to all connected clients.
-    The frontend listens for the 'incident:update' event.
+    The frontend and mobile apps listen for 'incident:update' and 'sos:update'.
     """
+    if "timestamp" not in incident_data:
+        incident_data["timestamp"] = int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)
     await sio.emit('incident:update', incident_data)
+    await sio.emit('sos:update', incident_data)
+
+async def broadcast_notification(notification_data: dict):
+    """
+    Broadcast high-priority system alerts and notifications across dashboards.
+    """
+    if "timestamp" not in notification_data:
+        notification_data["timestamp"] = int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)
+    await sio.emit('notification:alert', notification_data)
+
+async def broadcast_media_sync(media_data: dict):
+    """
+    Broadcast newly captured emergency media evidence to responders and hospitals.
+    """
+    await sio.emit('media:update', media_data)
+
+async def broadcast_location_update(location_data: dict):
+    """
+    Broadcast real-time victim location fixes to assigned units and dashboards.
+    """
+    await sio.emit('location:update', location_data)
+

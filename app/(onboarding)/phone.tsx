@@ -59,26 +59,23 @@ export default function Login() {
       if (!e.response) {
         Alert.alert(
           'No Connection',
-          'Could not reach the server. Please check your internet connection and try again.'
+          'Could not reach the server. Please check your internet connection and try again.',
         );
       } else if (e.response.status === 401) {
         const detail = e.response.data?.detail || '';
         if (detail === 'ACCOUNT_SUSPENDED') {
           Alert.alert(
             'Account Suspended',
-            'Your account has been suspended. Please contact support.'
+            'Your account has been suspended. Please contact support.',
           );
         } else {
           Alert.alert(
             'Invalid Credentials',
-            'The email or password you entered is incorrect. Please try again.'
+            'The email or password you entered is incorrect. Please try again.',
           );
         }
       } else if (e.response.status === 429) {
-        Alert.alert(
-          'Too Many Attempts',
-          'Please wait a moment before trying again.'
-        );
+        Alert.alert('Too Many Attempts', 'Please wait a moment before trying again.');
       } else {
         Alert.alert('Login Failed', 'Something went wrong. Please try again.');
       }
@@ -88,10 +85,7 @@ export default function Login() {
   };
 
   return (
-    <Screen
-      title="Welcome back"
-      subtitle="Sign in with your email and password to continue."
-    >
+    <Screen title="Welcome back" subtitle="Sign in with your email and password to continue.">
       <Input
         label="Email address"
         value={email}
@@ -144,8 +138,8 @@ export default function Login() {
           <Square color={c.onSurfaceVariant} size={24} />
         )}
         <Text style={[type.caption, { color: c.onSurfaceVariant, flex: 1 }]}>
-          I consent to the collection of my location and identity data strictly
-          for emergency response purposes in accordance with the DPDP Act.
+          I consent to the collection of my location and identity data strictly for emergency
+          response purposes in accordance with the DPDP Act.
         </Text>
       </TouchableOpacity>
 

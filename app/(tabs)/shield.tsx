@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { router } from 'expo-router';
 import { Text, View, Alert } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { EyeOff, HeartPulse } from 'lucide-react-native';
+import { EyeOff, HeartPulse, Sparkles } from 'lucide-react-native';
 
 import { Screen } from '@/src/components/Screen';
 import { Button, Card, SOSButton, useAppColors } from '@/src/components/ui';
@@ -27,7 +27,7 @@ export default function ShieldScreen() {
       Alert.alert(
         'SOS Failed',
         'Could not initiate the emergency alert. Please try again or call 112 directly.',
-        [{ text: 'OK' }]
+        [{ text: 'OK' }],
       );
     } finally {
       setStarting(false);
@@ -65,6 +65,25 @@ export default function ShieldScreen() {
           </View>
         </View>
         <View style={{ gap: space.sm }}>
+          <Card style={{ borderColor: c.primary, borderWidth: 1, gap: space.sm }}>
+            <View style={{ flexDirection: 'row', gap: space.sm, alignItems: 'center' }}>
+              <Sparkles color={c.primary} size={24} />
+              <View style={{ flex: 1 }}>
+                <Text style={[type.subtitle, { color: c.onSurface, fontWeight: '700' }]}>
+                  Offline Edge AI First-Aid & Triage
+                </Text>
+                <Text style={[type.caption, { color: '#16a34a', fontWeight: 'bold' }]}>
+                  ● ZERO-CONNECTIVITY READY
+                </Text>
+              </View>
+            </View>
+            <Button
+              label="Launch AI Triage Guide"
+              variant="secondary"
+              onPress={() => router.push('/emergency-ai' as any)}
+              disabled={starting}
+            />
+          </Card>
           <Card>
             <View style={{ flexDirection: 'row', gap: space.sm }}>
               <EyeOff color={c.onSurfaceVariant} />

@@ -24,7 +24,9 @@ export default function LanguageScreen() {
   return (
     <Screen title="Language and appearance" subtitle="Changes apply immediately.">
       <Card>
-        <Text style={[type.subtitle, { color: c.onSurface }]}>{t('settings.language', { defaultValue: 'Language' })}</Text>
+        <Text style={[type.subtitle, { color: c.onSurface }]}>
+          {t('settings.language', { defaultValue: 'Language' })}
+        </Text>
         <View style={{ marginTop: space.sm, gap: space.sm }}>
           <Button
             label="English"
@@ -39,7 +41,9 @@ export default function LanguageScreen() {
         </View>
       </Card>
       <Card>
-        <Text style={[type.subtitle, { color: c.onSurface, marginBottom: space.sm }]}>Appearance</Text>
+        <Text style={[type.subtitle, { color: c.onSurface, marginBottom: space.sm }]}>
+          Appearance
+        </Text>
         <View style={{ flexDirection: 'row', gap: space.xs }}>
           <View style={{ flex: 1 }}>
             <Button

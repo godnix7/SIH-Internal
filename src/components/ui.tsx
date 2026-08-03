@@ -512,13 +512,13 @@ export function OTPInput({
   );
 }
 
-export function PinPad({ 
-  value, 
-  onChange, 
+export function PinPad({
+  value,
+  onChange,
   length = 4,
-  error = false 
-}: { 
-  value: string; 
+  error = false,
+}: {
+  value: string;
   onChange: (value: string) => void;
   length?: number;
   error?: boolean;
@@ -531,7 +531,7 @@ export function PinPad({
       keyboardType="number-pad"
       secureTextEntry
       placeholder="••••"
-      error={error ? "Invalid PIN" : undefined}
+      error={error ? 'Invalid PIN' : undefined}
     />
   );
 }

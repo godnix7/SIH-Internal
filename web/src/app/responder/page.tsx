@@ -1,44 +1,125 @@
-"use client";
+'use client';
 
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import DashboardLayout from '../components/DashboardLayout';
-import { getIncidents, acknowledgeIncident, resolveIncident, assignIncident, escalateIncident, requestResolve, arriveIncident, closeIncident } from '../../lib/api';
+import {
+  getIncidents,
+  acknowledgeIncident,
+  resolveIncident,
+  assignIncident,
+  escalateIncident,
+  requestResolve,
+  arriveIncident,
+  closeIncident,
+} from '../../lib/api';
 import { useIncidentsSocket } from '../../hooks/useIncidentsSocket';
 import { AlertCircle, EyeOff, MapPin, CheckCircle, X, Loader2 } from 'lucide-react';
 
 // Dynamically import the map to prevent SSR issues with Leaflet
 const IncidentMap = dynamic(() => import('../components/IncidentMap'), {
   ssr: false,
-  loading: () => <div style={{ height: '100%', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Loading Map...</div>
+  loading: () => (
+    <div
+      style={{
+        height: '100%',
+        width: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      Loading Map...
+    </div>
+  ),
 });
 
 // ── Toast component ────────────────────────────────────────────────────
-function Toast({ message, type = 'success', visible }: { message: string; type?: 'success' | 'error'; visible: boolean }) {
+function Toast({
+  message,
+  type = 'success',
+  visible,
+}: {
+  message: string;
+  type?: 'success' | 'error';
+  visible: boolean;
+}) {
   if (!visible) return null;
   const bg = type === 'error' ? 'var(--color-error-container)' : 'rgba(76, 175, 80, 0.15)';
   const color = type === 'error' ? 'var(--color-error)' : 'var(--color-success)';
   return (
-    <div style={{
-      position: 'fixed', bottom: '24px', right: '24px', zIndex: 9999,
-      padding: '14px 24px', borderRadius: '12px', backgroundColor: bg, color,
-      fontWeight: '600', fontSize: '14px', boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
-      border: `1px solid ${color}`, animation: 'slideUp 0.3s ease'
-    }}>
+    <div
+      style={{
+        position: 'fixed',
+        bottom: '24px',
+        right: '24px',
+        zIndex: 9999,
+        padding: '14px 24px',
+        borderRadius: '12px',
+        backgroundColor: bg,
+        color,
+        fontWeight: '600',
+        fontSize: '14px',
+        boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+        border: `1px solid ${color}`,
+        animation: 'slideUp 0.3s ease',
+      }}
+    >
       {message}
     </div>
   );
 }
 
 // ── Modal wrapper ──────────────────────────────────────────────────────
-function Modal({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: React.ReactNode }) {
+function Modal({
+  open,
+  onClose,
+  title,
+  children,
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  children: React.ReactNode;
+}) {
   if (!open) return null;
   return (
-    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(8px)' }}>
+    <div
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+        backdropFilter: 'blur(8px)',
+      }}
+    >
       <div className="glass-card animate-fade-in" style={{ width: '440px', padding: '32px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '20px',
+          }}
+        >
           <h3 style={{ fontSize: '20px', fontWeight: '700' }}>{title}</h3>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-secondary)' }}><X size={20} /></button>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: 'var(--color-text-secondary)',
+            }}
+          >
+            <X size={20} />
+          </button>
         </div>
         {children}
       </div>
@@ -55,10 +136,14 @@ export default function ResponderDashboard() {
   const { socket, lastEvent, isConnected } = useIncidentsSocket();
 
   // Toast state
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error'; visible: boolean }>({ message: '', type: 'success', visible: false });
+  const [toast, setToast] = useState<{
+    message: string;
+    type: 'success' | 'error';
+    visible: boolean;
+  }>({ message: '', type: 'success', visible: false });
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type, visible: true });
-    setTimeout(() => setToast(prev => ({ ...prev, visible: false })), 4000);
+    setTimeout(() => setToast((prev) => ({ ...prev, visible: false })), 4000);
   };
 
   // Modal states for Assign and Escalate
@@ -203,7 +288,7 @@ export default function ResponderDashboard() {
 
   const handleResolve = async (id: string) => {
     // State-machine guard: can only resolve acknowledged/assigned/escalated incidents
-    const incident = incidents.find(i => i.id === id);
+    const incident = incidents.find((i) => i.id === id);
     if (incident && incident.status === 'created') {
       showToast('Cannot resolve an incident that has not been acknowledged yet.', 'error');
       return;
@@ -211,7 +296,7 @@ export default function ResponderDashboard() {
     setProcessingActionId(id);
     try {
       await requestResolve(id);
-      showToast('Safety check initiated. Ask the tourist for their OTP.');
+      showToast('Safety verification initiated. Ask the tourist for their 6-digit code.');
       setConfirmResolveId(id);
       setResolveOtp('');
     } catch (error: any) {
@@ -227,8 +312,8 @@ export default function ResponderDashboard() {
 
   const confirmResolve = async () => {
     if (!confirmResolveId) return;
-    if (!resolveOtp.trim() || resolveOtp.trim().length !== 4) {
-      showToast('Please enter the 4-digit OTP from the tourist.', 'error');
+    if (!resolveOtp.trim() || resolveOtp.trim().length !== 6) {
+      showToast('Please enter the full 6-digit verification code from the tourist.', 'error');
       return;
     }
     if (processingActionId === confirmResolveId) return;
@@ -296,27 +381,60 @@ export default function ResponderDashboard() {
     }
   };
 
-  const activeIncidents = incidents.filter(inc => !['closed', 'resolved', 'false_alarm', 'merged'].includes(inc.status));
+  const activeIncidents = incidents.filter(
+    (inc) =>
+      !['closed', 'resolved', 'false_alarm', 'merged', 'cancelled', 'cancelled_by_user'].includes(
+        (inc.status || '').toLowerCase(),
+      ),
+  );
 
   return (
     <DashboardLayout>
-      <header className="header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <header
+        className="header"
+        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+      >
         <h2 style={{ fontSize: '20px', fontWeight: '500' }}>Active Incident Queue</h2>
         <div>
-          <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: socket ? 'var(--color-success)' : 'var(--color-error)', marginRight: '8px' }}></span>
+          <span
+            style={{
+              display: 'inline-block',
+              width: '8px',
+              height: '8px',
+              borderRadius: '50%',
+              backgroundColor: socket ? 'var(--color-success)' : 'var(--color-error)',
+              marginRight: '8px',
+            }}
+          ></span>
           {socket ? 'Connected to WebSocket' : 'Disconnected'}
         </div>
       </header>
-      
+
       <div style={{ padding: '24px', flex: 1, display: 'flex', flexDirection: 'column' }}>
         <div style={{ display: 'flex', gap: '24px', flex: 1, minHeight: 0 }}>
-          
           {/* Queue List */}
-          <div className="glass" style={{ flex: '1', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', overflowY: 'auto' }}>
-            <h3 style={{ fontSize: '16px', fontWeight: '600', color: 'var(--color-on-surface-variant)' }}>
+          <div
+            className="glass"
+            style={{
+              flex: '1',
+              borderRadius: '12px',
+              padding: '16px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+              overflowY: 'auto',
+            }}
+          >
+            <h3
+              style={{
+                fontSize: '16px',
+                fontWeight: '600',
+                color: 'var(--color-on-surface-variant)',
+              }}
+            >
               Pending ({activeIncidents.length})
             </h3>
-            
+
             {loading ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '16px' }}>
                 <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />
@@ -331,83 +449,153 @@ export default function ResponderDashboard() {
               activeIncidents.map((inc) => {
                 const isCritical = inc.severity === 'CRITICAL';
                 const isSilent = inc.type === 'silent' || inc.covert;
-                const isSlaViolated = inc.status === 'created' && (now - new Date(inc.createdAt).getTime() > 60000);
+                const isSlaViolated =
+                  inc.status === 'created' && now - new Date(inc.createdAt).getTime() > 60000;
                 const isSelected = selectedIncident?.id === inc.id;
 
                 return (
-                  <div key={inc.id} 
+                  <div
+                    key={inc.id}
                     onClick={() => setSelectedIncident(inc)}
-                    style={{ 
-                    padding: '16px', 
-                    border: `1px solid ${isSelected ? 'var(--color-primary)' : (isCritical || isSlaViolated ? 'var(--color-error)' : 'var(--color-warning)')}`, 
-                    borderRadius: '8px', 
-                    background: isSelected ? 'rgba(76, 175, 80, 0.1)' : (isCritical || isSlaViolated ? 'rgba(220, 38, 38, 0.05)' : 'rgba(227, 116, 0, 0.05)'), 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center',
-                    cursor: 'pointer',
-                    animation: isSlaViolated ? 'pulse 2s infinite' : 'none'
-                  }}>
+                    style={{
+                      padding: '16px',
+                      border: `1px solid ${isSelected ? 'var(--color-primary)' : isCritical || isSlaViolated ? 'var(--color-error)' : 'var(--color-warning)'}`,
+                      borderRadius: '8px',
+                      background: isSelected
+                        ? 'rgba(76, 175, 80, 0.1)'
+                        : isCritical || isSlaViolated
+                          ? 'rgba(220, 38, 38, 0.05)'
+                          : 'rgba(227, 116, 0, 0.05)',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      cursor: 'pointer',
+                      animation: isSlaViolated ? 'pulse 2s infinite' : 'none',
+                    }}
+                  >
                     <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                        <span style={{ 
-                          background: isCritical ? 'var(--color-error)' : 'var(--color-warning)', 
-                          color: '#fff', 
-                          fontSize: '10px', 
-                          padding: '2px 6px', 
-                          borderRadius: '4px', 
-                          fontWeight: 'bold' 
-                        }}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          marginBottom: '8px',
+                        }}
+                      >
+                        <span
+                          style={{
+                            background: isCritical ? 'var(--color-error)' : 'var(--color-warning)',
+                            color: '#fff',
+                            fontSize: '10px',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            fontWeight: 'bold',
+                          }}
+                        >
                           {inc.severity}
                         </span>
-                        
-                        <span style={{ fontSize: '14px', color: 'var(--color-on-surface-variant)' }}>
+
+                        <span
+                          style={{ fontSize: '14px', color: 'var(--color-on-surface-variant)' }}
+                        >
                           {new Date(inc.createdAt).toLocaleTimeString()}
                         </span>
-                        
+
                         {isSilent && (
-                          <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--color-error)', fontSize: '12px', fontWeight: 'bold' }}>
+                          <span
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              color: 'var(--color-error)',
+                              fontSize: '12px',
+                              fontWeight: 'bold',
+                            }}
+                          >
                             <EyeOff size={14} /> DO NOT CALL
                           </span>
                         )}
                       </div>
-                      
-                      <div style={{ fontWeight: '500', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <AlertCircle size={16} color={isCritical ? "var(--color-error)" : "var(--color-warning)"} />
+
+                      <div
+                        style={{
+                          fontWeight: '500',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                        }}
+                      >
+                        <AlertCircle
+                          size={16}
+                          color={isCritical ? 'var(--color-error)' : 'var(--color-warning)'}
+                        />
                         {inc.type.toUpperCase()} EMERGENCY
                       </div>
-                      
-                      <div style={{ fontSize: '12px', marginTop: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+
+                      <div
+                        style={{
+                          fontSize: '12px',
+                          marginTop: '8px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                        }}
+                      >
                         <MapPin size={12} />
-                        {inc.location || "Location Unknown"}
+                        {inc.location || 'Location Unknown'}
                       </div>
-                      
-                      <div style={{ fontSize: '12px', marginTop: '4px', color: 'var(--color-primary)' }}>
+
+                      <div
+                        style={{
+                          fontSize: '12px',
+                          marginTop: '4px',
+                          color: 'var(--color-primary)',
+                        }}
+                      >
                         Status: {inc.status.toUpperCase()}
                       </div>
                     </div>
-                    
+
                     {inc.status === 'created' ? (
-                      <button 
+                      <button
                         className="btn btn-primary"
                         onClick={(e) => handleAcknowledge(inc.id, e)}
                         disabled={processingActionId === inc.id}
                         style={{
-                          backgroundColor: processingActionId === inc.id ? 'var(--color-surface)' : 'var(--color-error)',
+                          backgroundColor:
+                            processingActionId === inc.id
+                              ? 'var(--color-surface)'
+                              : 'var(--color-error)',
                           border: 'none',
-                          color: processingActionId === inc.id ? 'var(--color-text-secondary)' : '#fff',
-                          display: 'flex', alignItems: 'center', gap: '6px',
+                          color:
+                            processingActionId === inc.id ? 'var(--color-text-secondary)' : '#fff',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
                         }}
                       >
                         {processingActionId === inc.id ? (
-                          <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Processing...</>
+                          <>
+                            <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />{' '}
+                            Processing...
+                          </>
                         ) : (
                           'Acknowledge'
                         )}
                       </button>
                     ) : (
-                      <button className="btn btn-secondary" disabled>
-                        {inc.status.charAt(0).toUpperCase() + inc.status.slice(1)}
+                      <button
+                        className="btn btn-secondary"
+                        disabled
+                        style={
+                          ['cancelled', 'cancelled_by_user'].includes(inc.status)
+                            ? { color: 'var(--color-error)', borderColor: 'var(--color-error)' }
+                            : {}
+                        }
+                      >
+                        {['cancelled', 'cancelled_by_user'].includes(inc.status)
+                          ? 'CANCELLED BY USER'
+                          : inc.status.charAt(0).toUpperCase() + inc.status.slice(1)}
                       </button>
                     )}
                   </div>
@@ -417,90 +605,208 @@ export default function ResponderDashboard() {
           </div>
 
           {/* Live Map Area */}
-          <div className="glass" style={{ flex: '1.5', borderRadius: '12px', overflow: 'hidden', position: 'relative' }}>
-             <IncidentMap incidents={activeIncidents} />
+          <div
+            className="glass"
+            style={{ flex: '1.5', borderRadius: '12px', overflow: 'hidden', position: 'relative' }}
+          >
+            <IncidentMap
+              incidents={activeIncidents}
+              selectedIncidentId={selectedIncident?.id}
+              onSelectIncident={(inc) => setSelectedIncident(inc)}
+            />
           </div>
 
           {/* Incident Detail Sidebar */}
           {selectedIncident && (
-            <div className="glass" style={{ flex: '1', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px', overflowY: 'auto' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div
+              className="glass"
+              style={{
+                flex: '1',
+                borderRadius: '12px',
+                padding: '16px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '16px',
+                overflowY: 'auto',
+              }}
+            >
+              <div
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+              >
                 <h3 style={{ fontSize: '18px', fontWeight: '600' }}>Incident Context</h3>
-                <button onClick={() => setSelectedIncident(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-secondary)', padding: '4px' }}>
+                <button
+                  onClick={() => setSelectedIncident(null)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: 'var(--color-text-secondary)',
+                    padding: '4px',
+                  }}
+                >
                   <X size={18} />
                 </button>
               </div>
-              
-              <div style={{ padding: '16px', backgroundColor: 'var(--color-background)', borderRadius: '8px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+
+              <div
+                style={{
+                  padding: '16px',
+                  backgroundColor: 'var(--color-background)',
+                  borderRadius: '8px',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '8px',
+                  }}
+                >
                   <p style={{ fontWeight: '500' }}>Incident Context</p>
-                  <span style={{ fontSize: '11px', background: 'var(--color-surface-variant)', padding: '2px 6px', borderRadius: '4px', fontFamily: 'monospace' }}>
+                  <span
+                    style={{
+                      fontSize: '11px',
+                      background: 'var(--color-surface-variant)',
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                      fontFamily: 'monospace',
+                    }}
+                  >
                     ID: {selectedIncident.id.split('-')[0]}
                   </span>
                 </div>
-                <div style={{ fontSize: '14px', color: 'var(--color-on-surface-variant)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                  <div><strong>Status:</strong> {selectedIncident.status.toUpperCase()}</div>
-                  <div><strong>Severity:</strong> {selectedIncident.severity}</div>
-                  <div><strong>Type:</strong> {selectedIncident.type}</div>
-                  <div><strong>Created:</strong> {new Date(selectedIncident.createdAt).toLocaleTimeString()}</div>
+                <div
+                  style={{
+                    fontSize: '14px',
+                    color: 'var(--color-on-surface-variant)',
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: '8px',
+                  }}
+                >
+                  <div>
+                    <strong>Status:</strong> {selectedIncident.status.toUpperCase()}
+                  </div>
+                  <div>
+                    <strong>Severity:</strong> {selectedIncident.severity}
+                  </div>
+                  <div>
+                    <strong>Type:</strong> {selectedIncident.type}
+                  </div>
+                  <div>
+                    <strong>Created:</strong>{' '}
+                    {new Date(selectedIncident.createdAt).toLocaleTimeString()}
+                  </div>
                 </div>
               </div>
 
               {selectedIncident.touristDetails && (
-                <div style={{ padding: '16px', backgroundColor: 'var(--color-background)', borderRadius: '8px' }}>
+                <div
+                  style={{
+                    padding: '16px',
+                    backgroundColor: 'var(--color-background)',
+                    borderRadius: '8px',
+                  }}
+                >
                   <p style={{ fontWeight: '500', marginBottom: '8px' }}>Tourist Information</p>
-                  <div style={{ fontSize: '14px', color: 'var(--color-on-surface-variant)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                    <div><strong>Name:</strong> {selectedIncident.touristDetails.name || 'Unknown'}</div>
-                    <div><strong>Phone:</strong> {selectedIncident.touristDetails.phone || 'N/A'}</div>
-                    <div><strong>Blood Group:</strong> {selectedIncident.touristDetails.bloodGroup || 'Unknown'}</div>
-                    <div><strong>Allergies:</strong> {selectedIncident.touristDetails.allergies || 'None listed'}</div>
-                    <div style={{ gridColumn: 'span 2' }}><strong>Medications:</strong> {selectedIncident.touristDetails.medications || 'None listed'}</div>
+                  <div
+                    style={{
+                      fontSize: '14px',
+                      color: 'var(--color-on-surface-variant)',
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 1fr',
+                      gap: '8px',
+                    }}
+                  >
+                    <div>
+                      <strong>Name:</strong> {selectedIncident.touristDetails.name || 'Unknown'}
+                    </div>
+                    <div>
+                      <strong>Phone:</strong> {selectedIncident.touristDetails.phone || 'N/A'}
+                    </div>
+                    <div>
+                      <strong>Blood Group:</strong>{' '}
+                      {selectedIncident.touristDetails.bloodGroup || 'Unknown'}
+                    </div>
+                    <div>
+                      <strong>Allergies:</strong>{' '}
+                      {selectedIncident.touristDetails.allergies || 'None listed'}
+                    </div>
+                    <div style={{ gridColumn: 'span 2' }}>
+                      <strong>Medications:</strong>{' '}
+                      {selectedIncident.touristDetails.medications || 'None listed'}
+                    </div>
                   </div>
                 </div>
               )}
 
-              <div style={{ padding: '16px', backgroundColor: 'var(--color-background)', borderRadius: '8px' }}>
+              <div
+                style={{
+                  padding: '16px',
+                  backgroundColor: 'var(--color-background)',
+                  borderRadius: '8px',
+                }}
+              >
                 <p style={{ fontWeight: '500', marginBottom: '8px' }}>Actions</p>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                  <button 
-                    className="btn btn-primary" 
+                  <button
+                    className="btn btn-primary"
                     onClick={(e) => handleAcknowledge(selectedIncident.id, e)}
-                    disabled={selectedIncident.status !== 'created' || processingActionId === selectedIncident.id}
+                    disabled={
+                      selectedIncident.status !== 'created' ||
+                      processingActionId === selectedIncident.id
+                    }
                     style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
                   >
-                    {processingActionId === selectedIncident.id ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : null}
+                    {processingActionId === selectedIncident.id ? (
+                      <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
+                    ) : null}
                     Acknowledge
                   </button>
-                  <button 
+                  <button
                     className="btn btn-secondary"
                     onClick={() => openAssignModal(selectedIncident.id)}
-                    disabled={!['acknowledged', 'escalated'].includes(selectedIncident.status) || processingActionId === selectedIncident.id}
+                    disabled={
+                      !['acknowledged', 'escalated'].includes(selectedIncident.status) ||
+                      processingActionId === selectedIncident.id
+                    }
                   >
                     Assign Unit
                   </button>
-                  <button 
+                  <button
                     className="btn btn-secondary"
                     onClick={() => openEscalateModal(selectedIncident.id)}
-                    disabled={selectedIncident.severity === 'CRITICAL' || processingActionId === selectedIncident.id}
+                    disabled={
+                      selectedIncident.severity === 'CRITICAL' ||
+                      processingActionId === selectedIncident.id
+                    }
                     style={{ color: '#f44336', borderColor: '#f44336' }}
                   >
                     Escalate
                   </button>
-                  <button 
+                  <button
                     className="btn btn-secondary"
-                    disabled={['created', 'resolved', 'resolve_pending'].includes(selectedIncident.status) || processingActionId === selectedIncident.id}
+                    disabled={
+                      ['created', 'resolved', 'resolve_pending'].includes(
+                        selectedIncident.status,
+                      ) || processingActionId === selectedIncident.id
+                    }
                     onClick={() => handleArrive(selectedIncident.id)}
                   >
                     Unit Arrived
                   </button>
-                  <button 
+                  <button
                     className="btn btn-secondary"
-                    disabled={['created', 'resolve_pending'].includes(selectedIncident.status) || processingActionId === selectedIncident.id}
+                    disabled={
+                      ['created', 'resolve_pending'].includes(selectedIncident.status) ||
+                      processingActionId === selectedIncident.id
+                    }
                     onClick={() => handleResolve(selectedIncident.id)}
                   >
                     Resolve Case
                   </button>
-                  <button 
+                  <button
                     className="btn btn-secondary"
                     disabled={processingActionId === selectedIncident.id}
                     onClick={() => handleFalseAlarm(selectedIncident.id)}
@@ -511,49 +817,104 @@ export default function ResponderDashboard() {
                 </div>
               </div>
 
-              <div style={{ padding: '16px', backgroundColor: 'var(--color-background)', borderRadius: '8px', flex: 1 }}>
+              <div
+                style={{
+                  padding: '16px',
+                  backgroundColor: 'var(--color-background)',
+                  borderRadius: '8px',
+                  flex: 1,
+                }}
+              >
                 <p style={{ fontWeight: '500', marginBottom: '8px' }}>Timeline & Integrity</p>
-                <div style={{ fontSize: '12px', color: 'var(--color-on-surface-variant)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div
+                  style={{
+                    fontSize: '12px',
+                    color: 'var(--color-on-surface-variant)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px',
+                  }}
+                >
                   {selectedIncident.events?.length > 0 ? (
                     selectedIncident.events.map((ev: any, idx: number) => {
-                      let actorStr = "";
-                      const role = ev.details?.resolved_by_role || ev.details?.cancelled_by_role || ev.details?.actor_role;
+                      let actorStr = '';
+                      const role =
+                        ev.details?.resolved_by_role ||
+                        ev.details?.cancelled_by_role ||
+                        ev.details?.actor_role;
                       const org = ev.details?.resolved_by_org || ev.details?.cancelled_by_org;
-                      
+
                       if (role === 'tourist') {
-                        actorStr = "(by Self)";
+                        actorStr = '(by Self)';
                       } else if (org) {
                         actorStr = `(by ${org})`;
                       } else if (role) {
-                        actorStr = "(by Authority)";
+                        actorStr = '(by Authority)';
                       }
-                      
-                      const reasonStr = ev.details?.reason || ev.details?.notes ? `- ${ev.details.reason || ev.details.notes}` : '';
+
+                      const reasonStr =
+                        ev.details?.reason || ev.details?.notes
+                          ? `- ${ev.details.reason || ev.details.notes}`
+                          : '';
 
                       return (
-                        <div key={idx} style={{ borderLeft: '2px solid var(--color-primary)', paddingLeft: '8px', marginBottom: '12px' }}>
-                          <strong>{new Date(ev.createdAt).toLocaleTimeString()}</strong> - {ev.eventType.toUpperCase()} <span style={{ color: 'var(--color-primary)', fontWeight: 'bold' }}>{actorStr}</span>
-                          {reasonStr && <div style={{ fontSize: '12px', fontStyle: 'italic', marginTop: '2px' }}>{reasonStr}</div>}
-                          <div style={{ color: '#4CAF50', fontSize: '11px', marginTop: '4px' }}>✓ Blockchain Hash verified</div>
+                        <div
+                          key={idx}
+                          style={{
+                            borderLeft: '2px solid var(--color-primary)',
+                            paddingLeft: '8px',
+                            marginBottom: '12px',
+                          }}
+                        >
+                          <strong>{new Date(ev.createdAt).toLocaleTimeString()}</strong> -{' '}
+                          {ev.eventType.toUpperCase()}{' '}
+                          <span style={{ color: 'var(--color-primary)', fontWeight: 'bold' }}>
+                            {actorStr}
+                          </span>
+                          {reasonStr && (
+                            <div
+                              style={{ fontSize: '12px', fontStyle: 'italic', marginTop: '2px' }}
+                            >
+                              {reasonStr}
+                            </div>
+                          )}
+                          <div style={{ color: '#4CAF50', fontSize: '11px', marginTop: '4px' }}>
+                            ✓ Blockchain Hash verified
+                          </div>
                         </div>
                       );
                     })
                   ) : (
-                    <p style={{ color: 'var(--color-on-surface-variant)' }}>No timeline events recorded yet.</p>
+                    <p style={{ color: 'var(--color-on-surface-variant)' }}>
+                      No timeline events recorded yet.
+                    </p>
                   )}
                 </div>
               </div>
             </div>
           )}
-          
         </div>
       </div>
 
       {/* ── Assign Unit Modal ─────────────────────────────────────── */}
-      <Modal open={assignModalOpen} onClose={() => setAssignModalOpen(false)} title="Assign Responder Unit">
+      <Modal
+        open={assignModalOpen}
+        onClose={() => setAssignModalOpen(false)}
+        title="Assign Responder Unit"
+      >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div>
-            <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', marginBottom: '8px', color: 'var(--color-on-surface-variant)' }}>Unit ID</label>
+            <label
+              style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '600',
+                marginBottom: '8px',
+                color: 'var(--color-on-surface-variant)',
+              }}
+            >
+              Unit ID
+            </label>
             <input
               type="text"
               className="input-premium"
@@ -564,24 +925,58 @@ export default function ResponderDashboard() {
             />
           </div>
           <div style={{ display: 'flex', gap: '12px' }}>
-            <button className="btn btn-outline" style={{ flex: 1, padding: '12px' }} onClick={() => setAssignModalOpen(false)}>Cancel</button>
+            <button
+              className="btn btn-outline"
+              style={{ flex: 1, padding: '12px' }}
+              onClick={() => setAssignModalOpen(false)}
+            >
+              Cancel
+            </button>
             <button
               className="btn btn-primary"
-              style={{ flex: 1, padding: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+              style={{
+                flex: 1,
+                padding: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+              }}
               disabled={!assignUnitId.trim() || processingActionId === assignTargetId}
               onClick={handleAssignSubmit}
             >
-              {processingActionId === assignTargetId ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Assigning...</> : 'Assign'}
+              {processingActionId === assignTargetId ? (
+                <>
+                  <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />{' '}
+                  Assigning...
+                </>
+              ) : (
+                'Assign'
+              )}
             </button>
           </div>
         </div>
       </Modal>
 
       {/* ── Escalate Modal ────────────────────────────────────────── */}
-      <Modal open={escalateModalOpen} onClose={() => setEscalateModalOpen(false)} title="Escalate to Critical">
+      <Modal
+        open={escalateModalOpen}
+        onClose={() => setEscalateModalOpen(false)}
+        title="Escalate to Critical"
+      >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div>
-            <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', marginBottom: '8px', color: 'var(--color-on-surface-variant)' }}>Reason for Escalation</label>
+            <label
+              style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '600',
+                marginBottom: '8px',
+                color: 'var(--color-on-surface-variant)',
+              }}
+            >
+              Reason for Escalation
+            </label>
             <textarea
               className="input-premium"
               placeholder="Describe why this incident needs critical escalation..."
@@ -593,57 +988,122 @@ export default function ResponderDashboard() {
             />
           </div>
           <div style={{ display: 'flex', gap: '12px' }}>
-            <button className="btn btn-outline" style={{ flex: 1, padding: '12px' }} onClick={() => setEscalateModalOpen(false)}>Cancel</button>
+            <button
+              className="btn btn-outline"
+              style={{ flex: 1, padding: '12px' }}
+              onClick={() => setEscalateModalOpen(false)}
+            >
+              Cancel
+            </button>
             <button
               className="btn btn-primary"
-              style={{ flex: 1, padding: '12px', backgroundColor: 'var(--color-error)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+              style={{
+                flex: 1,
+                padding: '12px',
+                backgroundColor: 'var(--color-error)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+              }}
               disabled={!escalateReason.trim() || processingActionId === escalateTargetId}
               onClick={handleEscalateSubmit}
             >
-              {processingActionId === escalateTargetId ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Escalating...</> : 'Escalate to Critical'}
+              {processingActionId === escalateTargetId ? (
+                <>
+                  <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />{' '}
+                  Escalating...
+                </>
+              ) : (
+                'Escalate to Critical'
+              )}
             </button>
           </div>
         </div>
       </Modal>
 
       {/* ── Resolve Confirmation Modal ────────────────────────────── */}
-      <Modal open={!!confirmResolveId} onClose={() => setConfirmResolveId(null)} title="Security Clearance Required">
+      <Modal
+        open={!!confirmResolveId}
+        onClose={() => setConfirmResolveId(null)}
+        title="Security Clearance Required"
+      >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <p style={{ color: 'var(--color-on-surface-variant)', fontSize: '15px' }}>
-            To close this case, you must verify the tourist&apos;s safety. An OTP has been sent to their device. Please ask them for the 4-digit code.
+            To close this case, you must verify the tourist&apos;s safety. A high-security 6-digit
+            OTP has been transmitted to their display. Please input the verification code below.
           </p>
           <div>
-            <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', marginBottom: '8px', color: 'var(--color-on-surface-variant)' }}>Tourist OTP</label>
+            <label
+              style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '600',
+                marginBottom: '8px',
+                color: 'var(--color-on-surface-variant)',
+              }}
+            >
+              Tourist 6-Digit OTP
+            </label>
             <input
               type="text"
-              maxLength={4}
+              maxLength={6}
               className="input-premium"
-              placeholder="0000"
+              placeholder="000000"
               value={resolveOtp}
               onChange={(e) => setResolveOtp(e.target.value.replace(/\D/g, ''))}
-              style={{ fontSize: '24px', letterSpacing: '4px', textAlign: 'center' }}
+              style={{
+                fontSize: '24px',
+                letterSpacing: '6px',
+                textAlign: 'center',
+                fontWeight: 'bold',
+              }}
               autoFocus
             />
           </div>
           <div style={{ display: 'flex', gap: '12px' }}>
-            <button className="btn btn-outline" style={{ flex: 1, padding: '12px' }} onClick={() => setConfirmResolveId(null)}>Cancel</button>
+            <button
+              className="btn btn-outline"
+              style={{ flex: 1, padding: '12px' }}
+              onClick={() => setConfirmResolveId(null)}
+            >
+              Cancel
+            </button>
             <button
               className="btn btn-primary"
-              style={{ flex: 1, padding: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-              disabled={processingActionId === confirmResolveId}
+              style={{
+                flex: 1,
+                padding: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+              }}
+              disabled={resolveOtp.trim().length !== 6 || processingActionId === confirmResolveId}
               onClick={confirmResolve}
             >
-              {processingActionId === confirmResolveId ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Resolving...</> : 'Confirm Resolve'}
+              {processingActionId === confirmResolveId ? (
+                <>
+                  <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />{' '}
+                  Resolving...
+                </>
+              ) : (
+                'Verify & Resolve'
+              )}
             </button>
           </div>
         </div>
       </Modal>
 
       <Toast message={toast.message} type={toast.type} visible={toast.visible} />
-      <style dangerouslySetInnerHTML={{__html: `
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-      `}} />
+      `,
+        }}
+      />
     </DashboardLayout>
   );
 }

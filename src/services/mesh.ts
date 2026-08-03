@@ -13,7 +13,9 @@ class MeshService {
     try {
       this.manager = new BleManager();
     } catch (e) {
-      console.warn("BleManager could not be initialized (likely running in Expo Go). BLE features will be disabled.");
+      console.warn(
+        'BleManager could not be initialized (likely running in Expo Go). BLE features will be disabled.',
+      );
       this.manager = null as any;
     }
   }
@@ -27,7 +29,7 @@ class MeshService {
     // Sign payload
     const hash = await Crypto.digestStringAsync(
       Crypto.CryptoDigestAlgorithm.SHA256,
-      payload + 'secret_device_key' // In prod, use actual private key
+      payload + 'secret_device_key', // In prod, use actual private key
     );
     // Base64 encode for BLE
     return btoa(`${payload}|${hash.substring(0, 8)}`);
@@ -35,21 +37,21 @@ class MeshService {
 
   /**
    * Activates BLE Peripheral mode to scream the SOS beacon.
-   * Note: react-native-ble-plx is primarily for Central (scanning). 
+   * Note: react-native-ble-plx is primarily for Central (scanning).
    * A full production app would use react-native-ble-peripheral for advertising.
    */
   public async startBroadcastingSOS(sosId: string, lat: number, lon: number) {
     if (this.isBroadcasting) return;
-    
+
     console.log('[MESH] Generating offline SOS beacon...');
     const encodedPayload = await this.compressSOSPayload(sosId, lat, lon);
     console.log(`[MESH] Beacon payload ready: ${encodedPayload}`);
-    
+
     // MOCK BROADCAST: Expo doesn't support BLE Peripheral natively without custom plugins.
     // In a custom dev client, this would start the GAP Advertising.
     this.isBroadcasting = true;
     console.log('[MESH] Now screaming BLE beacon to nearby devices...');
-    
+
     // Simulate broadcasting loop
     setInterval(() => {
       if (this.isBroadcasting) {
@@ -72,10 +74,10 @@ class MeshService {
       console.warn('[MESH] BLE Manager is not available. Skipping scan.');
       return;
     }
-    
+
     this.isScanning = true;
     console.log('[MESH] Started background scanning for nearby SOS beacons...');
-    
+
     this.manager.startDeviceScan(
       [MESH_SERVICE_UUID],
       { allowDuplicates: false },
@@ -93,7 +95,7 @@ class MeshService {
             await this.relaySOS(payload);
           }
         }
-      }
+      },
     );
   }
 
@@ -115,7 +117,7 @@ class MeshService {
       const { api } = require('./api');
       await api.post('/sos/mesh-ingest', {
         payload: base64Payload,
-        relayedAt: new Date().toISOString()
+        relayedAt: new Date().toISOString(),
       });
       console.log('[MESH] Successfully relayed SOS for another tourist.');
     } catch (e) {

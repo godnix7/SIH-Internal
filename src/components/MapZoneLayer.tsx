@@ -44,57 +44,55 @@ export function MapZoneLayer({
 
   const geoJsonSource = {
     type: 'FeatureCollection',
-    features: zones.map(zone => ({
+    features: zones.map((zone) => ({
       type: 'Feature',
       geometry: {
         type: 'Polygon',
-        coordinates: [zone.polygon[0].map(([lon, lat]) => [lon, lat])]
+        coordinates: [zone.polygon[0].map(([lon, lat]) => [lon, lat])],
       },
       properties: {
         id: zone.id,
         class: zone.class,
         name: zone.name,
-      }
-    }))
+      },
+    })),
   };
 
   return (
     <View style={styles.wrap}>
-      <MapLibreGL.MapView
-        style={styles.map}
-        logoEnabled={false}
-      >
-        <MapLibreGL.Camera
-          zoomLevel={12}
-          centerCoordinate={[center.longitude, center.latitude]}
-        />
+      <MapLibreGL.MapView style={styles.map} logoEnabled={false}>
+        <MapLibreGL.Camera zoomLevel={12} centerCoordinate={[center.longitude, center.latitude]} />
         <MapLibreGL.UserLocation visible={true} />
-        
+
         <MapLibreGL.ShapeSource id="zones" shape={geoJsonSource as any}>
-          <MapLibreGL.FillLayer 
-            id="zoneFill" 
+          <MapLibreGL.FillLayer
+            id="zoneFill"
             style={{
               fillColor: [
-                'match', 
-                ['get', 'class'], 
-                'advisory', 'rgba(44,95,138,0.12)',
-                'corridor', 'rgba(31,111,84,0.15)',
-                'rgba(194,64,42,0.10)'
-              ]
-            }} 
+                'match',
+                ['get', 'class'],
+                'advisory',
+                'rgba(44,95,138,0.12)',
+                'corridor',
+                'rgba(31,111,84,0.15)',
+                'rgba(194,64,42,0.10)',
+              ],
+            }}
           />
-          <MapLibreGL.LineLayer 
-            id="zoneLine" 
+          <MapLibreGL.LineLayer
+            id="zoneLine"
             style={{
               lineColor: [
                 'match',
                 ['get', 'class'],
-                'advisory', `${c.primary}88`,
-                'corridor', `${c.primary}88`,
-                `${c.critical}AA`
+                'advisory',
+                `${c.primary}88`,
+                'corridor',
+                `${c.primary}88`,
+                `${c.critical}AA`,
               ],
-              lineWidth: 2
-            }} 
+              lineWidth: 2,
+            }}
           />
         </MapLibreGL.ShapeSource>
       </MapLibreGL.MapView>
