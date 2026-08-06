@@ -120,6 +120,11 @@ export class OutboxQueue {
     await database.runAsync('DELETE FROM outbox WHERE id = ?', itemId);
   }
 
+  async clearByType(type: string): Promise<void> {
+    const database = await this.database();
+    await database.runAsync('DELETE FROM outbox WHERE type = ?', type);
+  }
+
   async retry(item: OutboxItem): Promise<void> {
     const database = await this.database();
     const attempts = item.attempts + 1;

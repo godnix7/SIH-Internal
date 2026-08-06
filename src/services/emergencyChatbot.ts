@@ -410,6 +410,66 @@ class EmergencyChatbotEngine {
         type: 'navigate_sos',
       };
     } else if (
+      lower.includes('feeling low') ||
+      lower.includes('feel low') ||
+      lower.includes('sad') ||
+      lower.includes('depress') ||
+      lower.includes('anxi') ||
+      lower.includes('scared') ||
+      lower.includes('lonel') ||
+      lower.includes('worri') ||
+      lower.includes('stress') ||
+      lower.includes('panic') ||
+      lower.includes('exhaust')
+    ) {
+      severity = 'INFO';
+      text =
+        '💙 [EMPATHETIC SUPPORT & WILDERNESS WELLNESS ASSESSMENT]\n\n' +
+        'I hear you, and it is completely natural to feel low, anxious, or mentally overwhelmed—especially during unfamiliar travel, remote trekking, or endurance journeys.\n\n' +
+        '1. **CHECK PHYSICAL EXHAUSTION**: Often, sudden feelings of mood depression, anxiety, or apathy in outdoor and altitude environments are early physiological signs of **dehydration, hypoglycemia (low blood sugar), or mild altitude fatigue**.\n' +
+        '2. **WARMTH & HYDRATION**: Take a 15-minute pause. Drink warm electrolyte water or sweet fluid, eat a quick energy bar, and shield yourself from direct cold wind or heavy sun.\n' +
+        '3. **GROUNDING TECHNIQUE**: Sit comfortably, loosen any tight backpack straps, and practice slow diaphragmatic breathing (inhale for 4 seconds, hold for 4, exhale slowly for 6).\n' +
+        '4. **CONNECTIVITY REASSURANCE**: Remember that Yatri Shield is continuously watching over your location in the background with zero-connectivity mesh protection.\n\n' +
+        '❓ **Check-In**: Are you experiencing physical fatigue, mild nausea, or headache? Or let me know if you would simply like assistance locating the nearest rest stop or lodging!';
+    } else if (
+      lower === 'hello' ||
+      lower === 'hi' ||
+      lower === 'hey' ||
+      lower.includes('how are you') ||
+      lower.includes('who are you') ||
+      lower.includes('what can you do') ||
+      lower.includes('test') ||
+      lower === 'ai'
+    ) {
+      severity = 'INFO';
+      text =
+        '👋 **Hello! I am Yatri AI (INT4 Quantized Engine)**, your personal safety, first-aid, and real-time medical triage companion.\n\n' +
+        '**How I can support your trip right now:**\n' +
+        '• 🩸 **Emergency First Aid & Trauma Triage**: Step-by-step guidance for severe bleeding, altitude fractures, snake/insect bites, hypothermia, and CPR.\n' +
+        '• 🏔️ **Wilderness & Altitude Wellness**: Symptom checks for Acute Mountain Sickness, fatigue, hydration, and weather hazards.\n' +
+        '• 📡 **Zero-Connectivity Action**: Once offline INT4 weights are downloaded, my full diagnostic reasoning operates 100% locally in zero-signal zones without internet.\n' +
+        '• 🚨 **1-Tap Emergency Escalation**: Direct triggering of SOS alerts and immediate connection to SDRF / Police response units.\n\n' +
+        '❓ **What is on your mind today?** Describe any symptom, travel question, or tap a triage prompt below!';
+    } else if (
+      lower.includes('fever') ||
+      lower.includes('nausea') ||
+      lower.includes('headache') ||
+      lower.includes('cold') ||
+      lower.includes('vomit') ||
+      lower.includes('stomach') ||
+      lower.includes('diarrhea') ||
+      lower.includes('sick')
+    ) {
+      severity = 'MODERATE';
+      text =
+        '💊 [GENERAL MEDICAL ASSESSMENT: ACUTE ILLNESS & FATIGUE]\n\n' +
+        'Symptoms such as fever, persistent headache, nausea, or gastrointestinal distress during travel often originate from dietary alterations, untreated water, or environmental stress:\n\n' +
+        '1. **HYDRATION MANAGEMENT**: sip Oral Rehydration Salts (ORS) or clean boiled water continuously in small quantities to replace electrolytes lost from sweating or gastrointestinal distress.\n' +
+        '2. **REST & THERMAL REGULATION**: Avoid demanding physical excursions today. If febrile (feverish), keep clothing lightweight and breathable in warm climates, or warm and dry in cold alpine wind.\n' +
+        '3. **OVER-THE-COUNTER ADVICE**: If carrying a standard first-aid kit, acetaminophen (paracetamol) may help reduce high ambient fever and mild headache pains.\n' +
+        '4. **WHEN TO ESCALATE**: If headache becomes excruciatingly intense accompanied by stiff neck, extreme confusion, repeated persistent vomiting, or inability to retain fluids for over 6 hours, immediate professional clinic care is required.\n\n' +
+        '❓ **Real-Time Follow-up**: How many hours have these symptoms lasted, and are you currently above 2,500 meters (8,200 feet) elevation?';
+    } else if (
       lower.includes('sos') ||
       lower.includes('help') ||
       lower.includes('rescue') ||

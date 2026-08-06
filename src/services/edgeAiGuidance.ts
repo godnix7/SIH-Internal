@@ -208,29 +208,101 @@ export class EdgeAIGuidanceService {
       return this.protocols;
     }
     const cleanQuery = query.toLowerCase().trim();
-    const tokens = cleanQuery.split(/\s+/);
+    const stopWords = new Set([
+      'i',
+      'am',
+      'is',
+      'are',
+      'was',
+      'were',
+      'be',
+      'been',
+      'being',
+      'feel',
+      'feeling',
+      'feels',
+      'low',
+      'bad',
+      'sad',
+      'down',
+      'good',
+      'the',
+      'a',
+      'an',
+      'and',
+      'or',
+      'but',
+      'in',
+      'on',
+      'at',
+      'to',
+      'for',
+      'with',
+      'by',
+      'of',
+      'from',
+      'up',
+      'out',
+      'so',
+      'it',
+      'this',
+      'that',
+      'my',
+      'me',
+      'we',
+      'our',
+      'he',
+      'she',
+      'they',
+      'them',
+      'his',
+      'her',
+      'have',
+      'has',
+      'had',
+      'do',
+      'does',
+      'did',
+      'not',
+      'can',
+      'could',
+      'would',
+      'should',
+    ]);
+
+    const tokens = cleanQuery.split(/\s+/).filter((t) => t.length >= 3 && !stopWords.has(t));
 
     return this.protocols
       .map((protocol) => {
         let score = 0;
-        if (protocol.title.toLowerCase().includes(cleanQuery)) score += 10;
+        if (protocol.title.toLowerCase().includes(cleanQuery)) score += 15;
         if (protocol.category.toLowerCase().includes(cleanQuery)) score += 5;
 
         protocol.keywords.forEach((kw) => {
-          if (cleanQuery.includes(kw.toLowerCase())) score += 6;
+          const lowerKw = kw.toLowerCase();
+          if (cleanQuery.includes(lowerKw)) score += 10;
           tokens.forEach((token) => {
-            if (kw.toLowerCase().startsWith(token) || token.startsWith(kw.toLowerCase()))
-              score += 3;
+            if (token === lowerKw) {
+              score += 8;
+            } else if (
+              token.length >= 4 &&
+              (lowerKw.startsWith(token) || token.startsWith(lowerKw))
+            ) {
+              score += 4;
+            }
           });
         });
 
         protocol.symptoms.forEach((sym) => {
-          if (sym.toLowerCase().includes(cleanQuery)) score += 4;
+          if (sym.toLowerCase().includes(cleanQuery)) score += 6;
+          tokens.forEach((token) => {
+            if (sym.toLowerCase().includes(token)) score += 3;
+          });
         });
 
         return { protocol, score };
       })
-      .filter((item) => item.score > 0 || !query)
+      .filter((item) => item.score >= 10 || !query)
       .sort((a, b) => b.score - a.score)
       .map((item) => item.protocol);
   }

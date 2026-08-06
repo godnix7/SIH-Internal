@@ -1,4 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
+import * as Location from 'expo-location';
 import { create } from 'zustand';
 import { storage } from '@/src/lib/storage';
 
@@ -267,6 +268,28 @@ export const useAppStore = create<AppStore>((set, get) => ({
     })),
   beginSos: async (type, silent, location) => {
     if (get().sos) return;
+    // Purge any stale unsent test alerts sitting in the SQLite outbox queue from previous runs
+    await outboxQueue.clearByType('sos.triggered').catch(() => {});
+
+    let sosLocation = location;
+    if (!sosLocation) {
+      try {
+        const loc =
+          (await Location.getLastKnownPositionAsync({})) ||
+          (await Location.getCurrentPositionAsync({}));
+        if (loc && loc.coords) {
+          sosLocation = {
+            latitude: loc.coords.latitude,
+            longitude: loc.coords.longitude,
+            accuracy: loc.coords.accuracy || 10,
+            timestamp: loc.timestamp || Date.now(),
+          };
+        }
+      } catch (e) {
+        // Fallback gracefully if location permission denied or GPS unavailable
+      }
+    }
+
     // Check for an active trip
     const trip = activeTrip(get().trips);
 
@@ -278,10 +301,14 @@ export const useAppStore = create<AppStore>((set, get) => ({
       silent,
       status: 'COUNTDOWN',
       createdAt: Date.now(),
-      location,
+      location: sosLocation,
       incidentId: uniqueId('incident'),
     };
-    const event = await appendEvent([], 'sos.created', 'you', { type, silent, location });
+    const event = await appendEvent([], 'sos.created', 'you', {
+      type,
+      silent,
+      location: sosLocation,
+    });
     set({ sos, incidentEvents: [event] });
     await persistSos(sos, [event]);
     // EMERGENCY outranks the battery saver, so this raises the sampling rate now.
@@ -289,7 +316,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
   sendSos: async () => {
     const sos = get().sos;
-    if (!sos) return;
+    if (!sos || sos.status !== 'COUNTDOWN') return;
     await get().setSosStatus(get().online ? 'SENDING' : 'OFFLINE_QUEUED');
     await outboxQueue.enqueue(
       'sos.triggered',

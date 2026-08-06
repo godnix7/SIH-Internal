@@ -34,6 +34,22 @@ const IncidentMap = dynamic(() => import('../components/IncidentMap'), {
   ),
 });
 
+// ── Location Formatting Helper ─────────────────────────────────────────
+function formatLocationDisplay(inc: any): string {
+  if (!inc) return 'Location Unknown';
+  const locStr = inc.locationWkt || inc.location;
+  if (!locStr) return 'Location Unknown';
+  if (typeof locStr === 'string' && locStr.includes('POINT(')) {
+    const match = locStr.match(/POINT\(\s*([^\s]+)\s+([^)]+)\)/);
+    if (match) {
+      const lon = parseFloat(match[1]).toFixed(4);
+      const lat = parseFloat(match[2]).toFixed(4);
+      return `Lat ${lat}°, Lon ${lon}°`;
+    }
+  }
+  return typeof locStr === 'string' ? locStr : 'Location Unknown';
+}
+
 // ── Toast component ────────────────────────────────────────────────────
 function Toast({
   message,
@@ -540,7 +556,7 @@ export default function ResponderDashboard() {
                         }}
                       >
                         <MapPin size={12} />
-                        {inc.location || 'Location Unknown'}
+                        {formatLocationDisplay(inc)}
                       </div>
 
                       <div
@@ -695,6 +711,9 @@ export default function ResponderDashboard() {
                   <div>
                     <strong>Created:</strong>{' '}
                     {new Date(selectedIncident.createdAt).toLocaleTimeString()}
+                  </div>
+                  <div style={{ gridColumn: 'span 2' }}>
+                    <strong>GPS Location:</strong> {formatLocationDisplay(selectedIncident)}
                   </div>
                 </div>
               </div>
