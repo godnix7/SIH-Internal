@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Alert, Linking, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { router } from 'expo-router';
-import { ShieldAlert } from 'lucide-react-native';
+import { ShieldAlert, Bot } from 'lucide-react-native';
 import { connectRealtime } from '@/src/services/realtime';
 import { locationEngine } from '@/src/services/locationEngine';
 
@@ -241,6 +241,69 @@ export default function SosActiveScreen() {
         </Text>
         <Text style={[type.body, { color: c.onSurfaceVariant }]}>{t('sos.sharedLine')}</Text>
       </Card>
+
+      {/* Real-Time Edge AI Conversational Assistant Card */}
+      <View
+        style={{
+          backgroundColor: '#1E293B',
+          borderRadius: 16,
+          padding: 18,
+          borderWidth: 1.5,
+          borderColor: '#38BDF8',
+          shadowColor: '#38BDF8',
+          shadowOpacity: 0.35,
+          shadowRadius: 10,
+          elevation: 6,
+          gap: 12,
+        }}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <View
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              backgroundColor: 'rgba(56, 189, 248, 0.2)',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderWidth: 1,
+              borderColor: '#38BDF8',
+            }}
+          >
+            <Bot size={22} color="#38BDF8" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={{ fontSize: 16, fontWeight: '800', color: '#FFFFFF' }}>
+                Edge AI Rescue Companion
+              </Text>
+              <View
+                style={{
+                  backgroundColor: '#059669',
+                  paddingHorizontal: 6,
+                  paddingVertical: 2,
+                  borderRadius: 4,
+                }}
+              >
+                <Text style={{ fontSize: 9, color: '#FFFFFF', fontWeight: '900' }}>REAL-TIME</Text>
+              </View>
+            </View>
+            <Text style={{ fontSize: 12, color: '#94A3B8', marginTop: 2 }}>
+              Intelligent triage & trauma assistance while rescue is enroute
+            </Text>
+          </View>
+        </View>
+
+        <Text style={{ fontSize: 13, color: '#E2E8F0', lineHeight: 20 }}>
+          Don’t panic while waiting for emergency units. Talk to our real-time conversational Edge AI to get custom first-aid instructions, monitor vital symptoms, and manage your immediate environment.
+        </Text>
+
+        <Button
+          label="💬 Talk to Real-Time Edge AI"
+          variant="primary"
+          onPress={() => router.push('/emergency-ai' as any)}
+        />
+      </View>
 
       {sos.status === 'RESOLVE_PENDING' && resolutionOtp && (
         <Card>

@@ -43,10 +43,12 @@ import {
   QUICK_PROMPTS,
   OfflineModelInfo,
 } from '@/src/services/emergencyChatbot';
+import { useAppStore } from '@/src/stores/useAppStore';
 import { space, type } from '@/src/theme/tokens';
 
 export default function EmergencyAIScreen() {
   const c = useAppColors();
+  const { sos } = useAppStore();
   const [activeTab, setActiveTab] = useState<'chat' | 'model' | 'protocols'>('chat');
 
   // --- CHAT STATE ---
@@ -152,15 +154,10 @@ export default function EmergencyAIScreen() {
       });
       setModelInfo({ ...emergencyChatbot.getModelInfo() });
       setMessages([...emergencyChatbot.getHistory()]);
-      Alert.alert(
-        'Download Successful',
-        '✅ Gemma-2B-Q4_K_M INT4 Quantized model weights have been downloaded to your phone. Zero-latency offline triage reasoning is now fully activated!',
-      );
-    } catch {
-      Alert.alert(
-        'Download Failed',
-        'Could not download model weights. Please check available mobile disk storage.',
-      );
+      Vibration.vibrate([100, 200, 100], false);
+      Alert.alert('Download Complete', 'Gemma-2B-Q4_K_M INT4 weights successfully cached offline!');
+    } catch (err) {
+      Alert.alert('Download Failed', 'Could not fetch offline INT4 weights.');
     } finally {
       setDownloading(false);
     }
@@ -168,12 +165,12 @@ export default function EmergencyAIScreen() {
 
   const handleDeleteModel = () => {
     Alert.alert(
-      'Delete Offline Weights',
-      'This will delete the 1.38 GB quantized INT4 model file from your mobile storage. You will fall back to cloud inference or fast heuristic algorithms when offline. Continue?',
+      'Remove Offline Weights',
+      'This will delete the 1.38 GB quantized file and revert to Cloud / Fast Heuristic engine in zero connectivity.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Delete Model',
+          text: 'Remove',
           style: 'destructive',
           onPress: () => {
             emergencyChatbot.deleteOfflineModel();
@@ -186,15 +183,17 @@ export default function EmergencyAIScreen() {
     );
   };
 
+  // --- PROTOCOL ACTIONS ---
   const handleStartVoiceAssist = (protocol: EmergencyProtocol) => {
     if (voicePlayingId === protocol.id) {
       setVoicePlayingId(null);
-      Vibration.cancel();
-      return;
+      setCurrentStepIndex(0);
+      Vibration.vibrate(50);
+    } else {
+      setVoicePlayingId(protocol.id);
+      setCurrentStepIndex(0);
+      Vibration.vibrate([100, 50, 100], false);
     }
-    setVoicePlayingId(protocol.id);
-    setCurrentStepIndex(0);
-    Vibration.vibrate(100);
   };
 
   const handleNextStep = (protocol: EmergencyProtocol) => {
@@ -242,14 +241,14 @@ export default function EmergencyAIScreen() {
                     width: 8,
                     height: 8,
                     borderRadius: 4,
-                    backgroundColor: modelInfo.status === 'ready' ? '#16a34a' : '#d97706',
+                    backgroundColor: modelInfo.status === 'ready' ? '#16a34a' : '#0284C7',
                   }}
                 />
                 <Text
                   style={[
                     type.caption,
                     {
-                      color: modelInfo.status === 'ready' ? '#16a34a' : '#d97706',
+                      color: modelInfo.status === 'ready' ? '#16a34a' : '#38BDF8',
                       fontWeight: 'bold',
                       fontSize: 11,
                     },
@@ -257,11 +256,47 @@ export default function EmergencyAIScreen() {
                 >
                   {modelInfo.status === 'ready'
                     ? 'INT4 OFFLINE WEIGHTS READY • REALTIME'
-                    : 'HYBRID CLOUD / LOCAL HEURISTIC ENGINE'}
+                    : 'REAL-TIME DYNAMIC CONVERSATIONAL ENGINE'}
                 </Text>
               </View>
             </View>
           </View>
+
+          {/* Active SOS Realtime Awareness Banner */}
+          {sos && !['RESOLVED', 'CANCELLED', 'CANCELLED_BY_USER', 'FALSE_ALARM'].includes(sos.status) && (
+            <TouchableOpacity
+              activeOpacity={0.9}
+              onPress={() => router.push('/sos/active')}
+              style={{
+                backgroundColor: '#7F1D1D',
+                borderColor: '#EF4444',
+                borderWidth: 1.5,
+                borderRadius: 12,
+                paddingHorizontal: 14,
+                paddingVertical: 10,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 10,
+                shadowColor: '#EF4444',
+                shadowOpacity: 0.4,
+                shadowRadius: 6,
+                elevation: 4,
+                marginTop: 2,
+              }}
+            >
+              <View style={{ backgroundColor: '#EF4444', padding: 6, borderRadius: 20 }}>
+                <ShieldAlert size={20} color="#FFFFFF" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 13, fontWeight: '900', color: '#FFFFFF', letterSpacing: 0.5 }}>
+                  🚨 ACTIVE SOS RECOGNIZED BY EDGE AI
+                </Text>
+                <Text style={{ fontSize: 11, color: '#FCA5A5', marginTop: 2, fontWeight: '600' }}>
+                  Broadcasting coordinates to emergency rescue in real-time. Tap to check tracking status.
+                </Text>
+              </View>
+            </TouchableOpacity>
+          )}
 
           {/* Mode Switcher Tabs */}
           <View

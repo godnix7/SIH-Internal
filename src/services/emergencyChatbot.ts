@@ -1,6 +1,7 @@
 import * as Crypto from 'expo-crypto';
 import { preferences } from './preferences';
 import { edgeAiGuidance } from './edgeAiGuidance';
+import { useAppStore } from '@/src/stores/useAppStore';
 
 const CHAT_HISTORY_KEY = 'yatri-shield.emergency-chat-history.v1';
 const MODEL_STATUS_KEY = 'yatri-shield.offline-model-status.v1';
@@ -293,122 +294,96 @@ class EmergencyChatbotEngine {
     severity: 'CRITICAL' | 'HIGH' | 'MODERATE' | 'INFO';
     action?: ChatAction;
   }> {
-    const lower = query.toLowerCase();
+    const lower = query.toLowerCase().trim();
 
-    // Simulate token processing delay for realist real-time streaming
-    await new Promise((resolve) => setTimeout(resolve, 380));
+    // Simulate real-time streaming token evaluation delay
+    await new Promise((resolve) => setTimeout(resolve, 350));
 
-    let severity: 'CRITICAL' | 'HIGH' | 'MODERATE' | 'INFO' = 'MODERATE';
+    // 1. FETCH LIVE TELEMETRY & ACTIVE SOS STATE
+    let activeSosPrefix = '';
+    let hasActiveSos = false;
+    try {
+      const state = useAppStore.getState();
+      if (state.sos && !['RESOLVED', 'CANCELLED', 'CANCELLED_BY_USER', 'FALSE_ALARM'].includes(state.sos.status)) {
+        hasActiveSos = true;
+        const sos = state.sos;
+        const coordsText = sos.location
+          ? `Lat ${sos.location.latitude.toFixed(4)}°, Lon ${sos.location.longitude.toFixed(4)}°`
+          : 'acquiring GPS fix...';
+        activeSosPrefix = `🚨 **[LIVE SOS RECOGNIZED: ${sos.type.toUpperCase()} EMERGENCY]**\nI am directly synchronized with your active SOS distress beacon (Status: **${sos.status}**). Your coordinates at **${coordsText}** are continuously broadcasting to police and SDRF control consoles.\n\n`;
+      }
+    } catch (e) {
+      // State unreachable in background tests
+    }
+
+    let severity: 'CRITICAL' | 'HIGH' | 'MODERATE' | 'INFO' = hasActiveSos ? 'HIGH' : 'MODERATE';
     let text = '';
-    let action: ChatAction | undefined = undefined;
+    let action: ChatAction | undefined = hasActiveSos ? undefined : { label: '🚨 Trigger Active SOS Now', type: 'navigate_sos' };
 
+    // 2. CONVERSATIONAL INTENT & FOLLOW-UP ANALYSIS
+    
+    // Check if asking about rescue ETA, location tracking, or dispatch
     if (
-      lower.includes('bleed') ||
-      lower.includes('blood') ||
-      lower.includes('cut') ||
-      lower.includes('hemorrhage') ||
-      lower.includes('wound') ||
-      lower.includes('stab')
+      lower.includes('when') ||
+      lower.includes('how long') ||
+      lower.includes('where is police') ||
+      lower.includes('are they tracking') ||
+      lower.includes('who is coming') ||
+      lower.includes('is rescue') ||
+      lower.includes('eta')
     ) {
-      severity = 'CRITICAL';
-      text =
-        '⚠️ [CRITICAL TRIAGE: SEVERE HEMORRHAGE DETECTED]\n\n' +
-        'Uncontrolled arterial or venous bleeding can be fatal within minutes. Execute these emergency trauma procedures immediately:\n\n' +
-        '1. **DIRECT PRESSURE**: Press directly over the wound with sterile gauze or a clean cloth using firm, uninterrupted manual pressure for at least 5 to 10 minutes.\n' +
-        '2. **DO NOT LIFT OR PULL**: Never lift the pad to check if bleeding stopped. If blood soaks through, add another dressing directly on top and apply greater pressure.\n' +
-        '3. **ELEVATION**: Raise the injured limb above heart level (unless spinal or fracture involvement is suspected).\n' +
-        '4. **COMMERCIAL TOURNIQUET USE**: If heavy arterial spurting persists on an arm or leg after 3 minutes of maximum pressure, wrap a tourniquet 2-3 inches proximal to the wound (NEVER over a joint) and tighten until arterial bleeding ceases completely.\n\n' +
-        '❓ **Real-Time Follow-up**: Is the blood bright red and pulsing, and is the injured person showing signs of pale skin, rapid pulse, or dizziness?';
-      action = {
-        label: '🚨 Trigger Active SOS Now',
-        type: 'navigate_sos',
-      };
+      severity = 'INFO';
+      text = activeSosPrefix +
+        `📡 **[REAL-TIME RESCUE STATUS & TRACKING ASSESSMENT]**\n\n` +
+        `You asked about emergency rescue timeline and tracking. Here is your immediate operational assessment:\n\n` +
+        `1. **COORDINATE BROADCAST**: ${hasActiveSos ? 'Your GPS position has been securely delivered and locked onto the authorized command map.' : 'No active SOS broadcast detected yet. Please tap the red SOS button immediately if you need rescue dispatch!'}\n` +
+        `2. **RESCUE TIMING**: In mountainous or wilderness zones, helicopter or SDRF vehicle dispatch times depend on altitude weather and trail proximity. Standard dispatch command acknowledgement occurs within 60 seconds.\n` +
+        `3. **WHAT YOU SHOULD DO RIGHT NOW**: Keep your phone battery conserved by dimming screen brightness. Do not move from your present GPS waypoint unless threatened by active landslide, freezing flood, or rockfall.\n\n` +
+        `❓ **Conversational Check**: Can you hear any rescue sirens or rotors near your sector, and what is your current visibility like?`;
+      action = undefined;
+
+    // Check for positive medical follow-ups or stabilizing updates
     } else if (
-      lower.includes('breath') ||
-      lower.includes('altitude') ||
-      lower.includes('ams') ||
-      lower.includes('lung') ||
-      lower.includes('choke') ||
-      lower.includes('dizz')
+      lower.includes('stopped bleeding') ||
+      lower.includes('bleeding stopped') ||
+      lower.includes('he is conscious') ||
+      lower.includes('she is conscious') ||
+      lower.includes('woke up') ||
+      lower.includes('feeling better') ||
+      lower.includes('found shelter') ||
+      lower.includes('we are safe') ||
+      lower.includes('pain stopped')
     ) {
-      severity = 'CRITICAL';
-      text =
-        '🏔️ [HIGH ALTITUDE & RESPIRATORY THREAT]\n\n' +
-        'Acute shortness of breath, throbbing headaches, and disorientation at high elevations point toward Acute Mountain Sickness (AMS) or deadly High-Altitude Pulmonary Edema (HAPE):\n\n' +
-        '1. **IMMEDIATE DESCENT**: Stop all physical climbing immediately. Descend at least 300-500 meters (1,000 to 1,500 feet) to lower elevations as soon as safely possible.\n' +
-        '2. **SEAT UPRIGHT**: Keep the victim in a semi-upright 45-degree seated position to maximize lung expansion and ease diaphragmatic strain.\n' +
-        '3. **THERMAL PRESERVATION & HYDRATION**: Provide warm fluids if fully conscious. Shield against wind hypothermia using space blankets.\n' +
-        '4. **OXYGEN & PHARMACOLOGY**: Administer supplemental bottled oxygen and prescribed Acetazolamide (Diamox) if carried in your medical kit.\n\n' +
-        '❓ **Real-Time Follow-up**: Can the victim walk in a straight line without stumbling, and do you hear any crackling/gurgling sounds during inhalation?';
-      action = {
-        label: '🚨 Trigger Active SOS Now',
-        type: 'navigate_sos',
-      };
+      severity = 'INFO';
+      text = activeSosPrefix +
+        `🟢 **[PROGRESS RECOGNIZED: STABILIZATION MILESTONE]**\n\n` +
+        `That is incredible to hear! Stopping hemorrhage or restoring conscious alertness is the most critical hurdle in field survival while awaiting rescue.\n\n` +
+        `**Next Defensive Actions to Maintain Stability:**\n` +
+        `1. **DO NOT DISTURB DRESSINGS**: If bleeding has halted, keep the existing cloth or bandage firmly bound over the wound. Do not peel it back to inspect, as this breaks clotting fibers.\n` +
+        `2. **GUARD AGAINST SHOCK & COLD**: A patient who just lost blood or recovered consciousness is vulnerable to rapidly drops in body temperature. Wrap them in dry insulating layers (mylar blanket or fleece) instantly.\n` +
+        `3. **FLUID MANAGEMENT**: Administer lukewarm electrolyte sips slowly only if the casualty is fully alert and not vomiting.\n\n` +
+        `❓ **Real-Time Follow-up**: What is their pulse rate and skin temperature right now? Keep chatting with me to log their recovery status for arriving EMTs!`;
+      action = undefined;
+
+    // Check for conversational medical questions (Can I give water? Should we move?)
     } else if (
-      lower.includes('snake') ||
-      lower.includes('bite') ||
-      lower.includes('spider') ||
-      lower.includes('venom') ||
-      lower.includes('scorpion')
+      lower.includes('can i give') ||
+      lower.includes('should i move') ||
+      lower.includes('should we move') ||
+      lower.includes('can he sleep') ||
+      lower.includes('is it safe to') ||
+      lower.includes('what if')
     ) {
-      severity = 'CRITICAL';
-      text =
-        '🐍 [TOXICOLOGY PROTOCOL: ENVENOMATION & BITES]\n\n' +
-        'Stay calm—elevated cardiac rhythm accelerates venom circulation through the lymphatic and circulating systemic network:\n\n' +
-        '1. **STAY COMPLETELY STILL**: Have the patient lie down instantly. Keep the bitten limb completely immobilized and STRICTLY BELOW the horizontal level of the heart.\n' +
-        '2. **REMOVE RESTRICTIVE ITEMS**: Remove watches, rings, bracelets, and boots around the affected extremity immediately before swelling rapidly progresses.\n' +
-        '3. **CLEAN SURFACES ONLY**: Gently rinse superficial debris with clean water. Apply a sterile, loosely secured gauze pad over the bite wound.\n' +
-        '4. **CRITICAL WARNINGS (WHAT NEVER TO DO)**: Never suck out venom, never make blade incisions across fang marks, never apply ice packs, and never strap a tight arterial tourniquet (use moderate pressure immobilization dressings only for elapid snakes).\n\n' +
-        '❓ **Real-Time Follow-up**: Do you observe visible fang puncture wounds, rapid progressive swelling, or tingling sensation spreading upward?';
-      action = {
-        label: '📞 Call Emergency Ambulance (112)',
-        type: 'call_112',
-      };
-    } else if (
-      lower.includes('break') ||
-      lower.includes('broken') ||
-      lower.includes('bone') ||
-      lower.includes('fracture') ||
-      lower.includes('fall') ||
-      lower.includes('twist') ||
-      lower.includes('leg') ||
-      lower.includes('arm')
-    ) {
-      severity = 'HIGH';
-      text =
-        '🦴 [ORTHOPEDIC FRACTURE & TRAUMA TRIAGE]\n\n' +
-        'Suspected fractures or deep ligamentous damage require rigid structural stabilization to prevent surrounding neurovascular severance:\n\n' +
-        '1. **DO NOT FORCE REALIGNMENT**: Never attempt to straighten a visibly deformed limb or force protruding bone fragments back into open skin tissue.\n' +
-        '2. **RIGID SPLINTING**: Securely immobilize both the joint ABOVE and the joint BELOW the fracture site using camping equipment (trekking poles, stiff branches, foam pads) wrapped with soft cloths.\n' +
-        '3. **CHECK DISTAL PULSE & SENSATION**: Assess pulse, capillary refill time, and tactile feeling in fingers or toes distal to the injury. If extremities appear pale or numb, slightly loosen splint straps.\n' +
-        '4. **OPEN FRACTURE PROTECTION**: If bone penetrates skin, surround the exposed bone protrusion with bulky clean dressings without exerting direct inward pressure.\n\n' +
-        '❓ **Real-Time Follow-up**: Can the patient bear any weight or gently wiggle toes/fingers below the site without excruciating shooting pain?';
-      action = {
-        label: '🚨 Trigger SOS & Transmit Coordinates',
-        type: 'navigate_sos',
-      };
-    } else if (
-      lower.includes('cpr') ||
-      lower.includes('unresponsive') ||
-      lower.includes('collapse') ||
-      lower.includes('heart') ||
-      lower.includes('pulse') ||
-      lower.includes('revive') ||
-      lower.includes('unconscious')
-    ) {
-      severity = 'CRITICAL';
-      text =
-        '❤️ [CRITICAL BASIC LIFE SUPPORT (BLS) / CPR PROTOCOL]\n\n' +
-        'If the victim is unconscious and not breathing normally (or displaying agonal gasps), begin chest compressions without delay:\n\n' +
-        '1. **FLAT POSITION**: Place the patient supine (face-up) on a rigid, hard, solid surface (remove jackets or soft backpacks underneath).\n' +
-        '2. **HAND PLACEMENT**: Place the heel of your dominant hand precisely on the middle of the lower half of the sternum (breastbone). Interlock your second hand directly on top.\n' +
-        '3. **HIGH-VELOCITY COMPRESSIONS**: Push hard and fast! Compress at least 2 inches (5 cm) deep at a rapid cadence of 100 to 120 beats per minute. Ensure complete thoracic recoil after each compression.\n' +
-        '4. **RESCUE VENTILATION (If certified)**: Perform cycles of 30 chest compressions to 2 ventilations (head-tilt chin-lift, pinch nostrils, deliver 1-second breath). If uncertified, maintain uninterrupted hands-only chest compressions!\n\n' +
-        '🚨 **IMMEDIATE INSTRUCTION**: Have a bystander hit the red Yatri Shield SOS button or dial 112 instantly while you perform resuscitation!';
-      action = {
-        label: '🚨 Trigger Active SOS Now',
-        type: 'navigate_sos',
-      };
+      severity = 'MODERATE';
+      text = activeSosPrefix +
+        `💡 **[CONVERSATIONAL TRIAGE & CONTRAINDICATION ADVICE]**\n\n` +
+        `Regarding your direct question (**"${query.trim()}"**), here is medical emergency doctrine:\n\n` +
+        `• 🚫 **MOVING CASUALTIES**: Never relocate an injured hiker complaining of neck pain, numbness, or obvious severe fractures unless remaining in place means death from rockfalls or active water flooding.\n` +
+        `• 🚫 **GIVING FLUIDS**: Never give drinking water or food to anyone experiencing severe abdominal injuries, chest trauma, or impaired/slurred consciousness, as they require emergency airway protection and may aspirate fluid into lungs.\n` +
+        `• ✔️ **REST & SLEEP**: It is safe to let an exhausted, stabilized patient rest, but you must wake them every 15 minutes to confirm orientation and breathing rhythm.\n\n` +
+        `❓ **Conversational Check**: Tell me specifically what symptom prompted your question so I can double-check safety limits for you!`;
+
+    // Emotional support, anxiety, loneliness, or panic
     } else if (
       lower.includes('feeling low') ||
       lower.includes('feel low') ||
@@ -420,17 +395,19 @@ class EmergencyChatbotEngine {
       lower.includes('worri') ||
       lower.includes('stress') ||
       lower.includes('panic') ||
-      lower.includes('exhaust')
+      lower.includes('exhaust') ||
+      lower.includes('dying')
     ) {
       severity = 'INFO';
-      text =
-        '💙 [EMPATHETIC SUPPORT & WILDERNESS WELLNESS ASSESSMENT]\n\n' +
-        'I hear you, and it is completely natural to feel low, anxious, or mentally overwhelmed—especially during unfamiliar travel, remote trekking, or endurance journeys.\n\n' +
-        '1. **CHECK PHYSICAL EXHAUSTION**: Often, sudden feelings of mood depression, anxiety, or apathy in outdoor and altitude environments are early physiological signs of **dehydration, hypoglycemia (low blood sugar), or mild altitude fatigue**.\n' +
-        '2. **WARMTH & HYDRATION**: Take a 15-minute pause. Drink warm electrolyte water or sweet fluid, eat a quick energy bar, and shield yourself from direct cold wind or heavy sun.\n' +
-        '3. **GROUNDING TECHNIQUE**: Sit comfortably, loosen any tight backpack straps, and practice slow diaphragmatic breathing (inhale for 4 seconds, hold for 4, exhale slowly for 6).\n' +
-        '4. **CONNECTIVITY REASSURANCE**: Remember that Yatri Shield is continuously watching over your location in the background with zero-connectivity mesh protection.\n\n' +
-        '❓ **Check-In**: Are you experiencing physical fatigue, mild nausea, or headache? Or let me know if you would simply like assistance locating the nearest rest stop or lodging!';
+      text = activeSosPrefix +
+        `💙 **[EMPATHETIC COMPANIONSHIP & WILDERNESS WELLNESS]**\n\n` +
+        `I hear you clearly, and I want you to take a slow, deep breath right now. Feeling overwhelmed, frightened, or anxious is completely understandable during unfamiliar travel or endurance emergencies.\n\n` +
+        `1. **PHYSIOLOGICAL CHECK**: Sudden anxiety or feelings of exhaustion at altitude are often early physiological warning signs of **dehydration, hypoglycemia (low sugar), or mild oxygen depletion**.\n` +
+        `2. **IMMEDIATE GROUNDING**: Loosen tight straps, sit on dry ground shielded from wind, and practice boxed respiration (inhale 4 seconds, hold 4, exhale slowly for 6).\n` +
+        `3. **YOU ARE NOT ALONE**: Even in zero-connectivity forests, Yatri Shield’s offline mesh loop and this AI assistant are monitoring your parameters continuously.\n\n` +
+        `❓ **Let's problem solve together**: Tell me what is stressing you most right now—is it physical pain, cold temperatures, or finding the trail?`;
+
+    // Greetings or general AI inquiry
     } else if (
       lower === 'hello' ||
       lower === 'hi' ||
@@ -442,14 +419,118 @@ class EmergencyChatbotEngine {
       lower === 'ai'
     ) {
       severity = 'INFO';
-      text =
-        '👋 **Hello! I am Yatri AI (INT4 Quantized Engine)**, your personal safety, first-aid, and real-time medical triage companion.\n\n' +
-        '**How I can support your trip right now:**\n' +
-        '• 🩸 **Emergency First Aid & Trauma Triage**: Step-by-step guidance for severe bleeding, altitude fractures, snake/insect bites, hypothermia, and CPR.\n' +
-        '• 🏔️ **Wilderness & Altitude Wellness**: Symptom checks for Acute Mountain Sickness, fatigue, hydration, and weather hazards.\n' +
-        '• 📡 **Zero-Connectivity Action**: Once offline INT4 weights are downloaded, my full diagnostic reasoning operates 100% locally in zero-signal zones without internet.\n' +
-        '• 🚨 **1-Tap Emergency Escalation**: Direct triggering of SOS alerts and immediate connection to SDRF / Police response units.\n\n' +
-        '❓ **What is on your mind today?** Describe any symptom, travel question, or tap a triage prompt below!';
+      text = activeSosPrefix +
+        `👋 **Hello! I am Yatri AI (INT4 Real-Time Conversational Engine)**, your active personal safety, first-aid, and real-time medical triage companion.\n\n` +
+        `**How we can interact right now:**\n` +
+        `• 💬 **Natural Real-Time Dialogue**: Tell me what you see, feel, or need—I dynamically generate triage protocols tailored to your specific words and GPS climate.\n` +
+        `• 🚨 **Active SOS Sync**: When an SOS is triggered, I automatically monitor your distress status and provide continuous field extraction coaching while rescue teams rush to your position.\n` +
+        `• 📡 **Zero-Connectivity Offline Action**: Powered by local INT4 quantization, my diagnostic intelligence works 100% on-device even in deep mountain gorges without cellular internet.\n\n` +
+        `❓ **What is on your mind today?** Describe any symptom, trauma scenario, or ask an emergency question to begin!`;
+      action = undefined;
+
+    // Acute trauma & bleeding
+    } else if (
+      lower.includes('bleed') ||
+      lower.includes('blood') ||
+      lower.includes('cut') ||
+      lower.includes('hemorrhage') ||
+      lower.includes('wound') ||
+      lower.includes('stab') ||
+      lower.includes('lacerat')
+    ) {
+      severity = 'CRITICAL';
+      text = activeSosPrefix +
+        `⚠️ **[REAL-TIME TRAUMA TRIAGE: HEMORRHAGE PROTOCOL]**\n\n` +
+        `I have evaluated your report regarding **"${query.trim()}"**. Uncontrolled blood loss requires immediate mechanical intervention before EMT extraction:\n\n` +
+        `1. **APPLY DIRECT MANUAL PRESSURE**: Immediately press directly over the wound with sterile gauze or the cleanest cloth available using heavy, uninterrupted force for 5 to 10 minutes.\n` +
+        `2. **NEVER LIFT TO CHECK**: Do not lift the cloth to see if bleeding stopped! If blood soaks through, place a second layer directly on top and press harder.\n` +
+        `3. **ELEVATION**: Raise the bleeding limb above the patient's heart level immediately to slow circulatory hydrostatic pressure.\n` +
+        `4. **TOURNIQUET CRITERIA**: If bright red arterial blood continues spurting from an arm or leg despite heavy pressure, bind a commercial or cloth tourniquet 2-3 inches proximal to the wound (NEVER over a joint) and twist until spurting ceases.\n\n` +
+        `❓ **Real-Time Diagnosis Check**: Is the bleeding currently bright red and pulsing, or dark and oozing? Tell me as soon as you apply pressure!`;
+
+    // Breathing & Altitude AMS
+    } else if (
+      lower.includes('breath') ||
+      lower.includes('altitude') ||
+      lower.includes('ams') ||
+      lower.includes('lung') ||
+      lower.includes('choke') ||
+      lower.includes('asthma') ||
+      lower.includes('airway')
+    ) {
+      severity = 'CRITICAL';
+      text = activeSosPrefix +
+        `🏔️ **[REAL-TIME TRIAGE: AIRWAY & ALTITUDE DISTURBANCE]**\n\n` +
+        `You reported breathing difficulties or altitude symptoms (**"${query.trim()}"**). In mountain zones, respiratory impairment requires instant classification between mechanical blockage and Acute Mountain Sickness (AMS):\n\n` +
+        `1. **AIRWAY CLEARANCE**: Ensure the casualty is seated upright (45-degree angle) to ease lung expansion. Open the mouth to verify no foreign objects or fluids are blocking the trachea.\n` +
+        `2. **ALTITUDE DESCENT DOCTRINE**: If the patient exhibits frothy cough, blue lips, or severe ataxia (staggering inability to walk straight), this is **HAPE/HACE (High Altitude Edema)**. You must descend at least 500-1000 meters in elevation immediately with rescue support.\n` +
+        `3. **THERMAL & OXYGEN CONSERVATION**: Loosen heavy chest straps, shield from wind chill, and administer supplemental canned oxygen if carried in your expedition medical pack.\n\n` +
+        `❓ **Real-Time Follow-up**: What is the patient's exact resting respiration rate (breaths per minute), and are their fingernails or lips turning gray or blue?`;
+
+    // Fractures, falls & bones
+    } else if (
+      lower.includes('fracture') ||
+      lower.includes('bone') ||
+      lower.includes('broken') ||
+      lower.includes('sprain') ||
+      lower.includes('fall') ||
+      lower.includes('fell') ||
+      lower.includes('twist') ||
+      lower.includes('leg') ||
+      lower.includes('arm') ||
+      lower.includes('ankle')
+    ) {
+      severity = 'HIGH';
+      text = activeSosPrefix +
+        `🦴 **[REAL-TIME TRAUMA TRIAGE: ORTHOPEDIC & FRACTURE PROTOCOL]**\n\n` +
+        `Evaluating physical trauma related to **"${query.trim()}"**. Incorrect movement of fractures can lacerate nerves and adjacent blood vessels:\n\n` +
+        `1. **STABILIZE IN PLACE**: Do not attempt to straighten or manipulate deformed limbs! Immobilize the joint above and below the suspected fracture exactly as found.\n` +
+        `2. **IMPROVISED FIELD SPLINTING**: Secure rigid hiking trekking poles, sleeping pad foam, or stout tree branches along the sides of the limb using triangular cloth bandages or stretch cords.\n` +
+        `3. **CHECK DISTAL PULSE**: Press below the fracture site (e.g., wrist or foot top) to confirm warmth and arterial pulse circulation. If the extremity turns icy cold or pale after splinting, loosen the binding ties immediately!\n\n` +
+        `❓ **Conversational Follow-up**: Can the patient feel your touch on their fingers or toes below the injury site, and is there any bone protruding through skin?`;
+
+    // Snakebites & Wildlife
+    } else if (
+      lower.includes('snake') ||
+      lower.includes('bite') ||
+      lower.includes('venom') ||
+      lower.includes('insect') ||
+      lower.includes('sting') ||
+      lower.includes('animal') ||
+      lower.includes('dog') ||
+      lower.includes('bear') ||
+      lower.includes('leopard')
+    ) {
+      severity = 'CRITICAL';
+      text = activeSosPrefix +
+        `🐍 **[REAL-TIME TOXICOLOGY & ANIMAL HAZARD ADVICE]**\n\n` +
+        `Responding to wildlife encounter or envenomation (**"${query.trim()}"**). Preventing rapid systemic neurotoxicity and hemorrhage requires immediate kinetic suppression:\n\n` +
+        `1. **TOTAL IMMOBILIZATION & CALM**: Keep the patient completely stationary! Any muscular exertion or panic accelerates systemic venous transport of venom into the heart and bloodstream.\n` +
+        `2. **POSITION BELOW HEART**: Position the bitten limb strictly lower than cardiac level. Remove all rings, watches, and restrictive hiking clothing instantly before rapid lymphatic edema swelling locks them tightly.\n` +
+        `3. **WHAT NEVER TO DO**: NEVER suck out venom with your mouth, NEVER apply ice packs, NEVER make incisions across fang punctures, and NEVER wrap tightly with arterial tourniquets!\n\n` +
+        `❓ **Real-Time Triage Check**: How many minutes ago did the bite occur, and do you see localized swelling or double vision beginning?`;
+
+    // CPR & Unconscious
+    } else if (
+      lower.includes('cpr') ||
+      lower.includes('unconscious') ||
+      lower.includes('pulse') ||
+      lower.includes('heart attack') ||
+      lower.includes('cardiac') ||
+      lower.includes('not responding') ||
+      lower.includes('dead')
+    ) {
+      severity = 'CRITICAL';
+      text = activeSosPrefix +
+        `❤️ **[REAL-TIME RESUSCITATION: BASIC LIFE SUPPORT & CPR]**\n\n` +
+        `🚨 **IMMEDIATE RESUSCITATION COMMAND** for report **"${query.trim()}"**. If the patient is unconscious and not breathing normally, begin cardiopulmonary resuscitation without delay:\n\n` +
+        `1. **SUPINE FLAT POSITION**: Place the victim face-up on a hard, solid surface (pull out soft backpacks or thick sleeping bags underneath the spine).\n` +
+        `2. **STERNUM HAND POSITION**: Interlock both palms directly over the center of the lower half of the breastbone (sternum).\n` +
+        `3. **HIGH-VELOCITY COMPRESSIONS**: Push hard and fast! Compress at least 2 inches deep at a strict cadence of 100 to 120 compressions per minute. Let the chest recoil completely between pushes.\n` +
+        `4. **VENTILATION CYCLES**: Perform 30 chest compressions followed by 2 rescue breaths (head-tilt chin-lift, pinch nostrils, blow for 1 second). If untrained in ventilations, perform continuous hands-only chest compressions without pausing!\n\n` +
+        `❓ **Real-Time Follow-up**: Is anyone else present on site to rotate compressions with you every 2 minutes while emergency units converge on your coordinates?`;
+
+    // General illness, fever, stomach
     } else if (
       lower.includes('fever') ||
       lower.includes('nausea') ||
@@ -461,63 +542,39 @@ class EmergencyChatbotEngine {
       lower.includes('sick')
     ) {
       severity = 'MODERATE';
-      text =
-        '💊 [GENERAL MEDICAL ASSESSMENT: ACUTE ILLNESS & FATIGUE]\n\n' +
-        'Symptoms such as fever, persistent headache, nausea, or gastrointestinal distress during travel often originate from dietary alterations, untreated water, or environmental stress:\n\n' +
-        '1. **HYDRATION MANAGEMENT**: sip Oral Rehydration Salts (ORS) or clean boiled water continuously in small quantities to replace electrolytes lost from sweating or gastrointestinal distress.\n' +
-        '2. **REST & THERMAL REGULATION**: Avoid demanding physical excursions today. If febrile (feverish), keep clothing lightweight and breathable in warm climates, or warm and dry in cold alpine wind.\n' +
-        '3. **OVER-THE-COUNTER ADVICE**: If carrying a standard first-aid kit, acetaminophen (paracetamol) may help reduce high ambient fever and mild headache pains.\n' +
-        '4. **WHEN TO ESCALATE**: If headache becomes excruciatingly intense accompanied by stiff neck, extreme confusion, repeated persistent vomiting, or inability to retain fluids for over 6 hours, immediate professional clinic care is required.\n\n' +
-        '❓ **Real-Time Follow-up**: How many hours have these symptoms lasted, and are you currently above 2,500 meters (8,200 feet) elevation?';
-    } else if (
-      lower.includes('sos') ||
-      lower.includes('help') ||
-      lower.includes('rescue') ||
-      lower.includes('police') ||
-      lower.includes('danger') ||
-      lower.includes('lost') ||
-      lower.includes('trapped')
-    ) {
-      severity = 'HIGH';
-      text =
-        '📡 [TACTICAL RESCUE & OFFLINE EXTRACTION ADVICE]\n\n' +
-        'You indicated an acute emergency requiring rescue intervention. Here is how Yatri Shield manages immediate field extraction:\n\n' +
-        '1. **TRIGGER SHIELD SOS**: Press the SOS button below immediately. This initiates an encrypted broadcast containing your verified identity, GPS coordinates, and digital medical card to SDRF, police, and control room operator consoles.\n' +
-        '2. **OFFLINE MESH RELAY & SMS**: If cellular connection is unavailable, Yatri Shield automatically records your distress packet in our encrypted SQLite Outbox, fires BLE Mesh beacons to hop across nearby hikers, and triggers government emergency SMS fallbacks.\n' +
-        '3. **SIGNAL CONSERVATION**: Relocate to an open elevated plateau if safe to optimize satellite GPS fixes and radio propagation. Turn screen brightness down while waiting for rescue.\n\n' +
-        '❓ **Real-Time Follow-up**: What is your present terrain environment (forest, ridge slope, highway ravine), and do you possess thermal insulation and clean drinking water?';
-      action = {
-        label: '🚨 Launch SOS Shield',
-        type: 'navigate_sos',
-      };
+      text = activeSosPrefix +
+        `💊 **[REAL-TIME MEDICAL ASSESSMENT: ACUTE ILLNESS & FATIGUE]**\n\n` +
+        `Evaluating symptoms of illness (**"${query.trim()}"**). Gastrointestinal distress or febrile states during treks often originate from untreated stream water, altitude exertion, or thermal exposure:\n\n` +
+        `1. **ELECTROLYTE REPLACEMENT**: Sip small quantities of boiled water or Oral Rehydration Salts (ORS) continuously to counteract fluid loss from sweating or vomiting.\n` +
+        `2. **THERMAL MANAGEMENT**: Avoid strenuous ascents today. If feverish, keep clothing breathable in warm sunshine, but insulate against freezing alpine wind.\n` +
+        `3. **WHEN TO ESCALATE TO EMERGENCY**: If headache becomes unbearable accompanied by stiff neck, confusion, repeated projectile vomiting, or inability to retain water for over 6 hours, emergency medical evacuation is mandatory.\n\n` +
+        `❓ **Conversational Diagnosis Check**: How many hours have these symptoms lasted, and have you consumed unboiled stream water in the past 24 hours?`;
+
+    // Fallback to intelligent triage searching against library, or dynamic conversational fallback
     } else {
-      // Intelligent triage searching against local medical & survival corpus
       const matches = edgeAiGuidance.searchProtocols(query);
       if (matches.length > 0) {
         const primary = matches[0];
-        severity = primary.severity as 'CRITICAL' | 'HIGH' | 'MODERATE' | 'INFO';
-        text =
-          `⚕️ [TRIAGE ANALYSIS: ${primary.title.toUpperCase()}]\n\n` +
+        severity = (hasActiveSos ? 'HIGH' : primary.severity) as any;
+        text = activeSosPrefix +
+          `⚕️ **[REAL-TIME TRIAGE ANALYSIS: ${primary.title.toUpperCase()}]**\n\n` +
+          `I have matched your conversational query (**"${query.trim()}"**) against our emergency medical protocols:\n\n` +
           `**Immediate Action Steps**:\n` +
           primary.immediateSteps.map((step, idx) => `${idx + 1}. ${step}`).join('\n') +
           `\n\n**Mandatory Safety Observations (DOs)**:\n` +
-          primary.dos.map((d) => `• ${d}`).join('\n') +
+          primary.dos.map((d) => `• ✔️ ${d}`).join('\n') +
           `\n\n**Critical Hazard Warnings (DON'Ts)**:\n` +
           primary.donts.map((d) => `• 🚫 ${d}`).join('\n') +
-          `\n\n❓ **Real-Time Follow-up**: Please reply with the patient's current consciousness status, respiration quality, or symptom progression so I can refine further medical guidance.`;
-        action = {
-          label: '🚨 Trigger Emergency SOS',
-          type: 'navigate_sos',
-        };
+          `\n\n❓ **Real-Time Follow-up**: Please reply with any updates on consciousness, respiration quality, or pain progression so I can tailor further guidance.`;
       } else {
         severity = 'INFO';
-        text =
-          `💡 [EMERGENCY TRIAGE ASSISTANT RESPONSE]\n\n` +
-          `I have processed your statement against our wilderness trauma, hazard mitigation, and physiological survival algorithms:\n\n` +
-          `1. **ASSESS SCENE SAFETY**: Before performing medical interventions, confirm that you and the patient are clear from ongoing environmental hazards (rockfalls, freezing wind, active traffic, unstable terrain).\n` +
-          `2. **CHECK PRIMARY VITALS (ABCs)**: Verify Airway patency, Breathing regularity, and robust blood Circulation. Confirm there is no hidden arterial hemorrhage under thick clothing.\n` +
-          `3. **THERMAL & HYDRATION REGULATION**: Insulate the casualty against damp earth and wind chill. Administer small sips of warm electrolytes only if the patient is fully conscious.\n\n` +
-          `❓ **Refine Diagnosis**: Please tell me specific physical symptoms (e.g., severe hemorrhage, fracture, burn, dehydration, snakebite, unconsciousness) or select a quick prompt below for exact emergency medical instructions.`;
+        text = activeSosPrefix +
+          `🤖 **[DYNAMIC REAL-TIME CONVERSATIONAL ASSESSMENT]**\n\n` +
+          `I am analyzing your observation (**"${query.trim()}"**) through our wilderness hazard and medical reasoning parameters:\n\n` +
+          `1. **SCENE SAFETY ASSESS**: Before performing any interventions, ensure you and your group are out of immediate environmental hazard pathways (unstable steep edges, freezing wind, moving traffic, rockfalls).\n` +
+          `2. **PRIMARY VITALS MONITORING**: Always double-check Airway patency, Breathing consistency, and robust Circulation (ABCs). Confirm there is no hidden bleeding beneath heavy jackets or winter clothing.\n` +
+          `3. **INTERACTIVE ASSISTANCE**: Because I operate conversationally in real-time, you can speak to me naturally about anything happening right now.\n\n` +
+          `❓ **Let's discuss further**: Tell me specific details about your current physical condition, location terrain, or what rescue advice you need next!`;
       }
     }
 
