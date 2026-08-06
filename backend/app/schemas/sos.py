@@ -36,8 +36,8 @@ class SOSCancelRequest(BaseModel):
 
 class IncidentEventSchema(BaseModel):
     id: UUID
-    eventType: str
-    createdAt: datetime
+    eventType: Optional[str] = 'unknown'
+    createdAt: Optional[datetime] = None
     details: Optional[Dict[str, Any]] = None
 
 class TouristDetails(BaseModel):
@@ -49,12 +49,12 @@ class TouristDetails(BaseModel):
 
 class IncidentResponse(BaseModel):
     id: UUID
-    sosAlertId: UUID
-    status: str
-    severity: str
-    type: str
-    createdAt: datetime
-    updatedAt: datetime
+    sosAlertId: Optional[UUID] = None
+    status: Optional[str] = 'created'
+    severity: Optional[str] = 'HIGH'
+    type: Optional[str] = 'general'
+    createdAt: Optional[datetime] = None
+    updatedAt: Optional[datetime] = None
     events: List[IncidentEventSchema] = []
     locationWkt: Optional[str] = None
     touristDetails: Optional[TouristDetails] = None

@@ -91,25 +91,40 @@ async def list_incidents(
                     pass
 
         # Try to extract WKT location if available. 
-        # For geoalchemy2, it returns WKBElement natively, which is not JSON serializable easily without shapely.
-        # We can run a secondary quick scalar query for the wkt.
         loc_wkt = None
         if inc.location is not None:
-            from sqlalchemy.sql import func
-            loc_wkt = await db.scalar(select(func.ST_AsText(Incident.location)).where(Incident.id == inc.id))
+            try:
+                if isinstance(inc.location, str):
+                    loc_wkt = inc.location
+                else:
+                    try:
+                        from geoalchemy2.shape import to_shape
+                        loc_wkt = to_shape(inc.location).wkt
+                    except Exception:
+                        from sqlalchemy.sql import func
+                        loc_wkt = await db.scalar(select(func.ST_AsText(Incident.location)).where(Incident.id == inc.id))
+            except Exception:
+                try:
+                    loc_wkt = str(inc.location)
+                except Exception:
+                    loc_wkt = None
 
-        responses.append(IncidentResponse(
-            id=inc.id,
-            sosAlertId=inc.sos_alert_id,
-            status=inc.status,
-            severity=inc.severity,
-            type=inc.type,
-            createdAt=inc.created_at,
-            updatedAt=inc.updated_at,
-            events=event_schemas,
-            locationWkt=loc_wkt,
-            touristDetails=tourist_details
-        ))
+        try:
+            responses.append(IncidentResponse(
+                id=inc.id,
+                sosAlertId=inc.sos_alert_id,
+                status=inc.status or 'created',
+                severity=inc.severity or 'HIGH',
+                type=inc.type or 'general',
+                createdAt=inc.created_at,
+                updatedAt=inc.updated_at,
+                events=event_schemas,
+                locationWkt=loc_wkt,
+                touristDetails=tourist_details
+            ))
+        except Exception as e:
+            # Skip corrupted entries without crashing the whole control dashboard feed
+            continue
         
     return responses
 
