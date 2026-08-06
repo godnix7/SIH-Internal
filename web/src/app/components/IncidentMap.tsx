@@ -67,11 +67,23 @@ export default function IncidentMap({
     setIsClient(true);
   }, []);
 
-  const getLatLng = (wkt: string | null): [number, number] | null => {
-    if (!wkt) return null;
-    const match = wkt.match(/POINT\(([^ ]+) ([^)]+)\)/);
-    if (match) {
-      return [parseFloat(match[2]), parseFloat(match[1])];
+  const getLatLng = (val: any): [number, number] | null => {
+    if (!val) return null;
+    if (Array.isArray(val) && val.length === 2 && !isNaN(val[0]) && !isNaN(val[1])) {
+      return [Number(val[0]), Number(val[1])];
+    }
+    if (typeof val === 'object') {
+      const lat = val.lat ?? val.latitude ?? val[1];
+      const lon = val.lon ?? val.lng ?? val.longitude ?? val[0];
+      if (lat !== undefined && lon !== undefined && !isNaN(Number(lat)) && !isNaN(Number(lon))) {
+        return [Number(lat), Number(lon)];
+      }
+    }
+    if (typeof val === 'string' && val.includes('POINT')) {
+      const match = val.match(/POINT\(\s*([^\s,]+)[\s,]+([^)]+)\)/i);
+      if (match) {
+        return [parseFloat(match[2]), parseFloat(match[1])];
+      }
     }
     return null;
   };
