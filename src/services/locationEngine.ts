@@ -25,8 +25,9 @@ export type SamplingPlan = {
 
 type Listener = (state: LocationEngineState) => void;
 
-function isCritical(zone: Zone): boolean {
-  return zone.class === 'restricted' || zone.class === 'disaster';
+export function isCritical(zone: Zone): boolean {
+  const score = zone.safetyScore ?? zone.safety_score ?? 100;
+  return zone.class === 'restricted' || zone.class === 'disaster' || score < 40;
 }
 
 export class LocationEngine {

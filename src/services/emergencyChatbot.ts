@@ -304,7 +304,10 @@ class EmergencyChatbotEngine {
     let hasActiveSos = false;
     try {
       const state = useAppStore.getState();
-      if (state.sos && !['RESOLVED', 'CANCELLED', 'CANCELLED_BY_USER', 'FALSE_ALARM'].includes(state.sos.status)) {
+      if (
+        state.sos &&
+        !['RESOLVED', 'CANCELLED', 'CANCELLED_BY_USER', 'FALSE_ALARM'].includes(state.sos.status)
+      ) {
         hasActiveSos = true;
         const sos = state.sos;
         const coordsText = sos.location
@@ -318,10 +321,12 @@ class EmergencyChatbotEngine {
 
     let severity: 'CRITICAL' | 'HIGH' | 'MODERATE' | 'INFO' = hasActiveSos ? 'HIGH' : 'MODERATE';
     let text = '';
-    let action: ChatAction | undefined = hasActiveSos ? undefined : { label: '🚨 Trigger Active SOS Now', type: 'navigate_sos' };
+    let action: ChatAction | undefined = hasActiveSos
+      ? undefined
+      : { label: '🚨 Trigger Active SOS Now', type: 'navigate_sos' };
 
     // 2. CONVERSATIONAL INTENT & FOLLOW-UP ANALYSIS
-    
+
     // Check if asking about rescue ETA, location tracking, or dispatch
     if (
       lower.includes('when') ||
@@ -333,7 +338,8 @@ class EmergencyChatbotEngine {
       lower.includes('eta')
     ) {
       severity = 'INFO';
-      text = activeSosPrefix +
+      text =
+        activeSosPrefix +
         `📡 **[REAL-TIME RESCUE STATUS & TRACKING ASSESSMENT]**\n\n` +
         `You asked about emergency rescue timeline and tracking. Here is your immediate operational assessment:\n\n` +
         `1. **COORDINATE BROADCAST**: ${hasActiveSos ? 'Your GPS position has been securely delivered and locked onto the authorized command map.' : 'No active SOS broadcast detected yet. Please tap the red SOS button immediately if you need rescue dispatch!'}\n` +
@@ -342,7 +348,7 @@ class EmergencyChatbotEngine {
         `❓ **Conversational Check**: Can you hear any rescue sirens or rotors near your sector, and what is your current visibility like?`;
       action = undefined;
 
-    // Check for positive medical follow-ups or stabilizing updates
+      // Check for positive medical follow-ups or stabilizing updates
     } else if (
       lower.includes('stopped bleeding') ||
       lower.includes('bleeding stopped') ||
@@ -355,7 +361,8 @@ class EmergencyChatbotEngine {
       lower.includes('pain stopped')
     ) {
       severity = 'INFO';
-      text = activeSosPrefix +
+      text =
+        activeSosPrefix +
         `🟢 **[PROGRESS RECOGNIZED: STABILIZATION MILESTONE]**\n\n` +
         `That is incredible to hear! Stopping hemorrhage or restoring conscious alertness is the most critical hurdle in field survival while awaiting rescue.\n\n` +
         `**Next Defensive Actions to Maintain Stability:**\n` +
@@ -365,7 +372,7 @@ class EmergencyChatbotEngine {
         `❓ **Real-Time Follow-up**: What is their pulse rate and skin temperature right now? Keep chatting with me to log their recovery status for arriving EMTs!`;
       action = undefined;
 
-    // Check for conversational medical questions (Can I give water? Should we move?)
+      // Check for conversational medical questions (Can I give water? Should we move?)
     } else if (
       lower.includes('can i give') ||
       lower.includes('should i move') ||
@@ -375,7 +382,8 @@ class EmergencyChatbotEngine {
       lower.includes('what if')
     ) {
       severity = 'MODERATE';
-      text = activeSosPrefix +
+      text =
+        activeSosPrefix +
         `💡 **[CONVERSATIONAL TRIAGE & CONTRAINDICATION ADVICE]**\n\n` +
         `Regarding your direct question (**"${query.trim()}"**), here is medical emergency doctrine:\n\n` +
         `• 🚫 **MOVING CASUALTIES**: Never relocate an injured hiker complaining of neck pain, numbness, or obvious severe fractures unless remaining in place means death from rockfalls or active water flooding.\n` +
@@ -383,7 +391,7 @@ class EmergencyChatbotEngine {
         `• ✔️ **REST & SLEEP**: It is safe to let an exhausted, stabilized patient rest, but you must wake them every 15 minutes to confirm orientation and breathing rhythm.\n\n` +
         `❓ **Conversational Check**: Tell me specifically what symptom prompted your question so I can double-check safety limits for you!`;
 
-    // Emotional support, anxiety, loneliness, or panic
+      // Emotional support, anxiety, loneliness, or panic
     } else if (
       lower.includes('feeling low') ||
       lower.includes('feel low') ||
@@ -399,7 +407,8 @@ class EmergencyChatbotEngine {
       lower.includes('dying')
     ) {
       severity = 'INFO';
-      text = activeSosPrefix +
+      text =
+        activeSosPrefix +
         `💙 **[EMPATHETIC COMPANIONSHIP & WILDERNESS WELLNESS]**\n\n` +
         `I hear you clearly, and I want you to take a slow, deep breath right now. Feeling overwhelmed, frightened, or anxious is completely understandable during unfamiliar travel or endurance emergencies.\n\n` +
         `1. **PHYSIOLOGICAL CHECK**: Sudden anxiety or feelings of exhaustion at altitude are often early physiological warning signs of **dehydration, hypoglycemia (low sugar), or mild oxygen depletion**.\n` +
@@ -407,7 +416,7 @@ class EmergencyChatbotEngine {
         `3. **YOU ARE NOT ALONE**: Even in zero-connectivity forests, Yatri Shield’s offline mesh loop and this AI assistant are monitoring your parameters continuously.\n\n` +
         `❓ **Let's problem solve together**: Tell me what is stressing you most right now—is it physical pain, cold temperatures, or finding the trail?`;
 
-    // Greetings or general AI inquiry
+      // Greetings or general AI inquiry
     } else if (
       lower === 'hello' ||
       lower === 'hi' ||
@@ -419,7 +428,8 @@ class EmergencyChatbotEngine {
       lower === 'ai'
     ) {
       severity = 'INFO';
-      text = activeSosPrefix +
+      text =
+        activeSosPrefix +
         `👋 **Hello! I am Yatri AI (INT4 Real-Time Conversational Engine)**, your active personal safety, first-aid, and real-time medical triage companion.\n\n` +
         `**How we can interact right now:**\n` +
         `• 💬 **Natural Real-Time Dialogue**: Tell me what you see, feel, or need—I dynamically generate triage protocols tailored to your specific words and GPS climate.\n` +
@@ -428,7 +438,7 @@ class EmergencyChatbotEngine {
         `❓ **What is on your mind today?** Describe any symptom, trauma scenario, or ask an emergency question to begin!`;
       action = undefined;
 
-    // Acute trauma & bleeding
+      // Acute trauma & bleeding
     } else if (
       lower.includes('bleed') ||
       lower.includes('blood') ||
@@ -439,7 +449,8 @@ class EmergencyChatbotEngine {
       lower.includes('lacerat')
     ) {
       severity = 'CRITICAL';
-      text = activeSosPrefix +
+      text =
+        activeSosPrefix +
         `⚠️ **[REAL-TIME TRAUMA TRIAGE: HEMORRHAGE PROTOCOL]**\n\n` +
         `I have evaluated your report regarding **"${query.trim()}"**. Uncontrolled blood loss requires immediate mechanical intervention before EMT extraction:\n\n` +
         `1. **APPLY DIRECT MANUAL PRESSURE**: Immediately press directly over the wound with sterile gauze or the cleanest cloth available using heavy, uninterrupted force for 5 to 10 minutes.\n` +
@@ -448,7 +459,7 @@ class EmergencyChatbotEngine {
         `4. **TOURNIQUET CRITERIA**: If bright red arterial blood continues spurting from an arm or leg despite heavy pressure, bind a commercial or cloth tourniquet 2-3 inches proximal to the wound (NEVER over a joint) and twist until spurting ceases.\n\n` +
         `❓ **Real-Time Diagnosis Check**: Is the bleeding currently bright red and pulsing, or dark and oozing? Tell me as soon as you apply pressure!`;
 
-    // Breathing & Altitude AMS
+      // Breathing & Altitude AMS
     } else if (
       lower.includes('breath') ||
       lower.includes('altitude') ||
@@ -459,7 +470,8 @@ class EmergencyChatbotEngine {
       lower.includes('airway')
     ) {
       severity = 'CRITICAL';
-      text = activeSosPrefix +
+      text =
+        activeSosPrefix +
         `🏔️ **[REAL-TIME TRIAGE: AIRWAY & ALTITUDE DISTURBANCE]**\n\n` +
         `You reported breathing difficulties or altitude symptoms (**"${query.trim()}"**). In mountain zones, respiratory impairment requires instant classification between mechanical blockage and Acute Mountain Sickness (AMS):\n\n` +
         `1. **AIRWAY CLEARANCE**: Ensure the casualty is seated upright (45-degree angle) to ease lung expansion. Open the mouth to verify no foreign objects or fluids are blocking the trachea.\n` +
@@ -467,7 +479,7 @@ class EmergencyChatbotEngine {
         `3. **THERMAL & OXYGEN CONSERVATION**: Loosen heavy chest straps, shield from wind chill, and administer supplemental canned oxygen if carried in your expedition medical pack.\n\n` +
         `❓ **Real-Time Follow-up**: What is the patient's exact resting respiration rate (breaths per minute), and are their fingernails or lips turning gray or blue?`;
 
-    // Fractures, falls & bones
+      // Fractures, falls & bones
     } else if (
       lower.includes('fracture') ||
       lower.includes('bone') ||
@@ -481,7 +493,8 @@ class EmergencyChatbotEngine {
       lower.includes('ankle')
     ) {
       severity = 'HIGH';
-      text = activeSosPrefix +
+      text =
+        activeSosPrefix +
         `🦴 **[REAL-TIME TRAUMA TRIAGE: ORTHOPEDIC & FRACTURE PROTOCOL]**\n\n` +
         `Evaluating physical trauma related to **"${query.trim()}"**. Incorrect movement of fractures can lacerate nerves and adjacent blood vessels:\n\n` +
         `1. **STABILIZE IN PLACE**: Do not attempt to straighten or manipulate deformed limbs! Immobilize the joint above and below the suspected fracture exactly as found.\n` +
@@ -489,7 +502,7 @@ class EmergencyChatbotEngine {
         `3. **CHECK DISTAL PULSE**: Press below the fracture site (e.g., wrist or foot top) to confirm warmth and arterial pulse circulation. If the extremity turns icy cold or pale after splinting, loosen the binding ties immediately!\n\n` +
         `❓ **Conversational Follow-up**: Can the patient feel your touch on their fingers or toes below the injury site, and is there any bone protruding through skin?`;
 
-    // Snakebites & Wildlife
+      // Snakebites & Wildlife
     } else if (
       lower.includes('snake') ||
       lower.includes('bite') ||
@@ -502,7 +515,8 @@ class EmergencyChatbotEngine {
       lower.includes('leopard')
     ) {
       severity = 'CRITICAL';
-      text = activeSosPrefix +
+      text =
+        activeSosPrefix +
         `🐍 **[REAL-TIME TOXICOLOGY & ANIMAL HAZARD ADVICE]**\n\n` +
         `Responding to wildlife encounter or envenomation (**"${query.trim()}"**). Preventing rapid systemic neurotoxicity and hemorrhage requires immediate kinetic suppression:\n\n` +
         `1. **TOTAL IMMOBILIZATION & CALM**: Keep the patient completely stationary! Any muscular exertion or panic accelerates systemic venous transport of venom into the heart and bloodstream.\n` +
@@ -510,7 +524,7 @@ class EmergencyChatbotEngine {
         `3. **WHAT NEVER TO DO**: NEVER suck out venom with your mouth, NEVER apply ice packs, NEVER make incisions across fang punctures, and NEVER wrap tightly with arterial tourniquets!\n\n` +
         `❓ **Real-Time Triage Check**: How many minutes ago did the bite occur, and do you see localized swelling or double vision beginning?`;
 
-    // CPR & Unconscious
+      // CPR & Unconscious
     } else if (
       lower.includes('cpr') ||
       lower.includes('unconscious') ||
@@ -521,7 +535,8 @@ class EmergencyChatbotEngine {
       lower.includes('dead')
     ) {
       severity = 'CRITICAL';
-      text = activeSosPrefix +
+      text =
+        activeSosPrefix +
         `❤️ **[REAL-TIME RESUSCITATION: BASIC LIFE SUPPORT & CPR]**\n\n` +
         `🚨 **IMMEDIATE RESUSCITATION COMMAND** for report **"${query.trim()}"**. If the patient is unconscious and not breathing normally, begin cardiopulmonary resuscitation without delay:\n\n` +
         `1. **SUPINE FLAT POSITION**: Place the victim face-up on a hard, solid surface (pull out soft backpacks or thick sleeping bags underneath the spine).\n` +
@@ -530,7 +545,7 @@ class EmergencyChatbotEngine {
         `4. **VENTILATION CYCLES**: Perform 30 chest compressions followed by 2 rescue breaths (head-tilt chin-lift, pinch nostrils, blow for 1 second). If untrained in ventilations, perform continuous hands-only chest compressions without pausing!\n\n` +
         `❓ **Real-Time Follow-up**: Is anyone else present on site to rotate compressions with you every 2 minutes while emergency units converge on your coordinates?`;
 
-    // General illness, fever, stomach
+      // General illness, fever, stomach
     } else if (
       lower.includes('fever') ||
       lower.includes('nausea') ||
@@ -542,7 +557,8 @@ class EmergencyChatbotEngine {
       lower.includes('sick')
     ) {
       severity = 'MODERATE';
-      text = activeSosPrefix +
+      text =
+        activeSosPrefix +
         `💊 **[REAL-TIME MEDICAL ASSESSMENT: ACUTE ILLNESS & FATIGUE]**\n\n` +
         `Evaluating symptoms of illness (**"${query.trim()}"**). Gastrointestinal distress or febrile states during treks often originate from untreated stream water, altitude exertion, or thermal exposure:\n\n` +
         `1. **ELECTROLYTE REPLACEMENT**: Sip small quantities of boiled water or Oral Rehydration Salts (ORS) continuously to counteract fluid loss from sweating or vomiting.\n` +
@@ -550,13 +566,14 @@ class EmergencyChatbotEngine {
         `3. **WHEN TO ESCALATE TO EMERGENCY**: If headache becomes unbearable accompanied by stiff neck, confusion, repeated projectile vomiting, or inability to retain water for over 6 hours, emergency medical evacuation is mandatory.\n\n` +
         `❓ **Conversational Diagnosis Check**: How many hours have these symptoms lasted, and have you consumed unboiled stream water in the past 24 hours?`;
 
-    // Fallback to intelligent triage searching against library, or dynamic conversational fallback
+      // Fallback to intelligent triage searching against library, or dynamic conversational fallback
     } else {
       const matches = edgeAiGuidance.searchProtocols(query);
       if (matches.length > 0) {
         const primary = matches[0];
         severity = (hasActiveSos ? 'HIGH' : primary.severity) as any;
-        text = activeSosPrefix +
+        text =
+          activeSosPrefix +
           `⚕️ **[REAL-TIME TRIAGE ANALYSIS: ${primary.title.toUpperCase()}]**\n\n` +
           `I have matched your conversational query (**"${query.trim()}"**) against our emergency medical protocols:\n\n` +
           `**Immediate Action Steps**:\n` +
@@ -568,7 +585,8 @@ class EmergencyChatbotEngine {
           `\n\n❓ **Real-Time Follow-up**: Please reply with any updates on consciousness, respiration quality, or pain progression so I can tailor further guidance.`;
       } else {
         severity = 'INFO';
-        text = activeSosPrefix +
+        text =
+          activeSosPrefix +
           `🤖 **[DYNAMIC REAL-TIME CONVERSATIONAL ASSESSMENT]**\n\n` +
           `I am analyzing your observation (**"${query.trim()}"**) through our wilderness hazard and medical reasoning parameters:\n\n` +
           `1. **SCENE SAFETY ASSESS**: Before performing any interventions, ensure you and your group are out of immediate environmental hazard pathways (unstable steep edges, freezing wind, moving traffic, rockfalls).\n` +

@@ -35,6 +35,10 @@ export type Zone = {
   message: string;
   schedule?: { startHour: number; endHour: number };
   polygon: [number, number][][];
+  safetyScore?: number;
+  safety_score?: number;
+  riskFactors?: string[];
+  risk_factors?: string[];
 };
 
 export type Trip = {

@@ -263,40 +263,49 @@ export default function EmergencyAIScreen() {
           </View>
 
           {/* Active SOS Realtime Awareness Banner */}
-          {sos && !['RESOLVED', 'CANCELLED', 'CANCELLED_BY_USER', 'FALSE_ALARM'].includes(sos.status) && (
-            <TouchableOpacity
-              activeOpacity={0.9}
-              onPress={() => router.push('/sos/active')}
-              style={{
-                backgroundColor: '#7F1D1D',
-                borderColor: '#EF4444',
-                borderWidth: 1.5,
-                borderRadius: 12,
-                paddingHorizontal: 14,
-                paddingVertical: 10,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 10,
-                shadowColor: '#EF4444',
-                shadowOpacity: 0.4,
-                shadowRadius: 6,
-                elevation: 4,
-                marginTop: 2,
-              }}
-            >
-              <View style={{ backgroundColor: '#EF4444', padding: 6, borderRadius: 20 }}>
-                <ShieldAlert size={20} color="#FFFFFF" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 13, fontWeight: '900', color: '#FFFFFF', letterSpacing: 0.5 }}>
-                  🚨 ACTIVE SOS RECOGNIZED BY EDGE AI
-                </Text>
-                <Text style={{ fontSize: 11, color: '#FCA5A5', marginTop: 2, fontWeight: '600' }}>
-                  Broadcasting coordinates to emergency rescue in real-time. Tap to check tracking status.
-                </Text>
-              </View>
-            </TouchableOpacity>
-          )}
+          {sos &&
+            !['RESOLVED', 'CANCELLED', 'CANCELLED_BY_USER', 'FALSE_ALARM'].includes(sos.status) && (
+              <TouchableOpacity
+                activeOpacity={0.9}
+                onPress={() => router.push('/sos/active')}
+                style={{
+                  backgroundColor: '#7F1D1D',
+                  borderColor: '#EF4444',
+                  borderWidth: 1.5,
+                  borderRadius: 12,
+                  paddingHorizontal: 14,
+                  paddingVertical: 10,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 10,
+                  shadowColor: '#EF4444',
+                  shadowOpacity: 0.4,
+                  shadowRadius: 6,
+                  elevation: 4,
+                  marginTop: 2,
+                }}
+              >
+                <View style={{ backgroundColor: '#EF4444', padding: 6, borderRadius: 20 }}>
+                  <ShieldAlert size={20} color="#FFFFFF" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      fontWeight: '900',
+                      color: '#FFFFFF',
+                      letterSpacing: 0.5,
+                    }}
+                  >
+                    🚨 ACTIVE SOS RECOGNIZED BY EDGE AI
+                  </Text>
+                  <Text style={{ fontSize: 11, color: '#FCA5A5', marginTop: 2, fontWeight: '600' }}>
+                    Broadcasting coordinates to emergency rescue in real-time. Tap to check tracking
+                    status.
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            )}
 
           {/* Mode Switcher Tabs */}
           <View

@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, DateTime, Integer, ForeignKey, Text
+from sqlalchemy import Column, String, DateTime, Integer, ForeignKey, Text, Float
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from geoalchemy2 import Geometry
 from app.database import Base
@@ -24,3 +24,10 @@ class Zone(Base):
     created_by = Column(UUID(as_uuid=True), ForeignKey("auth.users.id"), nullable=False)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    # Safety scoring & crime data
+    safety_score = Column(Integer, nullable=False, default=100)  # 0-100, 100=safest
+    crime_data = Column(JSONB, default=list)  # Array of crime records
+    risk_factors = Column(JSONB, default=list)  # Risk factor descriptions
+    total_incidents = Column(Integer, nullable=False, default=0)
+

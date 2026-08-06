@@ -51,16 +51,22 @@ export default function SosActiveScreen() {
       sos.status === 'CANCELLED' ||
       sos.status === 'CANCELLED_BY_USER'
     ) {
+      const title =
+        sos.status === 'CANCELLED_BY_USER' || sos.status === 'CANCELLED'
+          ? 'SOS Cancelled'
+          : 'Incident Closed';
       const label =
         sos.status === 'FALSE_ALARM'
           ? 'The control room has closed this incident as a false alarm.'
           : sos.status === 'RESOLVED'
-            ? 'This emergency has been successfully resolved via OTP clearance.'
-            : 'SOS Cancelled by User via Safe PIN.';
-      Alert.alert('Incident Closed', label, [
-        { text: 'OK', onPress: () => router.replace('/home') },
-      ]);
-      void resolveSos();
+            ? 'This emergency has been resolved and confirmed by the responding officer via OTP verification.'
+            : 'You have successfully cancelled the SOS alert using your Safe PIN. Emergency tracking has stopped.';
+      Alert.alert(title, label, [{ text: 'OK', onPress: () => router.replace('/home') }]);
+      // Only call resolveSos for server-driven terminal states (not user cancellations,
+      // which are already fully cleaned up by cancelSos in the store)
+      if (sos.status !== 'CANCELLED_BY_USER' && sos.status !== 'CANCELLED') {
+        void resolveSos();
+      }
       return;
     }
     if (sos.status !== 'COUNTDOWN') return;
@@ -105,37 +111,28 @@ export default function SosActiveScreen() {
 
   if (!sos) return null;
 
-  // Handle cancel with PIN — with error feedback
+  // Handle cancel with PIN — directly validate and cancel (PIN entry is the confirmation)
   const handleCancelWithPin = async () => {
     if (cancelling) return;
-    Alert.alert(
-      'Cancel SOS',
-      'Are you sure you want to cancel the SOS? This will stop emergency tracking.',
-      [
-        { text: 'No', style: 'cancel' },
-        {
-          text: 'Yes, Cancel',
-          style: 'destructive',
-          onPress: async () => {
-            setCancelling(true);
-            setPinError(false);
-            try {
-              const ok = await cancelSos(pin);
-              if (ok) {
-                router.replace('/shield');
-              } else {
-                setPinError(true);
-                setPin('');
-              }
-            } catch {
-              Alert.alert('Error', 'Failed to cancel SOS. Please try again.');
-            } finally {
-              setCancelling(false);
-            }
-          },
-        },
-      ],
-    );
+    setCancelling(true);
+    setPinError(false);
+    try {
+      const ok = await cancelSos(pin);
+      if (ok) {
+        Alert.alert(
+          'SOS Cancelled',
+          'You have successfully cancelled the SOS alert using your Safe PIN. Emergency tracking has stopped.',
+          [{ text: 'OK', onPress: () => router.replace('/home') }],
+        );
+      } else {
+        setPinError(true);
+        setPin('');
+      }
+    } catch {
+      Alert.alert('Error', 'Failed to cancel SOS. Please try again.');
+    } finally {
+      setCancelling(false);
+    }
   };
 
   // Handle resolve with confirmation
@@ -295,7 +292,9 @@ export default function SosActiveScreen() {
         </View>
 
         <Text style={{ fontSize: 13, color: '#E2E8F0', lineHeight: 20 }}>
-          Don’t panic while waiting for emergency units. Talk to our real-time conversational Edge AI to get custom first-aid instructions, monitor vital symptoms, and manage your immediate environment.
+          Don’t panic while waiting for emergency units. Talk to our real-time conversational Edge
+          AI to get custom first-aid instructions, monitor vital symptoms, and manage your immediate
+          environment.
         </Text>
 
         <Button

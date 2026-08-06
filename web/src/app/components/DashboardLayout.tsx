@@ -125,13 +125,27 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           }}
         >
           {(role === 'operator' || role === 'sys_admin') && (
-            <Link
-              href="/responder"
-              className={`btn btn-outline ${pathname.startsWith('/responder') ? 'btn-primary' : ''}`}
-              style={{ justifyContent: 'flex-start', padding: '14px 16px' }}
-            >
-              <Shield size={18} /> Police / SDRF
-            </Link>
+            <>
+              <Link
+                href="/responder"
+                className={`btn btn-outline ${pathname === '/responder' ? 'btn-primary' : ''}`}
+                style={{ justifyContent: 'flex-start', padding: '14px 16px' }}
+              >
+                <Shield size={18} /> Police / SDRF
+              </Link>
+              <Link
+                href="/responder/zones"
+                className={`btn btn-outline ${pathname.startsWith('/responder/zones') ? 'btn-primary' : ''}`}
+                style={{
+                  justifyContent: 'flex-start',
+                  padding: '14px 16px',
+                  borderColor: '#38bdf8',
+                  color: pathname.startsWith('/responder/zones') ? '#fff' : '#38bdf8',
+                }}
+              >
+                <Map size={18} /> Geofence & Safety
+              </Link>
+            </>
           )}
 
           {(role === 'hospital' || role === 'sys_admin') && (

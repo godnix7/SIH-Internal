@@ -30,7 +30,7 @@ type Facility = {
 export default function HomeScreen() {
   const c = useAppColors();
   const { t } = useTranslation();
-  const { profile, trips, online, sos, addAlert } = useAppStore();
+  const { profile, trips, online, sos, addAlert, zones, fetchZones } = useAppStore();
   const trip = activeTrip(trips);
   const [facilities, setFacilities] = useState<Facility[]>([]);
   const [loadingFacilities, setLoadingFacilities] = useState(true);
@@ -55,6 +55,7 @@ export default function HomeScreen() {
   }, [trip]);
 
   useEffect(() => {
+    void fetchZones();
     async function loadFacilities() {
       try {
         setLoadingFacilities(true);
@@ -106,6 +107,54 @@ export default function HomeScreen() {
         />
       </View>
       {!online && <OfflineBar />}
+      {zones && zones.length > 0 && (
+        <Card>
+          <View
+            style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <ShieldCheck size={20} color={c.primary} />
+              <Text style={[type.subtitle, { color: c.onSurface, fontWeight: '700' }]}>
+                Geofence Safety Score
+              </Text>
+            </View>
+            <View
+              style={{
+                backgroundColor:
+                  (zones[0].safetyScore ?? zones[0].safety_score ?? 100) < 40
+                    ? '#7f1d1d'
+                    : (zones[0].safetyScore ?? zones[0].safety_score ?? 100) < 76
+                      ? '#713f12'
+                      : '#064e3b',
+                paddingHorizontal: 10,
+                paddingVertical: 4,
+                borderRadius: 12,
+              }}
+            >
+              <Text
+                style={{
+                  color:
+                    (zones[0].safetyScore ?? zones[0].safety_score ?? 100) < 40
+                      ? '#ef4444'
+                      : (zones[0].safetyScore ?? zones[0].safety_score ?? 100) < 76
+                        ? '#eab308'
+                        : '#10b981',
+                  fontWeight: '800',
+                  fontSize: 12,
+                }}
+              >
+                SCORE: {zones[0].safetyScore ?? zones[0].safety_score ?? 100}/100
+              </Text>
+            </View>
+          </View>
+          <Text style={[type.body, { color: c.onSurfaceVariant, marginTop: 6 }]}>
+            Monitoring {zones.length} active police geofence{zones.length > 1 ? 's' : ''} (
+            {zones[0].name}).
+            {(zones[0].safetyScore ?? zones[0].safety_score ?? 100) < 40 &&
+              ` ⚠️ DANGER WARNING: High crime/hazard frequency reported in this sector.`}
+          </Text>
+        </Card>
+      )}
       {trip ? (
         <Card>
           <View

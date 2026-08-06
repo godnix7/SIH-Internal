@@ -116,3 +116,50 @@ export const broadcastAlert = async (zone: string, message: string) => {
   const response = await apiClient.post(`/system/broadcast`, { zone, message });
   return response.data;
 };
+
+// Zone management APIs
+export const getZones = async () => {
+  const response = await apiClient.get('/zones/all');
+  return response.data;
+};
+
+export const getZoneSafetyScores = async () => {
+  const response = await apiClient.get('/zones/safety-scores');
+  return response.data;
+};
+
+export const createZone = async (data: {
+  name: string;
+  zone_class: string;
+  buffer_m: number;
+  description?: string;
+  geometry_geojson: any;
+  crime_data?: any[];
+  risk_factors?: string[];
+  safety_score?: number;
+}) => {
+  const response = await apiClient.post('/zones/', data);
+  return response.data;
+};
+
+export const updateZone = async (
+  zoneId: string,
+  data: {
+    name?: string;
+    zone_class?: string;
+    buffer_m?: number;
+    description?: string;
+    status?: string;
+    crime_data?: any[];
+    risk_factors?: string[];
+    safety_score?: number;
+  },
+) => {
+  const response = await apiClient.put(`/zones/${zoneId}`, data);
+  return response.data;
+};
+
+export const deleteZone = async (zoneId: string) => {
+  const response = await apiClient.delete(`/zones/${zoneId}`);
+  return response.data;
+};

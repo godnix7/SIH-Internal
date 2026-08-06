@@ -382,7 +382,26 @@ export const useAppStore = create<AppStore>((set, get) => ({
       console.warn('Failed to notify backend of cancel', e);
     }
 
-    await get().setSosStatus('CANCELLED_BY_USER');
+    // Log the cancellation event before clearing state
+    const { incidentEvents } = get();
+    const cancelEvent = await appendEvent(incidentEvents, 'sos.cancelled_by_user', 'you', {
+      status: 'CANCELLED_BY_USER',
+      method: 'safe_pin',
+    });
+    const nextEvents = [...incidentEvents, cancelEvent];
+    const cancelledSos = { ...sos, status: 'CANCELLED_BY_USER' as const };
+    set({ sos: cancelledSos, incidentEvents: nextEvents });
+    await persistSos(cancelledSos, nextEvents);
+
+    // Add user-visible alert notification
+    get().addAlert({
+      kind: 'incident',
+      severity: 'info',
+      title: 'SOS Cancelled',
+      body: 'You cancelled the SOS alert using your Safe PIN. Emergency tracking has stopped.',
+    });
+
+    // Clean up: stop emergency tracking, clear persisted state
     await clearPersistedSos();
     await locationEngine.setEmergency(false);
     set({ sos: undefined, incidentEvents: [] });

@@ -6,7 +6,7 @@ import * as TaskManager from 'expo-task-manager';
 
 import { remoteConfig } from '@/src/lib/constants';
 import type { ConsentTier, Trip } from '@/src/lib/types';
-import { locationEngine, type SamplingPlan } from './locationEngine';
+import { locationEngine, isCritical, type SamplingPlan } from './locationEngine';
 
 const TASK_NAME = 'yatri-shield-location-task';
 
@@ -16,7 +16,7 @@ TaskManager.defineTask(TASK_NAME, async ({ data, error }) => {
   const trip = activeMonitoringTrip;
   if (!trip) return;
   for (const location of locations) {
-    await locationEngine.ingestFix(
+    const evaluations = await locationEngine.ingestFix(
       {
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,
@@ -25,6 +25,23 @@ TaskManager.defineTask(TASK_NAME, async ({ data, error }) => {
       },
       trip.zones,
     );
+    for (const evalResult of evaluations) {
+      if (evalResult.confirmed && evalResult.state === 'inside' && isCritical(evalResult.zone)) {
+        const score = evalResult.zone.safetyScore ?? evalResult.zone.safety_score ?? 100;
+        const bodyMsg =
+          score < 50
+            ? `WARNING: Entered ${evalResult.zone.name} with low Safety Score (${score}/100). ${evalResult.zone.message || 'Proceed with maximum caution or evacuate immediately.'}`
+            : `Restricted perimeter entered: ${evalResult.zone.name}. Police have been notified of your coordinates.`;
+        void Notifications.scheduleNotificationAsync({
+          content: {
+            title: '⚠️ Geofence Safety Alert',
+            body: bodyMsg,
+            priority: Notifications.AndroidNotificationPriority.HIGH,
+          },
+          trigger: null,
+        });
+      }
+    }
   }
 });
 
