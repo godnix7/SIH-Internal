@@ -171,13 +171,11 @@ export default function ResponderDashboard() {
   }, []);
 
   useEffect(() => {
-    if (!isConnected) {
-      console.warn('Socket disconnected. Falling back to HTTP polling.');
-      const interval = setInterval(() => {
-        fetchIncidents();
-      }, 10000); // Poll every 10s
-      return () => clearInterval(interval);
-    }
+    // Proactively poll every 5s to guarantee live emergency queue updates regardless of socket connection state
+    const interval = setInterval(() => {
+      fetchIncidents();
+    }, 5000);
+    return () => clearInterval(interval);
   }, [isConnected]);
 
   useEffect(() => {

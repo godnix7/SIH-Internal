@@ -44,10 +44,17 @@ async def trigger_sos(
     if req.location:
         location_wkt = f"SRID=4326;POINT({req.location.lon} {req.location.lat})"
         
+    valid_trip_id = None
+    if req.tripId and str(req.tripId) != 'EMERGENCY_DIRECT':
+        try:
+            valid_trip_id = uuid.UUID(str(req.tripId))
+        except (ValueError, TypeError, AttributeError):
+            valid_trip_id = None
+
     sos_alert = SOSAlert(
         client_sos_id=req.clientSosId,
         user_id=current_user.id,
-        trip_id=req.tripId,
+        trip_id=valid_trip_id,
         type=req.type,
         location=location_wkt,
         accuracy_m=req.location.accM if req.location else None,
@@ -56,7 +63,7 @@ async def trigger_sos(
         network_type=req.network,
         note=req.note,
         source='app',
-        covert=req.covert,
+        covert=req.covert or bool(req.silent),
         status='received'
     )
     db.add(sos_alert)
@@ -69,13 +76,13 @@ async def trigger_sos(
         severity = "CRITICAL"
     elif req.type == 'police':
         severity = "CRITICAL"
-    elif req.type == 'silent' or req.covert:
+    elif req.type == 'silent' or req.covert or req.silent:
         severity = "CRITICAL"
         
     incident = Incident(
         sos_alert_id=sos_alert.id,
         user_id=current_user.id,
-        trip_id=req.tripId,
+        trip_id=valid_trip_id,
         type=req.type,
         severity=severity,
         status='created',

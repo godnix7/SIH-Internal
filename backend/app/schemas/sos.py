@@ -17,7 +17,9 @@ class SOSCreateRequest(BaseModel):
     network: Optional[str] = None
     note: Optional[str] = None
     covert: bool = False
-    tripId: Optional[UUID] = None
+    tripId: Optional[str] = None
+    silent: Optional[bool] = None
+    incidentId: Optional[str] = None
 
 class SOSResponse(BaseModel):
     sosId: UUID

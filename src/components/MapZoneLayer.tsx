@@ -1,13 +1,13 @@
 // import MapLibreGL from '@maplibre/maplibre-react-native';
 const MapLibreGL = {
-  setAccessToken: () => {},
+  setAccessToken: (_token?: string | null) => {},
   StyleURL: { Street: 'street' },
   MapView: ({ children, style }: any) => <View style={style}>{children}</View>,
-  Camera: () => <View />,
-  UserLocation: () => <View />,
+  Camera: (_props?: any) => <View />,
+  UserLocation: (_props?: any) => <View />,
   ShapeSource: ({ children }: any) => <View>{children}</View>,
-  FillLayer: () => <View />,
-  LineLayer: () => <View />,
+  FillLayer: (_props?: any) => <View />,
+  LineLayer: (_props?: any) => <View />,
   PointAnnotation: ({ children }: any) => <View>{children}</View>,
 };
 import { StyleSheet, Text, View } from 'react-native';

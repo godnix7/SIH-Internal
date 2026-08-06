@@ -276,7 +276,10 @@ export async function flushOutbox(): Promise<FlushResult> {
           // eslint-disable-next-line @typescript-eslint/no-require-imports
           const { useAppStore } = require('../stores/useAppStore');
           const state = useAppStore.getState();
-          if (state.sos && state.sos.id === item.id) {
+          if (
+            state.sos &&
+            (state.sos.id === item.id || state.sos.id === (item.payload as any).clientSosId)
+          ) {
             useAppStore.setState({
               sos: { ...state.sos, id: res.sosId, incidentId: res.incidentId },
             });

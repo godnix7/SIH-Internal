@@ -109,7 +109,7 @@ export default function AccountScreen() {
                   setDeleting(true);
                   try {
                     await api.delete('/users/me');
-                    preferences.delete(PROFILE_PHOTO_KEY);
+                    preferences.remove(PROFILE_PHOTO_KEY);
                     await logout();
                     router.replace('/(onboarding)/phone');
                   } catch (e: any) {

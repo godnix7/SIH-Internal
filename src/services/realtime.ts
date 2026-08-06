@@ -18,13 +18,29 @@ export type RemoteIncident = {
   otp?: string;
 };
 
-const socketUrl = process.env.EXPO_PUBLIC_SOCKET_URL ?? 'http://10.0.2.2:8000';
+const socketUrl = process.env.EXPO_PUBLIC_SOCKET_URL ?? 'https://yatri-shield-api.onrender.com';
 
 export function connectRealtime(
-  token: string,
   onIncident: (incident: RemoteIncident) => void,
   onNotification?: (notif: any) => void,
+): Socket;
+export function connectRealtime(
+  token: string | null | undefined,
+  onIncident: (incident: RemoteIncident) => void,
+  onNotification?: (notif: any) => void,
+): Socket;
+export function connectRealtime(
+  tokenOrHandler: string | null | undefined | ((incident: RemoteIncident) => void),
+  onIncidentOrNotif?: ((incident: RemoteIncident) => void) | ((notif: any) => void),
+  onNotification?: (notif: any) => void,
 ): Socket {
+  const token = typeof tokenOrHandler === 'string' ? tokenOrHandler : '';
+  const onIncident = (
+    typeof tokenOrHandler === 'function' ? tokenOrHandler : onIncidentOrNotif
+  ) as (incident: RemoteIncident) => void;
+  const onNotif = (typeof tokenOrHandler === 'function' ? onIncidentOrNotif : onNotification) as
+    ((notif: any) => void) | undefined;
+
   const socket = io(socketUrl, {
     transports: ['websocket', 'polling'],
     timeout: 5_000,
@@ -35,8 +51,8 @@ export function connectRealtime(
   });
   socket.on('incident:update', onIncident);
   socket.on('sos:update', onIncident);
-  if (onNotification) {
-    socket.on('notification:alert', onNotification);
+  if (onNotif) {
+    socket.on('notification:alert', onNotif);
   }
   return socket;
 }

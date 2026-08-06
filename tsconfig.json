@@ -5,5 +5,6 @@
     "paths": { "@/*": ["./*"] },
     "types": ["jest", "react", "react-native"]
   },
-  "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"]
+  "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"],
+  "exclude": ["web", "backend", "node_modules"]
 }

@@ -27,6 +27,7 @@ import { useTranslation } from 'react-i18next';
 type UserProfile = {
   id: string;
   phone: string;
+  name?: string;
   role: string;
   status: string;
   identity?: {

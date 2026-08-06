@@ -168,7 +168,7 @@ export default function MedicalCard() {
             />
             <Button
               label={t('cancel', 'Cancel')}
-              variant="outline"
+              variant="secondary"
               onPress={() => setIsEditing(false)}
               disabled={loading}
             />

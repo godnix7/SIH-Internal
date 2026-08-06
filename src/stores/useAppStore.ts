@@ -295,7 +295,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       'sos.triggered',
       {
         clientSosId: sos.id,
-        tripId: activeTrip(get().trips)?.id || 'EMERGENCY_DIRECT',
+        tripId: activeTrip(get().trips)?.id || undefined,
         incidentId: sos.incidentId,
         type: sos.type,
         silent: sos.silent,

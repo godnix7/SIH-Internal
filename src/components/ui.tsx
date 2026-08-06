@@ -460,6 +460,7 @@ export function Input({
   keyboardType = 'default',
   maxLength,
   autoCapitalize,
+  error,
 }: {
   label: string;
   value: string;
@@ -469,6 +470,7 @@ export function Input({
   keyboardType?: 'default' | 'phone-pad' | 'number-pad' | 'email-address';
   maxLength?: number;
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
+  error?: string;
 }) {
   const c = useAppColors();
   return (
@@ -487,9 +489,14 @@ export function Input({
         style={[
           styles.input,
           type.body,
-          { color: c.onSurface, borderColor: c.surfaceVariant, backgroundColor: c.surface },
+          {
+            color: c.onSurface,
+            borderColor: error ? c.critical : c.surfaceVariant,
+            backgroundColor: c.surface,
+          },
         ]}
       />
+      {error ? <Text style={[type.caption, { color: c.critical }]}>{error}</Text> : null}
     </View>
   );
 }

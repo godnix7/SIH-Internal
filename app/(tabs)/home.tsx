@@ -38,7 +38,7 @@ export default function HomeScreen() {
 
   // Monitor GPS Status continuously during an active trip
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: ReturnType<typeof setInterval>;
     if (trip) {
       const checkGps = async () => {
         try {

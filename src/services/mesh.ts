@@ -68,10 +68,21 @@ class MeshService {
   /**
    * Activates BLE Central mode to scan for nearby tourists screaming SOS.
    */
-  public startScanningForRelays() {
+  public async startScanningForRelays() {
     if (this.isScanning) return;
     if (!this.manager) {
-      console.warn('[MESH] BLE Manager is not available. Skipping scan.');
+      console.log('[MESH] BLE Manager is not available. Skipping scan.');
+      return;
+    }
+
+    try {
+      const state = await this.manager.state();
+      if (state !== 'PoweredOn') {
+        console.log(`[MESH] BLE adapter not ready (State: ${state}). Skipping scan.`);
+        return;
+      }
+    } catch {
+      console.log('[MESH] Unable to check BLE state. Skipping scan.');
       return;
     }
 
@@ -83,7 +94,8 @@ class MeshService {
       { allowDuplicates: false },
       async (error, device) => {
         if (error) {
-          console.warn('[MESH] Scan error:', error.message);
+          this.isScanning = false;
+          console.log(`[MESH] Scan stopped or unavailable: ${error.message}`);
           return;
         }
 

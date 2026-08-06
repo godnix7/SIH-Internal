@@ -4,14 +4,14 @@ import { Text, View, Alert, ActivityIndicator, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 // import MapLibreGL from '@maplibre/maplibre-react-native';
 const MapLibreGL = {
-  setAccessToken: () => {},
+  setAccessToken: (_token?: string | null) => {},
   StyleURL: { Street: 'street' },
   MapView: ({ children, style }: any) => <View style={style}>{children}</View>,
-  Camera: () => <View />,
-  UserLocation: () => <View />,
+  Camera: (_props?: any) => <View />,
+  UserLocation: (_props?: any) => <View />,
   ShapeSource: ({ children }: any) => <View>{children}</View>,
-  FillLayer: () => <View />,
-  LineLayer: () => <View />,
+  FillLayer: (_props?: any) => <View />,
+  LineLayer: (_props?: any) => <View />,
   PointAnnotation: ({ children }: any) => <View>{children}</View>,
 };
 import * as Location from 'expo-location';
@@ -25,7 +25,7 @@ import {
   Toast,
   useAppColors,
 } from '@/src/components/ui';
-import type { ConsentTier } from '@/src/lib/types';
+import type { ConsentTier, Trip } from '@/src/lib/types';
 import { requestTripPermissions, startMonitoring } from '@/src/services/monitoring';
 import { api } from '@/src/services/api';
 import { useAppStore } from '@/src/stores/useAppStore';
@@ -116,7 +116,7 @@ export default function NewTrip() {
       const needsBackgroundLocation = tier === 'zones' || tier === 'full';
       const monitoringLimited =
         needsBackgroundLocation && (!permissions.foreground || !permissions.background);
-      let trip;
+      let trip: Trip;
       try {
         trip = await createTrip({
           destination,
@@ -234,6 +234,7 @@ export default function NewTrip() {
             Enter the name of your destination.
           </Text>
           <Input
+            label="Destination"
             value={destination}
             onChangeText={setDestination}
             placeholder="e.g. Kedarnath, Uttarakhand"

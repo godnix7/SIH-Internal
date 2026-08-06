@@ -69,8 +69,6 @@ export default function PrivacyScreen() {
                 severity: 'warning',
                 title: 'Data Erasure Requested',
                 body: 'Active trip trails erased. Open incidents are preserved for legal-hold review.',
-                id: Date.now().toString(),
-                timestamp: new Date().toISOString(),
               });
               showToast('Eligible data erased according to DPDP policies.');
             }}

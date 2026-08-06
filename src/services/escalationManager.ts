@@ -6,9 +6,9 @@ import { meshService } from './mesh';
 import { locationEngine } from './locationEngine';
 
 class EscalationManager {
-  private level3Timeout: NodeJS.Timeout | null = null;
-  private stage2Timeout: NodeJS.Timeout | null = null;
-  private stage3Timeout: NodeJS.Timeout | null = null;
+  private level3Timeout: ReturnType<typeof setTimeout> | null = null;
+  private stage2Timeout: ReturnType<typeof setTimeout> | null = null;
+  private stage3Timeout: ReturnType<typeof setTimeout> | null = null;
 
   public initialize() {
     aiEngine.setEscalationCallback((level, vector) => this.handleEscalation(level, vector));
