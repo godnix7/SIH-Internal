@@ -44,19 +44,31 @@ export function MapZoneLayer({
 
   const geoJsonSource = {
     type: 'FeatureCollection',
-    features: zones.map((zone) => ({
-      type: 'Feature',
-      geometry: {
-        type: 'Polygon',
-        coordinates: [zone.polygon[0].map(([lon, lat]) => [lon, lat])],
-      },
-      properties: {
-        id: zone.id,
-        class: zone.class,
-        name: zone.name,
-        safetyScore: zone.safetyScore ?? zone.safety_score ?? 100,
-      },
-    })),
+    features: (zones || []).map((zone) => {
+      const ring =
+        Array.isArray(zone?.polygon) && Array.isArray(zone.polygon[0])
+          ? zone.polygon[0]
+          : [
+              [77.5946, 12.9716],
+              [77.6046, 12.9716],
+              [77.6046, 12.9816],
+              [77.5946, 12.9816],
+              [77.5946, 12.9716],
+            ];
+      return {
+        type: 'Feature',
+        geometry: {
+          type: 'Polygon',
+          coordinates: [ring.map(([lon, lat]) => [Number(lon || 0), Number(lat || 0)])],
+        },
+        properties: {
+          id: zone.id || 'zone',
+          class: zone.class || 'advisory',
+          name: zone.name || 'Geofenced Area',
+          safetyScore: zone.safetyScore ?? zone.safety_score ?? 100,
+        },
+      };
+    }),
   };
 
   const dangerZone = zones.find(

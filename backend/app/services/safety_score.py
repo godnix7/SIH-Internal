@@ -43,7 +43,9 @@ def compute_safety_score(
     severity_total = 0
     max_possible_severity = total * 10  # max if all critical
     for crime in crime_data:
-        sev = (crime.get('severity') or 'medium').lower()
+        if not isinstance(crime, dict):
+            continue
+        sev = (str(crime.get('severity') or 'medium')).lower()
         severity_total += SEVERITY_WEIGHTS.get(sev, 4)
     if max_possible_severity > 0:
         severity_ratio = severity_total / max_possible_severity
@@ -54,6 +56,8 @@ def compute_safety_score(
     # 3. Recency factor (20% weight): recent incidents weigh more
     recent_count = 0
     for crime in crime_data:
+        if not isinstance(crime, dict):
+            continue
         date_str = crime.get('date') or crime.get('reported_at')
         if date_str:
             try:
@@ -71,7 +75,7 @@ def compute_safety_score(
     density_score = max(0, 100 - (density * 5))
 
     # 5. Resolution rate (10% weight)
-    resolved = sum(1 for c in crime_data if (c.get('status') or '').lower() in ('resolved', 'closed', 'arrested'))
+    resolved = sum(1 for c in crime_data if isinstance(c, dict) and (str(c.get('status') or '')).lower() in ('resolved', 'closed', 'arrested'))
     resolution_rate = resolved / max(total, 1)
     resolution_score = resolution_rate * 100  # Higher resolution = better
 

@@ -141,9 +141,60 @@ export const tripApi = {
 export const zoneApi = {
   getZonePack: async () => {
     const res = await api.get('/zones/pack');
-    return res.data;
+    const rawZones = Array.isArray(res.data) ? res.data : [];
+    return rawZones.map((z: any) => ({
+      id: String(z.id || Math.random()),
+      class: (z.zone_class || z.class || 'advisory') as any,
+      name: z.name || 'Safety Geofence Zone',
+      version: Number(z.version || 1),
+      bufferM: Number(
+        z.buffer_m !== undefined ? z.buffer_m : z.bufferM !== undefined ? z.bufferM : 100,
+      ),
+      message: strOr(z.description, z.message, 'Geofenced area monitored by local authorities.'),
+      schedule: z.schedule,
+      polygon: z.geometry_geojson?.coordinates ||
+        z.polygon || [
+          [
+            [77.5946, 12.9716],
+            [77.6046, 12.9716],
+            [77.6046, 12.9816],
+            [77.5946, 12.9816],
+            [77.5946, 12.9716],
+          ],
+        ],
+      safetyScore: Number(
+        z.safety_score !== undefined
+          ? z.safety_score
+          : z.safetyScore !== undefined
+            ? z.safetyScore
+            : 100,
+      ),
+      safety_score: Number(
+        z.safety_score !== undefined
+          ? z.safety_score
+          : z.safetyScore !== undefined
+            ? z.safetyScore
+            : 100,
+      ),
+      riskFactors: Array.isArray(z.risk_factors)
+        ? z.risk_factors
+        : Array.isArray(z.riskFactors)
+          ? z.riskFactors
+          : [],
+      risk_factors: Array.isArray(z.risk_factors)
+        ? z.risk_factors
+        : Array.isArray(z.riskFactors)
+          ? z.riskFactors
+          : [],
+    }));
   },
 };
+
+function strOr(val1: any, val2: any, defaultStr: string): string {
+  if (typeof val1 === 'string' && val1.trim()) return val1;
+  if (typeof val2 === 'string' && val2.trim()) return val2;
+  return defaultStr;
+}
 
 export const locationApi = {
   uploadBatch: async (batchId: string, data: any) => {

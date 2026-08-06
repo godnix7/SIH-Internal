@@ -41,7 +41,7 @@ export default function SosActiveScreen() {
   );
   useEffect(() => {
     if (!sos) {
-      router.replace('/shield');
+      router.replace('/home');
       return;
     }
     // Auto-navigate away when SOS reaches a terminal state via server push
@@ -122,7 +122,7 @@ export default function SosActiveScreen() {
         Alert.alert(
           'SOS Cancelled',
           'You have successfully cancelled the SOS alert using your Safe PIN. Emergency tracking has stopped.',
-          [{ text: 'OK', onPress: () => router.replace('/home') }],
+          [{ text: 'OK' }],
         );
       } else {
         setPinError(true);

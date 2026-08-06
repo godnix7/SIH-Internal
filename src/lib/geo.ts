@@ -29,12 +29,23 @@ export function pointInRing(point: Point, ring: Point[]): boolean {
 }
 
 export function pointInPolygon(point: Point, polygon: Point[][]): boolean {
-  if (polygon.length === 0 || !pointInRing(point, polygon[0])) return false;
-  return !polygon.slice(1).some((hole) => pointInRing(point, hole));
+  if (
+    !polygon ||
+    !Array.isArray(polygon) ||
+    polygon.length === 0 ||
+    !polygon[0] ||
+    !Array.isArray(polygon[0])
+  ) {
+    return false;
+  }
+  if (!pointInRing(point, polygon[0])) return false;
+  return !polygon.slice(1).some((hole) => Array.isArray(hole) && pointInRing(point, hole));
 }
 
 export function isWithinBoundingBox(point: Point, polygon: Point[][]): boolean {
-  const ring = polygon.flat();
+  if (!polygon || !Array.isArray(polygon) || polygon.length === 0) return false;
+  const ring = polygon.flat().filter((p) => Array.isArray(p) && p.length >= 2);
+  if (ring.length === 0) return false;
   const xs = ring.map(([x]) => x);
   const ys = ring.map(([, y]) => y);
   return (
