@@ -102,8 +102,8 @@ async def list_incidents(
                         loc_wkt = to_shape(inc.location).wkt
                     except Exception:
                         loc_wkt = str(inc.location)
-                except Exception:
-                    loc_wkt = None
+            except Exception:
+                loc_wkt = None
 
         try:
             responses.append(IncidentResponse(
