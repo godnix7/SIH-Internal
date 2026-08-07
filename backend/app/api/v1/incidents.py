@@ -64,7 +64,15 @@ async def list_incidents(
         identity = ident_res.scalars().first()
         if identity and identity.name_enc:
             try:
-                tourist_details.name = decrypt_pii(identity.name_enc)
+                raw_name = decrypt_pii(identity.name_enc)
+                # Mask name to protect privacy (e.g., 'John Doe' -> 'J*** D**')
+                masked_parts = []
+                for part in raw_name.split():
+                    if len(part) > 2:
+                        masked_parts.append(part[0] + '*' * (len(part) - 2) + part[-1])
+                    else:
+                        masked_parts.append(part[0] + '*' * (len(part) - 1) if part else '')
+                tourist_details.name = " ".join(masked_parts)
             except Exception:
                 pass
 
