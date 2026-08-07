@@ -305,6 +305,12 @@ export default function EmergencyAIScreen() {
       });
       setModelInfo(emergencyChatbot.getModelInfo());
       setMessages([...emergencyChatbot.getHistory()]);
+    } catch (e: any) {
+      Alert.alert(
+        t('ai.model.downloadError', 'Download Failed'),
+        e?.message || t('ai.model.downloadErrorDesc', 'Unable to download the AI model. Check your internet connection.'),
+      );
+      setModelInfo(emergencyChatbot.getModelInfo()); // reset status to not_downloaded
     } finally {
       setDownloading(false);
     }
@@ -411,13 +417,13 @@ export default function EmergencyAIScreen() {
               type.caption,
               {
                 color:
-                  modelInfo.status === 'ready' && llamaEngine.getIsSupported()
+                  modelInfo.status === 'ready' && llamaEngine.isReady()
                     ? '#16a34a'
                     : c.onSurfaceVariant,
               },
             ]}
           >
-            {modelInfo.status === 'ready' && llamaEngine.getIsSupported()
+            {modelInfo.status === 'ready' && llamaEngine.isReady()
               ? '🟢 ' + t('ai.status.offline', 'Offline LLM Active')
               : '☁️ ' + t('ai.status.cloud', 'Heuristic Fallback')}
           </Text>
