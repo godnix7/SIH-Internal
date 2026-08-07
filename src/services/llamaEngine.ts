@@ -3,7 +3,7 @@
  * Wraps llama.rn for on-device Gemma inference.
  * llama.rn uses llama.cpp under the hood and supports GGUF quantized models.
  */
-import { Llama, LlamaContext } from 'llama.rn';
+import { initLlama, LlamaContext } from 'llama.rn';
 
 type ProgressCallback = (partial: string) => void;
 
@@ -22,7 +22,7 @@ class LlamaEngineService {
       this.context = null;
     }
 
-    this.context = await Llama.createContext({
+    this.context = await initLlama({
       model: path,
       // INT4 quantized, optimized for mobile inference
       n_ctx: 2048,

@@ -1,10 +1,10 @@
-/**
+ï»¿/**
  * emergencyChatbot.ts
  * Real on-device LLM inference via llama.rn (Gemma 2B INT4).
  * Falls back to the edgeAiGuidance protocol library when model is not loaded.
  */
 import * as Crypto from 'expo-crypto';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { preferences } from './preferences';
 import { edgeAiGuidance } from './edgeAiGuidance';
 import { llamaEngine } from './llamaEngine';
@@ -13,7 +13,7 @@ import { useAppStore } from '@/src/stores/useAppStore';
 const CHAT_HISTORY_KEY = 'yatri-shield.emergency-chat-history.v1';
 const MODEL_STATUS_KEY = 'yatri-shield.offline-model-status.v1';
 
-// Gemma 2B Q4_K_M — INT4 quantized, ~1.38 GB, optimized for mobile
+// Gemma 2B Q4_K_M ï¿½ INT4 quantized, ~1.38 GB, optimized for mobile
 const MODEL_URL =
   'https://huggingface.co/lmstudio-community/gemma-2-2b-it-GGUF/resolve/main/gemma-2-2b-it-Q4_K_M.gguf';
 const MODEL_FILENAME = 'gemma-2b-q4_k_m.gguf';
@@ -29,7 +29,7 @@ Your role:
 - Use numbered steps for action items
 - Always recommend calling emergency services (112) and triggering SOS if life-threatening
 - Be calm, direct, and authoritative
-- You work completely offline — do not suggest "look it up" or "call a doctor" as the primary action
+- You work completely offline ï¿½ do not suggest "look it up" or "call a doctor" as the primary action
 
 If the user asks something non-medical, briefly redirect them to the emergency tools available.`;
 
@@ -143,7 +143,7 @@ class EmergencyChatbotEngine {
         await llamaEngine.loadModel(MODEL_PATH);
         console.log('[CHATBOT] Hot-loaded model from disk.');
       } else {
-        // File was deleted externally — reset status
+        // File was deleted externally ï¿½ reset status
         this.modelState.status = 'not_downloaded';
         this.modelState.progress = 0;
         preferences.remove(MODEL_STATUS_KEY);
@@ -207,7 +207,7 @@ class EmergencyChatbotEngine {
           'Offline AI Model downloaded and loaded successfully.\n\nGemma 2B INT4 is now active. Full conversational emergency triage works without any internet connection.',
         timestamp: Date.now(),
         severity: 'INFO',
-        modelMeta: 'Gemma 2B INT4 — On-Device Active',
+        modelMeta: 'Gemma 2B INT4 ï¿½ On-Device Active',
       });
       this.persistHistory();
     } catch (e: any) {
@@ -420,9 +420,9 @@ class EmergencyChatbotEngine {
         `**Immediate Steps:**\n` +
         primary.immediateSteps.map((step, i) => `${i + 1}. ${step}`).join('\n') +
         `\n\n**Do:**\n` +
-        primary.dos.map((d) => `• ${d}`).join('\n') +
+        primary.dos.map((d) => `ï¿½ ${d}`).join('\n') +
         `\n\n**Do NOT:**\n` +
-        primary.donts.map((d) => `• ${d}`).join('\n') +
+        primary.donts.map((d) => `ï¿½ ${d}`).join('\n') +
         `\n\n*Download the AI model for fully conversational, adaptive guidance.*`;
 
       if (onProgress) onProgress(text);
