@@ -2,7 +2,7 @@
 
 :root,
 html[data-theme='light'] {
-  /* Light Theme - Sleek and clean */
+  /* Default Light Theme - Sleek and clean */
   --color-primary: #0f172a;
   --color-primary-glow: rgba(15, 23, 42, 0.4);
   --color-surface: rgba(255, 255, 255, 0.85);
@@ -19,9 +19,27 @@ html[data-theme='light'] {
   --color-background-end: #e2e8f0;
 }
 
+/* Light Theme Role Variants */
+html[data-theme='light'][data-role='operator'] {
+  --color-primary: #4338ca; /* Indigo */
+  --color-primary-glow: rgba(67, 56, 202, 0.4);
+}
+html[data-theme='light'][data-role='hospital'] {
+  --color-primary: #0f766e; /* Teal */
+  --color-primary-glow: rgba(15, 118, 110, 0.4);
+}
+html[data-theme='light'][data-role='tourism_admin'] {
+  --color-primary: #d97706; /* Amber */
+  --color-primary-glow: rgba(217, 119, 6, 0.4);
+}
+html[data-theme='light'][data-role='sys_admin'] {
+  --color-primary: #7c3aed; /* Purple */
+  --color-primary-glow: rgba(124, 58, 237, 0.4);
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
-    /* Dark Theme - Deep, premium, glowing */
+    /* Default Dark Theme */
     --color-primary: #38bdf8;
     --color-primary-glow: rgba(56, 189, 248, 0.5);
     --color-surface: rgba(30, 41, 59, 0.75);
@@ -55,6 +73,51 @@ html[data-theme='dark'] {
   --color-border: rgba(255, 255, 255, 0.1);
   --color-background-start: #020617;
   --color-background-end: #0f172a;
+}
+
+/* Dark Theme Role Variants (applied dynamically) */
+html[data-theme='dark'][data-role='operator'] {
+  --color-primary: #6366f1; /* Indigo */
+  --color-primary-glow: rgba(99, 102, 241, 0.5);
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-role='operator'] {
+    --color-primary: #6366f1; /* Indigo */
+    --color-primary-glow: rgba(99, 102, 241, 0.5);
+  }
+}
+
+html[data-theme='dark'][data-role='hospital'] {
+  --color-primary: #10b981; /* Emerald */
+  --color-primary-glow: rgba(16, 185, 129, 0.5);
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-role='hospital'] {
+    --color-primary: #10b981; /* Emerald */
+    --color-primary-glow: rgba(16, 185, 129, 0.5);
+  }
+}
+
+html[data-theme='dark'][data-role='tourism_admin'] {
+  --color-primary: #f59e0b; /* Amber */
+  --color-primary-glow: rgba(245, 158, 11, 0.5);
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-role='tourism_admin'] {
+    --color-primary: #f59e0b; /* Amber */
+    --color-primary-glow: rgba(245, 158, 11, 0.5);
+  }
+}
+
+html[data-theme='dark'][data-role='sys_admin'] {
+  --color-primary: #8b5cf6; /* Purple */
+  --color-primary-glow: rgba(139, 92, 246, 0.5);
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-role='sys_admin'] {
+    --color-primary: #8b5cf6; /* Purple */
+    --color-primary-glow: rgba(139, 92, 246, 0.5);
+  }
 }
 
 * {

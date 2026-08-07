@@ -169,7 +169,7 @@ export default function IncidentHistoryPage() {
             gap: '4px',
           }}
         >
-          ⚫ Cancelled by User
+          Cancelled by User
         </span>
       );
     if (s === 'false_alarm')
@@ -184,7 +184,7 @@ export default function IncidentHistoryPage() {
             fontWeight: '600',
           }}
         >
-          ⚪ Closed (False Alarm)
+          Closed (False Alarm)
         </span>
       );
     if (s === 'resolve_pending')
@@ -216,7 +216,7 @@ export default function IncidentHistoryPage() {
           gap: '4px',
         }}
       >
-        🔴 Active ({status.toUpperCase()})
+        Active ({status.toUpperCase()})
       </span>
     );
   };
@@ -362,9 +362,9 @@ export default function IncidentHistoryPage() {
               }}
             >
               <option value="ALL">All Statuses</option>
-              <option value="ACTIVE">Active SOS (🔴)</option>
+              <option value="ACTIVE">Active SOS ()</option>
               <option value="RESOLVED">Resolved via OTP (🟢)</option>
-              <option value="CANCELLED">Cancelled by User / Safe PIN (⚫)</option>
+              <option value="CANCELLED">Cancelled by User / Safe PIN ()</option>
             </select>
 
             {/* Role Filter */}

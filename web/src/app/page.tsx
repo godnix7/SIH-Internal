@@ -56,7 +56,7 @@ export default function Home() {
               textDecoration: 'none',
             }}
           >
-            <span style={{ fontSize: '48px', marginBottom: '16px' }}>🚓</span>
+            <span style={{ fontSize: '48px', marginBottom: '16px' }}></span>
             <h2 style={{ fontSize: '18px', fontWeight: '600' }}>Police / SDRF</h2>
             <p
               style={{
@@ -82,7 +82,7 @@ export default function Home() {
               textDecoration: 'none',
             }}
           >
-            <span style={{ fontSize: '48px', marginBottom: '16px' }}>🏥</span>
+            <span style={{ fontSize: '48px', marginBottom: '16px' }}></span>
             <h2 style={{ fontSize: '18px', fontWeight: '600' }}>Hospital</h2>
             <p
               style={{
@@ -108,7 +108,7 @@ export default function Home() {
               textDecoration: 'none',
             }}
           >
-            <span style={{ fontSize: '48px', marginBottom: '16px' }}>🏛️</span>
+            <span style={{ fontSize: '48px', marginBottom: '16px' }}>️</span>
             <h2 style={{ fontSize: '18px', fontWeight: '600' }}>Tourism Authority</h2>
             <p
               style={{
@@ -134,7 +134,7 @@ export default function Home() {
               textDecoration: 'none',
             }}
           >
-            <span style={{ fontSize: '48px', marginBottom: '16px' }}>⚙️</span>
+            <span style={{ fontSize: '48px', marginBottom: '16px' }}>️</span>
             <h2 style={{ fontSize: '18px', fontWeight: '600' }}>System Admin</h2>
             <p
               style={{

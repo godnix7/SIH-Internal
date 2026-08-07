@@ -42,6 +42,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       return;
     }
 
+    // Set role for dynamic theming
+    document.documentElement.setAttribute('data-role', savedRole);
     setRole(savedRole);
     setLoading(false);
   }, [router, logoutInProgress]);
@@ -250,7 +252,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </button>
         </div>
       </aside>
-      <div className="main-content">{children}</div>
+      <div
+        className="main-content"
+        style={{ padding: '32px', backgroundColor: 'var(--color-background-start)' }}
+      >
+        <div
+          style={{
+            maxWidth: '1440px',
+            margin: '0 auto',
+            width: '100%',
+            display: 'flex',
+            flex: 1,
+            flexDirection: 'column',
+          }}
+        >
+          {children}
+        </div>
+      </div>
     </div>
   );
 }

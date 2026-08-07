@@ -1,0 +1,56 @@
+[
+  {
+    "id": "faq_med_1",
+    "category": "Medical Emergencies",
+    "question": "faq.med.1.q",
+    "answer": "faq.med.1.a"
+  },
+  {
+    "id": "faq_med_2",
+    "category": "Medical Emergencies",
+    "question": "faq.med.2.q",
+    "answer": "faq.med.2.a"
+  },
+  {
+    "id": "faq_women_1",
+    "category": "Women's Safety",
+    "question": "faq.women.1.q",
+    "answer": "faq.women.1.a"
+  },
+  {
+    "id": "faq_women_2",
+    "category": "Women's Safety",
+    "question": "faq.women.2.q",
+    "answer": "faq.women.2.a"
+  },
+  {
+    "id": "faq_road_1",
+    "category": "Road Accidents",
+    "question": "faq.road.1.q",
+    "answer": "faq.road.1.a"
+  },
+  {
+    "id": "faq_fire_1",
+    "category": "Fire Safety",
+    "question": "faq.fire.1.q",
+    "answer": "faq.fire.1.a"
+  },
+  {
+    "id": "faq_disaster_1",
+    "category": "Natural Disasters",
+    "question": "faq.disaster.1.q",
+    "answer": "faq.disaster.1.a"
+  },
+  {
+    "id": "faq_travel_1",
+    "category": "Travel Safety",
+    "question": "faq.travel.1.q",
+    "answer": "faq.travel.1.a"
+  },
+  {
+    "id": "faq_app_1",
+    "category": "SOS & App Features",
+    "question": "faq.app.1.q",
+    "answer": "faq.app.1.a"
+  }
+]

@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { Screen } from '@/src/components/Screen';
 import { Card, ListRow, useAppColors } from '@/src/components/ui';
 import { space, type } from '@/src/theme/tokens';
-import { Phone, Mail, Globe, LifeBuoy } from 'lucide-react-native';
+import { Phone, Mail, Globe, LifeBuoy, FileText } from 'lucide-react-native';
+import { router } from 'expo-router';
 
 export default function HelpScreen() {
   const c = useAppColors();
@@ -36,6 +37,12 @@ export default function HelpScreen() {
         <Text style={[type.subtitle, { color: c.onSurface, marginBottom: space.sm }]}>
           {t('settings.help.appSupport', 'App Support')}
         </Text>
+        <ListRow
+          icon={<FileText color={c.onSurfaceVariant} />}
+          title={t('settings.help.faq', 'Frequently Asked Questions')}
+          sub={t('settings.help.faqSub', 'Find quick answers to common emergencies')}
+          onPress={() => router.push('/settings/faq' as any)}
+        />
         <ListRow
           icon={<Mail color={c.onSurfaceVariant} />}
           title={t('settings.help.email', 'Email Support')}

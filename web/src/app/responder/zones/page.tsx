@@ -596,7 +596,7 @@ export default function GeofenceSafetyPage() {
                       ? '🟡 Moderate Risk - Standard monitoring'
                       : previewScore >= 26
                         ? '🟠 Caution Zone - Tourist Advisory'
-                        : '🔴 DANGER ZONE - Instant High-Priority Warning'}
+                        : ' DANGER ZONE - Instant High-Priority Warning'}
                 </div>
                 <p style={{ fontSize: '12px', color: '#64748b', marginTop: '8px' }}>
                   Score is automatically weighed by incident volume, crime severity, density, and
@@ -936,7 +936,7 @@ export default function GeofenceSafetyPage() {
                                     border: '1px solid #7f1d1d',
                                   }}
                                 >
-                                  ⚠️ {rf}
+                                  ️ {rf}
                                 </span>
                               ))}
                               {z.risk_factors.length > 3 && (

@@ -177,7 +177,7 @@ export default function SettingsPage() {
                 fontWeight: '500',
               }}
             >
-              ✓ Settings saved and applied successfully.
+              Settings saved and applied successfully.
             </p>
           )}
         </div>

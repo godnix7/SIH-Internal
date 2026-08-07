@@ -130,7 +130,12 @@ export const useAppStore = create<AppStore>((set, get) => ({
       set({ isAuthenticated: true, hasSetPin: !!pin });
     }
   },
-  login: (userId) => set({ isAuthenticated: true, userId }),
+  login: (userId) => {
+    set({ isAuthenticated: true, userId });
+    storage.getDevicePin().then((pin) => {
+      set({ hasSetPin: !!pin });
+    });
+  },
   logout: async () => {
     await storage.clearTokens();
     set({ isAuthenticated: false, userId: undefined, hasSetPin: false });
@@ -263,9 +268,20 @@ export const useAppStore = create<AppStore>((set, get) => ({
     });
   },
   addAlert: (alert) =>
-    set((state) => ({
-      alerts: [{ ...alert, id: uniqueId('alert'), createdAt: Date.now() }, ...state.alerts],
-    })),
+    set((state) => {
+      const now = Date.now();
+      // Deduplicate: ignore if an alert with same title & body was added in the last 5 seconds
+      const isDuplicate = state.alerts.some(
+        (existing) =>
+          existing.title === alert.title &&
+          existing.body === alert.body &&
+          now - existing.createdAt < 5000,
+      );
+      if (isDuplicate) return state;
+      return {
+        alerts: [{ ...alert, id: uniqueId('alert'), createdAt: now }, ...state.alerts],
+      };
+    }),
   beginSos: async (type, silent, location) => {
     if (get().sos) return;
     // Purge any stale unsent test alerts sitting in the SQLite outbox queue from previous runs

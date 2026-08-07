@@ -387,7 +387,7 @@ export default function HospitalDashboard() {
                       fontWeight: '600',
                     }}
                   >
-                    <AlertTriangle size={16} /> ⚠ Self-Declared
+                    <AlertTriangle size={16} /> Self-Declared
                   </span>
                 )}
               </div>
@@ -527,7 +527,7 @@ export default function HospitalDashboard() {
                           </div>
                         </div>
                         <a href={`tel:${contact.phone}`} className="btn btn-secondary">
-                          📞 {contact.phone}
+                          {contact.phone}
                         </a>
                       </div>
                     ))}

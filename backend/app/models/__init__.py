@@ -9,6 +9,7 @@ from app.models.incident import Incident, IncidentEvent
 from app.models.facility import Facility
 from app.models.risk import TripRisk, RiskEvent
 from app.models.blockchain import EventChain, MerkleAnchor
+from app.models.faq import FAQ
 
 # Add all models to this list to ensure they are discovered by Alembic/SQLAlchemy
 __all__ = [
@@ -18,6 +19,7 @@ __all__ = [
     "LocationPoint",
     "Trip", "ConsentReceipt",
     "SOSAlert",
+    "FAQ",
     "Incident", "IncidentEvent",
     "Facility",
     "TripRisk", "RiskEvent",

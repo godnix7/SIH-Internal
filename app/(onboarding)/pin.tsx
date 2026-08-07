@@ -21,7 +21,13 @@ export default function PinSetupScreen() {
     }
     await storage.setDevicePin(pin);
     setHasSetPin(true);
-    router.replace('/' as any);
+
+    const complete = useAppStore.getState().hasCompletedOnboarding;
+    if (complete) {
+      router.replace('/(tabs)/home' as any);
+    } else {
+      router.replace('/(onboarding)/offline-maps' as any);
+    }
   };
 
   return (

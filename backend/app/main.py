@@ -18,6 +18,7 @@ from app.api.v1.risk import router as risk_router
 from app.api.v1.analytics import router as analytics_router
 from app.api.v1.system import router as system_router
 from app.api.v1.voice import router as voice_router
+from app.api.v1.faqs import router as faqs_router
 from app.api.v1 import blockchain
 from app.core.redis import init_redis, close_redis
 from app.services.sweeper import start_scheduler
@@ -88,6 +89,7 @@ app.include_router(facilities_router, prefix=f"{settings.API_V1_STR}/facilities"
 app.include_router(risk_router, prefix=f"{settings.API_V1_STR}/risk", tags=["risk"])
 app.include_router(analytics_router, prefix=f"{settings.API_V1_STR}/analytics", tags=["analytics"])
 app.include_router(voice_router, prefix=f"{settings.API_V1_STR}/voice", tags=["voice"])
+app.include_router(faqs_router, prefix=f"{settings.API_V1_STR}/faqs", tags=["faqs"])
 
 # --- Global Exception Handlers ---
 

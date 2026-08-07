@@ -896,7 +896,7 @@ export default function ResponderDashboard() {
                             </div>
                           )}
                           <div style={{ color: '#4CAF50', fontSize: '11px', marginTop: '4px' }}>
-                            ✓ Blockchain Hash verified
+                            Blockchain Hash verified
                           </div>
                         </div>
                       );

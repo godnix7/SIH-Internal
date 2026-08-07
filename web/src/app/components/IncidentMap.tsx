@@ -156,10 +156,10 @@ export default function IncidentMap({
 
   const formatStatus = (status: string) => {
     if (!status) return 'Unknown';
-    if (status.toLowerCase() === 'cancelled_by_user') return '⚫ Cancelled by User';
+    if (status.toLowerCase() === 'cancelled_by_user') return ' Cancelled by User';
     if (status.toLowerCase() === 'resolve_pending') return '🟡 Resolve Pending (OTP)';
     if (status.toLowerCase() === 'resolved') return '🟢 Resolved';
-    return `🔴 Active (${status.toUpperCase()})`;
+    return ` Active (${status.toUpperCase()})`;
   };
 
   return (

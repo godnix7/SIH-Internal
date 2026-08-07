@@ -7,7 +7,7 @@ export default function ResponderLoginPage() {
     <RoleLoginForm
       roleTitle="Police / SDRF Command Center"
       roleSubtitle="Secure access for law enforcement and emergency response personnel."
-      roleIcon="🚓"
+      roleIcon=""
       allowedRoles={['operator', 'dispatcher', 'supervisor']}
       redirectPath="/responder"
       roleMismatchMessage="Your account is not authorized for the Police / SDRF portal. Please use the correct login page for your role."
