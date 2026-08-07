@@ -20,6 +20,17 @@ ZONE_MANAGEMENT_ROLES = ['sys_admin', 'tourism_admin', 'police_admin', 'responde
 
 def _zone_to_response(zone, geojson_str=None) -> ZoneResponse:
     """Convert a Zone model instance to ZoneResponse."""
+    geometry_geojson = None
+    if geojson_str:
+        geometry_geojson = json.loads(geojson_str)
+    elif zone.geometry is not None:
+        try:
+            from geoalchemy2.shape import to_shape
+            import shapely.geometry
+            geometry_geojson = shapely.geometry.mapping(to_shape(zone.geometry))
+        except Exception:
+            pass
+
     return ZoneResponse(
         id=zone.id,
         name=zone.name,
@@ -29,7 +40,7 @@ def _zone_to_response(zone, geojson_str=None) -> ZoneResponse:
         description=zone.description,
         status=zone.status,
         version=zone.version,
-        geometry_geojson=json.loads(geojson_str) if geojson_str else None,
+        geometry_geojson=geometry_geojson,
         safety_score=zone.safety_score if zone.safety_score is not None else 100,
         crime_data=zone.crime_data or [],
         risk_factors=zone.risk_factors or [],
@@ -42,18 +53,15 @@ async def get_zone_pack(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    # Query active zones, converting PostGIS geometry to GeoJSON
-    stmt = select(
-        Zone,
-        func.ST_AsGeoJSON(Zone.geometry).label('geometry_geojson')
-    ).where(Zone.status == 'active')
+    # Query active zones
+    stmt = select(Zone).where(Zone.status == 'active')
     
     result = await db.execute(stmt)
-    zones_data = result.all()
+    zones_data = result.scalars().all()
     
     response = []
-    for zone, geojson_str in zones_data:
-        response.append(_zone_to_response(zone, geojson_str))
+    for zone in zones_data:
+        response.append(_zone_to_response(zone))
         
     return response
 
@@ -67,15 +75,12 @@ async def get_all_zones(
     if current_user.role not in ZONE_MANAGEMENT_ROLES:
         raise HTTPException(status_code=403, detail="Unauthorized")
 
-    stmt = select(
-        Zone,
-        func.ST_AsGeoJSON(Zone.geometry).label('geometry_geojson')
-    ).order_by(Zone.created_at.desc())
+    stmt = select(Zone).order_by(Zone.created_at.desc())
     
     result = await db.execute(stmt)
-    zones_data = result.all()
+    zones_data = result.scalars().all()
     
-    return [_zone_to_response(zone, geojson_str) for zone, geojson_str in zones_data]
+    return [_zone_to_response(zone) for zone in zones_data]
 
 
 @router.get("/safety-scores")
@@ -86,25 +91,33 @@ async def get_zone_safety_scores(
     """Get all active zones with their safety scores for mobile consumption."""
     stmt = select(
         Zone.id, Zone.name, Zone.zone_class, Zone.safety_score, 
-        Zone.total_incidents, Zone.risk_factors,
-        func.ST_AsGeoJSON(Zone.geometry).label('geometry_geojson')
+        Zone.total_incidents, Zone.risk_factors, Zone.geometry
     ).where(Zone.status == 'active')
     
     result = await db.execute(stmt)
     rows = result.all()
     
-    return [
-        {
+    output = []
+    for row in rows:
+        geometry_geojson = None
+        if row.geometry is not None:
+            try:
+                from geoalchemy2.shape import to_shape
+                import shapely.geometry
+                geometry_geojson = shapely.geometry.mapping(to_shape(row.geometry))
+            except Exception:
+                pass
+
+        output.append({
             "id": str(row.id),
             "name": row.name,
             "zone_class": row.zone_class,
             "safety_score": row.safety_score if row.safety_score is not None else 100,
             "total_incidents": row.total_incidents or 0,
             "risk_factors": row.risk_factors or [],
-            "geometry_geojson": json.loads(row.geometry_geojson) if row.geometry_geojson else None,
-        }
-        for row in rows
-    ]
+            "geometry_geojson": geometry_geojson,
+        })
+    return output
 
 
 @router.post("/", response_model=ZoneResponse)
