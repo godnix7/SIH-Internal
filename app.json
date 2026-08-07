@@ -73,7 +73,8 @@
           "modes": ["peripheral", "central"],
           "bluetoothAlwaysPermission": "Allow Yatri Shield to broadcast offline SOS beacons using Bluetooth."
         }
-      ]
+      ],
+      "llama.rn"
     ],
     "experiments": {
       "typedRoutes": true

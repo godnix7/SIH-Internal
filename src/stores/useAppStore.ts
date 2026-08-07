@@ -124,16 +124,19 @@ export const useAppStore = create<AppStore>((set, get) => ({
   showVerificationPrompt: (countdown, vector) => set({ verificationPrompt: { countdown, vector } }),
   clearVerificationPrompt: () => set({ verificationPrompt: undefined }),
   hydrateAuth: async () => {
-    const token = await storage.getAccessToken();
-    const pin = await storage.getDevicePin();
-    if (token) {
-      set({ isAuthenticated: true, hasSetPin: !!pin });
-    }
+    const [token, pin] = await Promise.all([
+      storage.getAccessToken(),
+      storage.getDevicePin(),
+    ]);
+    // Always hydrate PIN regardless of auth state so PinGuard never flickers
+    set({ isAuthenticated: !!token, hasSetPin: !!pin });
   },
   login: (userId) => {
-    set({ isAuthenticated: true, userId });
-    storage.getDevicePin().then((pin) => {
-      set({ hasSetPin: !!pin });
+    // Read the PIN first so hasSetPin and isAuthenticated are set atomically.
+    // This prevents PinGuard from seeing isAuthenticated=true but hasSetPin=false
+    // which would incorrectly redirect the user to the PIN setup screen.
+    void storage.getDevicePin().then((pin) => {
+      set({ isAuthenticated: true, userId, hasSetPin: !!pin });
     });
   },
   logout: async () => {

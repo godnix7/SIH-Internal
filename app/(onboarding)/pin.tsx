@@ -14,19 +14,29 @@ export default function PinSetupScreen() {
   const [error, setError] = useState(false);
   const { setHasSetPin } = useAppStore();
 
+  const [saving, setSaving] = useState(false);
+
   const handleSave = async () => {
     if (pin !== confirmPin) {
       setError(true);
       return;
     }
-    await storage.setDevicePin(pin);
-    setHasSetPin(true);
+    setSaving(true);
+    try {
+      await storage.setDevicePin(pin);
+      setHasSetPin(true);
 
-    const complete = useAppStore.getState().hasCompletedOnboarding;
-    if (complete) {
-      router.replace('/(tabs)/home' as any);
-    } else {
-      router.replace('/(onboarding)/offline-maps' as any);
+      const state = useAppStore.getState();
+      if (state.isAuthenticated) {
+        // Returning user who was forced to setup PIN — go straight home
+        router.replace('/(tabs)/home' as any);
+      } else if (state.hasCompletedOnboarding) {
+        router.replace('/(tabs)/home' as any);
+      } else {
+        router.replace('/(onboarding)/offline-maps' as any);
+      }
+    } finally {
+      setSaving(false);
     }
   };
 

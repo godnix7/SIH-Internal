@@ -1,82 +1,85 @@
-import { NativeModules, NativeEventEmitter } from 'react-native';
+/**
+ * llamaEngine.ts
+ * Wraps llama.rn for on-device Gemma inference.
+ * llama.rn uses llama.cpp under the hood and supports GGUF quantized models.
+ */
+import { Llama, LlamaContext } from 'llama.rn';
 
-const { LlamaContext } = NativeModules;
-const LlamaEventEmitter = LlamaContext ? new NativeEventEmitter(LlamaContext) : null;
+type ProgressCallback = (partial: string) => void;
 
-export class LlamaEngine {
-  private isLoaded: boolean = false;
+class LlamaEngineService {
+  private context: LlamaContext | null = null;
   private modelPath: string = '';
 
-  constructor() {}
-
-  public getIsSupported(): boolean {
-    return !!LlamaContext;
+  public isReady(): boolean {
+    return this.context !== null;
   }
 
-  public async init(modelPath: string): Promise<boolean> {
-    if (!LlamaContext) {
-      console.warn('LlamaContext NativeModule is not available. Using fallback heuristics.');
-      return false;
+  public async loadModel(path: string): Promise<void> {
+    // Release any existing context first
+    if (this.context) {
+      await this.context.release();
+      this.context = null;
     }
 
-    try {
-      // Simulate initializing the context with quantized parameters
-      const result = await LlamaContext.initContext({
-        model: modelPath,
-        use_mlock: true,
-        n_ctx: 2048,
-        n_batch: 512,
-        n_threads: 4,
-      });
-      if (result) {
-        this.isLoaded = true;
-        this.modelPath = modelPath;
-        return true;
-      }
-      return false;
-    } catch (e) {
-      console.error('Failed to initialize Llama context:', e);
-      return false;
-    }
+    this.context = await Llama.createContext({
+      model: path,
+      // INT4 quantized, optimized for mobile inference
+      n_ctx: 2048,
+      n_batch: 512,
+      n_threads: 4,
+      use_mlock: true,
+      embedding: false,
+    });
+    this.modelPath = path;
+    console.log('[LLAMA ENGINE] Model loaded from:', path);
   }
 
-  public async generate(prompt: string, onProgress: (text: string) => void): Promise<string> {
-    if (!this.isLoaded || !LlamaContext || !LlamaEventEmitter) {
-      throw new Error('LlamaEngine not initialized.');
+  public async generate(
+    systemPrompt: string,
+    userMessage: string,
+    onToken: ProgressCallback,
+  ): Promise<string> {
+    if (!this.context) {
+      throw new Error('LlamaEngine: model not loaded.');
     }
 
-    return new Promise((resolve, reject) => {
-      let fullResponse = '';
+    // Gemma instruct format
+    const prompt =
+      `<start_of_turn>user\n` +
+      `${systemPrompt}\n\n` +
+      `User: ${userMessage}<end_of_turn>\n` +
+      `<start_of_turn>model\n`;
 
-      const subscription = LlamaEventEmitter.addListener('onToken', (event: { token: string }) => {
-        fullResponse += event.token;
-        onProgress(fullResponse);
-      });
+    let fullText = '';
 
-      LlamaContext.completion({
-        prompt: prompt,
-        n_predict: 256,
+    await this.context.completion(
+      {
+        prompt,
+        n_predict: 512,
         temperature: 0.3,
         top_k: 40,
         top_p: 0.9,
-      })
-        .then((result: { text: string }) => {
-          subscription.remove();
-          resolve(result.text);
-        })
-        .catch((e: Error) => {
-          subscription.remove();
-          reject(e);
-        });
-    });
+        stop: ['<end_of_turn>', '<start_of_turn>', 'User:'],
+      },
+      (data) => {
+        const token = data.token;
+        fullText += token;
+        onToken(fullText);
+      },
+    );
+
+    return fullText.trim();
   }
 
   public async release(): Promise<void> {
-    if (this.isLoaded && LlamaContext) {
-      await LlamaContext.releaseContext();
-      this.isLoaded = false;
+    if (this.context) {
+      await this.context.release();
+      this.context = null;
+      console.log('[LLAMA ENGINE] Context released.');
     }
   }
 }
 
-export const llamaEngine = new LlamaEngine();
+export const llamaEngine = new LlamaEngineService();
+
