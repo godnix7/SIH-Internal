@@ -101,9 +101,13 @@ async def list_incidents(
                         from geoalchemy2.shape import to_shape
                         loc_wkt = to_shape(inc.location).wkt
                     except Exception:
-                        loc_wkt = str(inc.location)
+                        from sqlalchemy.sql import func
+                        loc_wkt = await db.scalar(select(func.ST_AsText(Incident.location)).where(Incident.id == inc.id))
             except Exception:
-                loc_wkt = None
+                try:
+                    loc_wkt = str(inc.location)
+                except Exception:
+                    loc_wkt = None
 
         try:
             responses.append(IncidentResponse(
