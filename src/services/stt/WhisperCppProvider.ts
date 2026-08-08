@@ -1,6 +1,7 @@
 import { initWhisper, type WhisperContext } from 'whisper.rn';
 import type { OfflineSTTProvider, STTResult } from './OfflineSTTProvider';
 import { Platform } from 'react-native';
+import * as FileSystem from 'expo-file-system';
 
 export class WhisperCppProvider implements OfflineSTTProvider {
   private whisperContext: WhisperContext | null = null;
@@ -13,15 +14,28 @@ export class WhisperCppProvider implements OfflineSTTProvider {
     try {
       console.log('[WhisperCpp] Initializing STT model...');
 
-      // We assume the model is bundled in assets or downloaded.
-      // For this implementation, we try to load a default tiny model from assets
-      // (which requires the app to bundle it, usually requires expo-asset or direct path)
-      // Note: A real production app might use RNFS to download it to DocumentDirectoryPath first.
+      console.log('[WhisperCpp] Initializing STT model...');
 
-      // Basic initialization (in a real app, pass the absolute path to the .bin model file)
-      // If no file path is given, this will fail. We need a way to pass the model path.
-      // Assuming a model has been downloaded to a local path or bundled:
-      const modelPath = Platform.OS === 'ios' ? 'ggml-tiny.bin' : 'assets/ggml-tiny.bin';
+      // The model file path in the app's document directory
+      const modelName = 'ggml-tiny.en.bin';
+      const modelPath = `${FileSystem.documentDirectory}${modelName}`;
+
+      const fileInfo = await FileSystem.getInfoAsync(modelPath);
+
+      // Download the model if it doesn't exist locally
+      if (!fileInfo.exists) {
+        console.log('[WhisperCpp] Model not found locally. Downloading 75MB Whisper model...');
+        const remoteUrl =
+          'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.en.bin';
+        const downloadResult = await FileSystem.downloadAsync(remoteUrl, modelPath);
+
+        if (downloadResult.status !== 200) {
+          throw new Error('Failed to download Whisper model. Status: ' + downloadResult.status);
+        }
+        console.log('[WhisperCpp] Download complete:', downloadResult.uri);
+      } else {
+        console.log('[WhisperCpp] Model already exists locally:', modelPath);
+      }
 
       this.whisperContext = await initWhisper({
         filePath: modelPath,
