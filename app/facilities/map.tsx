@@ -164,6 +164,24 @@ export default function FacilitiesMapScreen() {
                       <Text style={[type.caption, { color: c.primary }]}>{f.phone}</Text>
                     </TouchableOpacity>
                   )}
+                  <TouchableOpacity
+                    onPress={() => {
+                      const url = Platform.select({
+                        ios: `maps://app?daddr=${f.lat},${f.lng}`,
+                        android: `google.navigation:q=${f.lat},${f.lng}`,
+                        default: `https://www.google.com/maps/dir/?api=1&destination=${f.lat},${f.lng}`,
+                      });
+                      if (url) {
+                        import('react-native').then((rn) => rn.Linking.openURL(url));
+                      }
+                    }}
+                    style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}
+                  >
+                    <Building2 size={14} color="#16a34a" style={{ marginRight: 4 }} />
+                    <Text style={[type.caption, { color: '#16a34a', fontWeight: 'bold' }]}>
+                      Navigate Here
+                    </Text>
+                  </TouchableOpacity>
                 </View>
               </MapLibreGL.Callout>
             </MapLibreGL.PointAnnotation>

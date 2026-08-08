@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { router } from 'expo-router';
 import { MapPin, ShieldCheck, Umbrella, Building2, Phone, Sparkles } from 'lucide-react-native';
-import { Text, View, ActivityIndicator } from 'react-native';
+import { Text, View, ActivityIndicator, Linking, Platform } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import * as Location from 'expo-location';
 import { Screen } from '@/src/components/Screen';
@@ -26,6 +26,8 @@ type Facility = {
   type: string;
   phone: string | null;
   address: string | null;
+  lat?: number;
+  lng?: number;
 };
 
 export default function HomeScreen() {
@@ -317,7 +319,16 @@ export default function HomeScreen() {
                 sub={f.address || t('home.policeAidPostSub')}
                 trailing={f.phone ? <Phone size={16} color={c.onSurfaceVariant} /> : undefined}
                 onPress={() => {
-                  if (f.phone) {
+                  if (f.lat && f.lng) {
+                    const url = Platform.select({
+                      ios: `maps://app?daddr=${f.lat},${f.lng}`,
+                      android: `google.navigation:q=${f.lat},${f.lng}`,
+                      default: `https://www.google.com/maps/dir/?api=1&destination=${f.lat},${f.lng}`,
+                    });
+                    if (url) {
+                      Linking.openURL(url);
+                    }
+                  } else if (f.phone) {
                     addAlert({
                       kind: 'system',
                       severity: 'info',
