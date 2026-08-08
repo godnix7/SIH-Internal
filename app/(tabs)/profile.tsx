@@ -13,6 +13,8 @@ import {
   User,
   HelpCircle,
   UserCircle2,
+  Cpu,
+  Map,
 } from 'lucide-react-native';
 import { Text, View, ActivityIndicator, Alert, Image } from 'react-native';
 import { Screen } from '@/src/components/Screen';
@@ -193,6 +195,18 @@ export default function ProfileScreen() {
           title="Security & Sessions"
           sub="Manage active logins"
           onPress={() => router.push('/settings/security')}
+        />
+        <ListRow
+          icon={<Map color={c.primary} />}
+          title="Offline Maps"
+          sub="Manage local map regions"
+          onPress={() => router.push('/settings/offline-maps')}
+        />
+        <ListRow
+          icon={<Cpu color={c.primary} />}
+          title="AI Models & Storage"
+          sub="Manage on-device Whisper & Gemma"
+          onPress={() => router.push('/settings/ai-models')}
         />
         <ListRow
           icon={<User color={c.primary} />}

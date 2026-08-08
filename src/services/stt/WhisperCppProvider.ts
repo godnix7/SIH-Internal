@@ -1,7 +1,7 @@
 import { initWhisper, type WhisperContext } from 'whisper.rn';
 import type { OfflineSTTProvider, STTResult } from './OfflineSTTProvider';
 import { Platform } from 'react-native';
-import * as FileSystem from 'expo-file-system';
+import { documentDirectory, getInfoAsync, downloadAsync } from 'expo-file-system';
 
 export class WhisperCppProvider implements OfflineSTTProvider {
   private whisperContext: WhisperContext | null = null;
@@ -17,17 +17,16 @@ export class WhisperCppProvider implements OfflineSTTProvider {
       console.log('[WhisperCpp] Initializing STT model...');
 
       // The model file path in the app's document directory
-      const modelName = 'ggml-tiny.en.bin';
-      const modelPath = `${FileSystem.documentDirectory}${modelName}`;
+      const modelName = 'ggml-tiny.bin';
+      const modelPath = `${documentDirectory}${modelName}`;
 
-      const fileInfo = await FileSystem.getInfoAsync(modelPath);
+      const fileInfo = await getInfoAsync(modelPath);
 
       // Download the model if it doesn't exist locally
       if (!fileInfo.exists) {
         console.log('[WhisperCpp] Model not found locally. Downloading 75MB Whisper model...');
-        const remoteUrl =
-          'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.en.bin';
-        const downloadResult = await FileSystem.downloadAsync(remoteUrl, modelPath);
+        const remoteUrl = 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin';
+        const downloadResult = await downloadAsync(remoteUrl, modelPath);
 
         if (downloadResult.status !== 200) {
           throw new Error('Failed to download Whisper model. Status: ' + downloadResult.status);
