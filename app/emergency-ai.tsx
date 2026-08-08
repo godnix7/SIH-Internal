@@ -442,23 +442,25 @@ export default function EmergencyAIScreen() {
 
     if (isListening) {
       setIsListening(false);
-      await stt.unload();
+      try {
+        await stt.stopListening();
+      } catch (e) {
+        console.log('Stopped listening manually', e);
+      }
     } else {
       try {
         setIsListening(true);
         Speech.stop();
         await OfflineModelManager.loadSTT();
 
-        await stt.start((result) => {
-          if (result.isFinal) {
-            setIsListening(false);
-            if (result.text.trim()) {
-              handleSend(result.text);
-            }
-          } else {
-            setInputText(result.text);
-          }
+        const result = await stt.startListening((partial) => {
+          setInputText(partial);
         });
+
+        setIsListening(false);
+        if (result && result.text.trim()) {
+          handleSend(result.text);
+        }
       } catch (e) {
         console.error(e);
         setIsListening(false);
