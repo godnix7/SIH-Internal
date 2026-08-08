@@ -27,13 +27,10 @@ export default function PinSetupScreen() {
       setHasSetPin(true);
 
       const state = useAppStore.getState();
-      if (state.isAuthenticated) {
-        // Returning user who was forced to setup PIN — go straight home
-        router.replace('/(tabs)/home' as any);
-      } else if (state.hasCompletedOnboarding) {
-        router.replace('/(tabs)/home' as any);
-      } else {
+      if (!state.hasCompletedOnboarding) {
         router.replace('/(onboarding)/offline-maps' as any);
+      } else {
+        router.replace('/(tabs)/home' as any);
       }
     } finally {
       setSaving(false);
@@ -84,7 +81,8 @@ export default function PinSetupScreen() {
       <View style={{ marginTop: space.xxl }}>
         <Button
           label="Save PIN"
-          disabled={pin.length !== 4 || confirmPin.length !== 4}
+          disabled={pin.length !== 4 || confirmPin.length !== 4 || saving}
+          loading={saving}
           onPress={handleSave}
         />
       </View>

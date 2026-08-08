@@ -44,11 +44,11 @@ class LlamaEngineService {
       throw new Error('LlamaEngine: model not loaded.');
     }
 
-    // Gemma instruct format
+    // Gemma instruct format (strict)
     const prompt =
       `<start_of_turn>user\n` +
       `${systemPrompt}\n\n` +
-      `User: ${userMessage}<end_of_turn>\n` +
+      `${userMessage}<end_of_turn>\n` +
       `<start_of_turn>model\n`;
 
     let fullText = '';
@@ -57,10 +57,10 @@ class LlamaEngineService {
       {
         prompt,
         n_predict: 512,
-        temperature: 0.3,
-        top_k: 40,
-        top_p: 0.9,
-        stop: ['<end_of_turn>', '<start_of_turn>', 'User:'],
+        temperature: 0.1,
+        top_k: 20,
+        top_p: 0.8,
+        stop: ['<end_of_turn>', '<start_of_turn>'],
       },
       (data) => {
         const token = data.token;

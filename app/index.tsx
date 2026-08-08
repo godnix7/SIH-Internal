@@ -11,9 +11,9 @@ export default function Index() {
       return <Redirect href={'/(onboarding)/pin' as any} />;
     }
     if (!complete) {
-      return <Redirect href={'/offline-maps' as any} />;
+      return <Redirect href={'/(onboarding)/offline-maps' as any} />;
     }
-    return <Redirect href="/home" />;
+    return <Redirect href={'/(tabs)/home' as any} />;
   }
 
   if (!complete) {

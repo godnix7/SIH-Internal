@@ -100,9 +100,9 @@ export default function OfflineMaps() {
         )}
       </View>
 
-      {downloadState === 'idle' && (
+      {downloadState !== 'completed' && (
         <Button
-          label="Skip for now (Not Recommended)"
+          label={downloadState === 'downloading' ? 'Continue in Background' : 'Skip for now (Not Recommended)'}
           variant="secondary"
           onPress={handleContinue}
         />
