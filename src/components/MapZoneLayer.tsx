@@ -42,9 +42,11 @@ export function MapZoneLayer({
     timestamp: 0,
   };
 
+  const safeZones = zones || [];
+
   const geoJsonSource = {
     type: 'FeatureCollection',
-    features: (zones || []).map((zone) => {
+    features: safeZones.map((zone) => {
       const ring =
         Array.isArray(zone?.polygon) && Array.isArray(zone.polygon[0])
           ? zone.polygon[0]
@@ -71,7 +73,7 @@ export function MapZoneLayer({
     }),
   };
 
-  const dangerZone = zones.find(
+  const dangerZone = safeZones.find(
     (z) =>
       (z.safetyScore ?? z.safety_score ?? 100) < 50 ||
       z.class === 'restricted' ||

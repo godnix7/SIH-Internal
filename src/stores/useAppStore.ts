@@ -470,7 +470,12 @@ export const useAppStore = create<AppStore>((set, get) => ({
     const savedTrips = preferences.getString(TRIPS_KEY);
     if (savedTrips) {
       try {
-        set({ trips: JSON.parse(savedTrips) });
+        const parsed = JSON.parse(savedTrips).map((t: any) => ({
+          ...t,
+          nextCheckInAt: t.nextCheckInAt ?? Date.now() + 4 * 60 * 60_000,
+          zones: t.zones ?? get().zones,
+        }));
+        set({ trips: parsed });
       } catch {
         // ignore
       }
@@ -480,16 +485,21 @@ export const useAppStore = create<AppStore>((set, get) => ({
       try {
         const backendTrips = await tripApi.getTrips();
         // backendTrips is an array of TripResponse. Map to frontend Trip model
-        const mappedTrips = backendTrips.map((bt: any) => ({
-          id: bt.id,
-          destination: bt.destination,
-          startDate: bt.start_date,
-          endDate: bt.end_date,
-          tier: bt.consent_tier,
-          status: bt.status,
-          partySize: bt.party_size,
-          // other frontend fields aren't strictly returned by simple GET /trips yet, but this suffices for the Trips page.
-        }));
+        const currentTrips = get().trips;
+        const mappedTrips = backendTrips.map((bt: any) => {
+          const existing = currentTrips.find((t) => t.id === bt.id);
+          return {
+            id: bt.id,
+            destination: bt.destination,
+            startDate: bt.start_date,
+            endDate: bt.end_date,
+            tier: bt.consent_tier,
+            status: bt.status,
+            partySize: bt.party_size,
+            nextCheckInAt: existing?.nextCheckInAt ?? (Date.now() + 4 * 60 * 60_000),
+            zones: existing?.zones ?? get().zones,
+          };
+        });
         persistTrips(mappedTrips);
         set({ trips: mappedTrips });
       } catch (e) {
