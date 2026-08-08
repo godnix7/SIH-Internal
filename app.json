@@ -15,6 +15,7 @@
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Yatri Shield uses your location during an active trip to monitor the safety level you choose.",
         "NSLocationWhenInUseUsageDescription": "Yatri Shield uses your location while you monitor an active trip.",
         "NSCameraUsageDescription": "Use your camera to scan an ID or attach incident evidence.",
+        "NSMicrophoneUsageDescription": "Use your microphone to speak with the emergency AI.",
         "NSBluetoothAlwaysUsageDescription": "Yatri Shield uses Bluetooth to broadcast offline SOS beacons to nearby tourists in areas without cellular reception."
       }
     },
@@ -34,6 +35,7 @@
         "POST_NOTIFICATIONS",
         "SCHEDULE_EXACT_ALARM",
         "CAMERA",
+        "RECORD_AUDIO",
         "VIBRATE",
         "BLUETOOTH",
         "BLUETOOTH_ADMIN",

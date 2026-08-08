@@ -1,49 +1,66 @@
 import { initWhisper, type WhisperContext } from 'whisper.rn';
 import type { OfflineSTTProvider, STTResult } from './OfflineSTTProvider';
-import { Platform } from 'react-native';
+import { Platform, PermissionsAndroid } from 'react-native';
 import { documentDirectory, getInfoAsync, downloadAsync } from 'expo-file-system/legacy';
+import AudioRecord from 'react-native-audio-record';
 
 export class WhisperCppProvider implements OfflineSTTProvider {
   private whisperContext: WhisperContext | null = null;
   private isListening = false;
   private stopTranscribing: (() => Promise<void>) | null = null;
+  private audioInitialized = false;
+
+  constructor() {}
+
+  private async requestMicrophonePermission(): Promise<boolean> {
+    if (Platform.OS === 'android') {
+      try {
+        const grants = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+        );
+        return grants === PermissionsAndroid.RESULTS.GRANTED;
+      } catch (err) {
+        console.warn(err);
+        return false;
+      }
+    }
+    return true; // iOS handles automatically via plist
+  }
 
   async initialize(): Promise<void> {
     if (this.whisperContext) return;
+    const modelUrl = 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin';
+    const modelPath = `${documentDirectory}ggml-tiny.bin`;
 
     try {
-      console.log('[WhisperCpp] Initializing STT model...');
-
-      console.log('[WhisperCpp] Initializing STT model...');
-
-      // The model file path in the app's document directory
-      const modelName = 'ggml-tiny.bin';
-      const modelPath = `${documentDirectory}${modelName}`;
-
       const fileInfo = await getInfoAsync(modelPath);
 
-      // Download the model if it doesn't exist locally
       if (!fileInfo.exists) {
-        console.log('[WhisperCpp] Model not found locally. Downloading 75MB Whisper model...');
-        const remoteUrl = 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin';
-        const downloadResult = await downloadAsync(remoteUrl, modelPath);
-
-        if (downloadResult.status !== 200) {
-          throw new Error('Failed to download Whisper model. Status: ' + downloadResult.status);
-        }
-        console.log('[WhisperCpp] Download complete:', downloadResult.uri);
+        console.log('[WhisperCpp] Downloading model from:', modelUrl);
+        await downloadAsync(modelUrl, modelPath);
+        console.log('[WhisperCpp] Download complete');
       } else {
         console.log('[WhisperCpp] Model already exists locally:', modelPath);
       }
 
-      this.whisperContext = await initWhisper({
-        filePath: modelPath,
-      });
+      this.whisperContext = await initWhisper({ filePath: modelPath });
+
+      // Initialize the audio recorder for Whisper (16kHz PCM WAV)
+      if (!this.audioInitialized) {
+        AudioRecord.init({
+          sampleRate: 16000,
+          channels: 1,
+          bitsPerSample: 16,
+          audioSource: 6, // 6 = VOICE_RECOGNITION
+          wavFile: 'whisper_voice.wav',
+        });
+        this.audioInitialized = true;
+      }
 
       console.log('[WhisperCpp] Initialized successfully.');
-    } catch (error) {
-      console.error('[WhisperCpp] Failed to initialize:', error);
-      throw error;
+    } catch (e) {
+      console.error('[WhisperCpp] Initialization failed:', e);
+      throw e;
     }
   }
 
@@ -52,27 +69,44 @@ export class WhisperCppProvider implements OfflineSTTProvider {
       return Promise.reject(new Error('Whisper model not initialized'));
     }
 
+    const hasPermission = await this.requestMicrophonePermission();
+    if (!hasPermission) {
+      return Promise.reject(new Error('Microphone permission denied'));
+    }
+
     this.isListening = true;
-    let timer: NodeJS.Timeout | null = null;
-    let seconds = 0;
+
+    // Start recording audio
+    AudioRecord.start();
+    if (onPartialResult) {
+      onPartialResult('Listening...');
+    }
 
     return new Promise((resolve, reject) => {
-      // Simulate real-time progress callbacks
-      timer = setInterval(() => {
-        seconds++;
-        if (onPartialResult) {
-          onPartialResult(seconds % 2 === 0 ? 'Listening...' : 'Listening.');
-        }
-      }, 500);
-
       this.stopTranscribing = async () => {
-        if (timer) clearInterval(timer);
-        this.isListening = false;
-        resolve({
-          text: 'I need an ambulance quickly.',
-          language: 'en',
-          confidence: 0.95,
-        });
+        try {
+          const audioFile = await AudioRecord.stop();
+          this.isListening = false;
+
+          if (onPartialResult) {
+            onPartialResult('Processing speech...');
+          }
+
+          // Transcribe the recorded WAV file
+          const { result } = await this.whisperContext!.transcribe({
+            language: 'en',
+            path: audioFile,
+          });
+
+          resolve({
+            text: result || 'Could not recognize speech.',
+            language: 'en',
+            confidence: 0.95,
+          });
+        } catch (e) {
+          this.isListening = false;
+          reject(e);
+        }
       };
     });
   }
