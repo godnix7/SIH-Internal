@@ -285,9 +285,9 @@ export function SOSButton({ onComplete }: { onComplete: () => void }) {
   );
 }
 
-export function CheckInCountdown({ target, onPress }: { target: number; onPress?: () => void }) {
+export function CheckInCountdown({ target, onPress, paused }: { target: number; onPress?: () => void; paused?: boolean }) {
   const c = useAppColors();
-  const [now, setNow] = useState<number | undefined>();
+  const [now, setNow] = useState<number>(Date.now());
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(interval);
@@ -300,7 +300,7 @@ export function CheckInCountdown({ target, onPress }: { target: number; onPress?
     >
       <Text style={[type.caption, { color: c.onSurfaceVariant }]}>Next check-in</Text>
       <Text style={[type.title, { color: c.onSurface }]}>
-        {formatCountdown(target, now ?? target)}
+        {paused ? 'Paused' : formatCountdown(target, now ?? target)}
       </Text>
     </Pressable>
   );

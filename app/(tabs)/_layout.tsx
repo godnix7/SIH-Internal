@@ -2,8 +2,10 @@ import { Tabs } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Bell, Home, Shield, UserRound, Compass } from 'lucide-react-native';
 import type { AccessibilityState, GestureResponderEvent } from 'react-native';
-import { Pressable, StyleSheet } from 'react-native';
+import { Pressable, StyleSheet, Alert } from 'react-native';
 import { useAppColors } from '@/src/components/ui';
+import { useAppStore } from '@/src/stores/useAppStore';
+import { router } from 'expo-router';
 
 type TabButtonProps = {
   onPress?: ((event: GestureResponderEvent) => void) | null;
@@ -21,6 +23,22 @@ function ShieldTabButton({
 }: TabButtonProps) {
   const c = useAppColors();
   const { t } = useTranslation();
+  const beginSos = useAppStore((state) => state.beginSos);
+
+  const handleLongPress = async (event: GestureResponderEvent) => {
+    if (onLongPress) onLongPress(event);
+    try {
+      await beginSos('police', false);
+      router.push('/sos/active');
+    } catch {
+      Alert.alert(
+        'SOS Failed',
+        'Could not initiate the emergency alert. Please try again or call 112 directly.',
+        [{ text: 'OK' }]
+      );
+    }
+  };
+
   return (
     <Pressable
       accessibilityRole="button"
@@ -28,7 +46,8 @@ function ShieldTabButton({
       accessibilityState={accessibilityState}
       testID={testID}
       onPress={onPress}
-      onLongPress={onLongPress}
+      onLongPress={handleLongPress}
+      delayLongPress={1500}
       style={[styles.shield, { backgroundColor: c.critical }]}
     >
       <Shield color="#FFFFFF" size={25} />

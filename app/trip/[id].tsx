@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { Text, View, Alert } from 'react-native';
+import { Text, View, Alert, Share } from 'react-native';
 
 import { MapZoneLayer } from '@/src/components/MapZoneLayer';
 import { Screen } from '@/src/components/Screen';
@@ -31,6 +31,7 @@ export default function TripDetail() {
   const [endingTrip, setEndingTrip] = useState(false);
   const [checkingIn, setCheckingIn] = useState(false);
   const [pausing, setPausing] = useState(false);
+  const [resuming, setResuming] = useState(false);
   const [changingTier, setChangingTier] = useState(false);
 
   const showToast = (msg: string) => {
@@ -86,6 +87,7 @@ export default function TripDetail() {
     } catch {
       // Pause is best-effort
     }
+    useAppStore.getState().pauseTrip(trip.id);
     addAlert({
       kind: 'system',
       severity: 'warning',
@@ -96,17 +98,25 @@ export default function TripDetail() {
     setPausing(false);
   };
 
-  // Handle share link
-  const handleShareLink = () => {
+  // Handle resume with feedback
+  const handleResume = async () => {
+    if (resuming || !trip) return;
+    setResuming(true);
+    try {
+      await api.post(`/trips/${trip.id}/resume`);
+    } catch {
+      // Resume is best-effort
+    }
+    useAppStore.getState().resumeTrip(trip.id);
     addAlert({
       kind: 'system',
       severity: 'info',
-      title: 'Live link prepared',
-      body: 'This opens your system share sheet with a revocable link.',
+      title: 'Monitoring resumed',
+      body: 'Your trip monitoring is active again.',
     });
-    showToast('Live link ready to share.');
+    showToast('Monitoring resumed.');
+    setResuming(false);
   };
-
   // Handle tier change with loading
   const handleTierChange = async (tier: any) => {
     if (!trip || changingTier) return;
@@ -196,7 +206,7 @@ export default function TripDetail() {
               We ask before escalating to a contact.
             </Text>
           </View>
-          <CheckInCountdown target={trip.nextCheckInAt} />
+          <CheckInCountdown target={trip.nextCheckInAt} paused={trip.status === 'paused'} />
         </View>
       </Card>
       <View style={{ flexDirection: 'row', gap: space.sm }}>
@@ -209,16 +219,25 @@ export default function TripDetail() {
           />
         </View>
         <View style={{ flex: 1 }}>
-          <Button
-            label={pausing ? 'Pausing…' : 'Pause 1 h'}
-            variant="secondary"
-            onPress={handlePause}
-            disabled={pausing}
-            loading={pausing}
-          />
+          {trip.status === 'paused' ? (
+            <Button
+              label={resuming ? 'Resuming…' : 'Resume'}
+              variant="primary"
+              onPress={handleResume}
+              disabled={resuming}
+              loading={resuming}
+            />
+          ) : (
+            <Button
+              label={pausing ? 'Pausing…' : 'Pause 1 h'}
+              variant="secondary"
+              onPress={handlePause}
+              disabled={pausing}
+              loading={pausing}
+            />
+          )}
         </View>
       </View>
-      <Button label="Share live link" variant="ghost" onPress={handleShareLink} />
       <Card>
         <Text style={[type.subtitle, { color: c.onSurface }]}>Change monitoring for this trip</Text>
         <TierSelector value={trip.tier} onChange={handleTierChange} />

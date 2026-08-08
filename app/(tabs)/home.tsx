@@ -202,7 +202,7 @@ export default function HomeScreen() {
                 }
               />
             </View>
-            <CheckInCountdown target={trip.nextCheckInAt} />
+            <CheckInCountdown target={trip.nextCheckInAt} paused={trip.status === 'paused'} />
           </View>
         </Card>
       ) : (

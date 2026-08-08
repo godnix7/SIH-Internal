@@ -16,7 +16,7 @@ from sqlalchemy import func
 
 router = APIRouter()
 
-ZONE_MANAGEMENT_ROLES = ['sys_admin', 'tourism_admin', 'police_admin', 'responder']
+ZONE_MANAGEMENT_ROLES = ['sys_admin', 'tourism_admin', 'supervisor', 'dispatcher', 'operator']
 
 def _zone_to_response(zone, geojson_str=None) -> ZoneResponse:
     """Convert a Zone model instance to ZoneResponse."""

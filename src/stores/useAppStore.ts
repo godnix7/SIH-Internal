@@ -77,6 +77,8 @@ type AppStore = {
   hasSetPin: boolean;
   setHasSetPin: (hasSet: boolean) => void;
   updateTripTier: (tripId: string, tier: ConsentTier) => Promise<void>;
+  pauseTrip: (tripId: string) => void;
+  resumeTrip: (tripId: string) => void;
   endTrip: (tripId: string) => void;
   addAlert: (alert: Omit<AlertItem, 'id' | 'createdAt'>) => void;
   beginSos: (type: SOSRecord['type'], silent: boolean, location?: Coordinates) => Promise<void>;
@@ -253,6 +255,24 @@ export const useAppStore = create<AppStore>((set, get) => ({
       // eslint-disable-next-line no-console
       console.error('Failed to update trip tier', error);
     }
+  },
+  pauseTrip: (tripId) => {
+    set((state) => {
+      const newTrips: Trip[] = state.trips.map((t): Trip =>
+        t.id === tripId ? { ...t, status: 'paused' as const } : t,
+      );
+      persistTrips(newTrips);
+      return { trips: newTrips };
+    });
+  },
+  resumeTrip: (tripId) => {
+    set((state) => {
+      const newTrips: Trip[] = state.trips.map((t): Trip =>
+        t.id === tripId ? { ...t, status: 'active' as const } : t,
+      );
+      persistTrips(newTrips);
+      return { trips: newTrips };
+    });
   },
   endTrip: async (tripId) => {
     try {
