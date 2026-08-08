@@ -27,20 +27,17 @@ from contextlib import asynccontextmanager
 
 def run_db_migrations():
     try:
+        import subprocess
         import os
-        from alembic.config import Config
-        from alembic import command
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        alembic_ini_path = os.path.join(base_dir, "alembic.ini")
-        if os.path.exists(alembic_ini_path):
-            alembic_cfg = Config(alembic_ini_path)
-            alembic_cfg.set_main_option("script_location", os.path.join(base_dir, "alembic"))
-            if settings.sync_database_url:
-                alembic_cfg.set_main_option("sqlalchemy.url", settings.sync_database_url)
-            command.upgrade(alembic_cfg, "head")
+        logger.info("Running database migrations via subprocess...")
+        result = subprocess.run(["alembic", "upgrade", "head"], cwd=base_dir, capture_output=True, text=True)
+        if result.returncode == 0:
             logger.info("Database migrations applied successfully on startup!")
+        else:
+            logger.warning(f"Database migration failed: {result.stderr}")
     except Exception as e:
-        logger.warning(f"Database auto-migration/seed warning: {e}")
+        logger.warning(f"Database auto-migration warning: {e}")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
