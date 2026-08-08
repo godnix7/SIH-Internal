@@ -7,7 +7,7 @@ import {
   makeDirectoryAsync,
   createDownloadResumable,
   deleteAsync,
-} from 'expo-file-system';
+} from 'expo-file-system/legacy';
 import { Cpu, Trash2, DownloadCloud, Database, Mic } from 'lucide-react-native';
 import { Screen } from '@/src/components/Screen';
 import { Button, useAppColors } from '@/src/components/ui';

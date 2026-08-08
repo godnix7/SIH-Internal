@@ -1,7 +1,7 @@
 import { initWhisper, type WhisperContext } from 'whisper.rn';
 import type { OfflineSTTProvider, STTResult } from './OfflineSTTProvider';
 import { Platform } from 'react-native';
-import { documentDirectory, getInfoAsync, downloadAsync } from 'expo-file-system';
+import { documentDirectory, getInfoAsync, downloadAsync } from 'expo-file-system/legacy';
 
 export class WhisperCppProvider implements OfflineSTTProvider {
   private whisperContext: WhisperContext | null = null;

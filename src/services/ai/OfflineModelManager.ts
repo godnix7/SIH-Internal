@@ -26,8 +26,8 @@ class OfflineModelManagerService {
   // Status tracking
   private loadedModels: Set<ModelType> = new Set();
 
-  // LLM path (could be fetched from a config or download manager)
-  private llmPath: string = '';
+  // LLM path (defaults to the document directory 'models' folder)
+  private llmPath: string = `${require('expo-file-system/legacy').documentDirectory}models/gemma-2b-q4_k_m.gguf`;
 
   constructor() {
     this.sttProvider = new WhisperCppProvider();

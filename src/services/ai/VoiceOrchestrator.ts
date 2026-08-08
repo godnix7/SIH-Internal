@@ -1,7 +1,7 @@
 import { OfflineModelManager } from './OfflineModelManager';
 import { llamaEngine } from '@/src/services/llamaEngine';
 import { useAppStore } from '@/src/stores/useAppStore';
-import { locationEngine } from '@/src/services/locationEngine';
+import * as Location from 'expo-location';
 import { HallucinationPreventionService } from './HallucinationPrevention';
 import { ToolRegistry } from './ToolRegistry';
 
@@ -71,8 +71,7 @@ class VoiceOrchestratorService {
       };
       const languageName = languageMap[lang] || 'English';
 
-      // Pass current location to LLM so it can use the hospital tool
-      const currentLoc = await locationEngine.getCurrentLocation();
+      const currentLoc = await Location.getCurrentPositionAsync({});
       const latString = currentLoc ? currentLoc.coords.latitude.toFixed(6) : '0.0';
       const lonString = currentLoc ? currentLoc.coords.longitude.toFixed(6) : '0.0';
 

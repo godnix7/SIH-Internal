@@ -36,7 +36,7 @@ export default function OfflineMapsScreen() {
         setProgress(100);
         setDownloading(false);
         setHasMap(true);
-        preferences.setString(OFFLINE_MAP_KEY, 'downloaded');
+        preferences.set(OFFLINE_MAP_KEY, 'downloaded');
         Alert.alert('Success', 'Offline Map Pack downloaded successfully.');
       } else {
         setProgress(currentProgress);
@@ -72,7 +72,7 @@ export default function OfflineMapsScreen() {
           ) : (
             <Map size={48} color={c.primary} />
           )}
-          <Text style={[type.title, { color: c.onBackground, textAlign: 'center' }]}>
+          <Text style={[type.title, { color: c.onSurface, textAlign: 'center' }]}>
             Offline Map Packs
           </Text>
           <Text style={[type.body, { color: c.onSurfaceVariant, textAlign: 'center' }]}>

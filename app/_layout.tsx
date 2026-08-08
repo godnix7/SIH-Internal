@@ -1,6 +1,3 @@
-import { Buffer } from 'buffer';
-global.Buffer = Buffer;
-
 import '@/src/i18n';
 import '@/src/services/monitoring';
 import { useEffect, useState } from 'react';
