@@ -40,7 +40,7 @@ import {
   OfflineModelInfo,
 } from '@/src/services/emergencyChatbot';
 import { space, type } from '@/src/theme/tokens';
-import { llamaEngine } from '@/src/services/llamaEngine';
+import { llamaEngine, type GenerationDiagnostics } from '@/src/services/llamaEngine';
 
 // Memoized message component for performance
 const MessageBubble = memo(
@@ -236,6 +236,179 @@ const MessageBubble = memo(
   },
 );
 
+/** Diagnostics panel for developer debugging — shows model info, runtime params, and allows test generation */
+const DiagnosticsPanel = memo(({ c }: { c: any }) => {
+  const [diagnosticResult, setDiagnosticResult] = useState<string | null>(null);
+  const [diagnosticRunning, setDiagnosticRunning] = useState(false);
+  const [lastDiag, setLastDiag] = useState<GenerationDiagnostics | null>(null);
+
+  const modelInfo = llamaEngine.getModelInfo();
+
+  const handleDiagnosticTest = async () => {
+    if (diagnosticRunning) return;
+    setDiagnosticRunning(true);
+    setDiagnosticResult(null);
+    try {
+      const result = await llamaEngine.diagnosticGenerate('What is 2 + 2?');
+      setDiagnosticResult(
+        `OUTPUT: "${result.output}"\n\n` +
+          `Tokens: in=${result.inputTokenCount} out=${result.outputTokenCount}\n` +
+          `Input IDs: [${result.tokenIds.slice(0, 10).join(', ')}${result.tokenIds.length > 10 ? '...' : ''}]\n` +
+          `Decoded: "${result.decodedTokens}"\n` +
+          `Speed: ${result.timings?.predicted_per_second?.toFixed(1) || 'N/A'} tok/s`,
+      );
+      setLastDiag(llamaEngine.getLastDiagnostics());
+    } catch (e: any) {
+      setDiagnosticResult(`ERROR: ${e?.message || 'Unknown error'}`);
+    } finally {
+      setDiagnosticRunning(false);
+    }
+  };
+
+  const DiagRow = ({
+    label,
+    value,
+  }: {
+    label: string;
+    value: string | number | boolean | undefined | null;
+  }) => (
+    <View
+      style={{
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        paddingVertical: 4,
+        borderBottomWidth: 0.5,
+        borderColor: 'rgba(150,150,150,0.15)',
+      }}
+    >
+      <Text style={[type.caption, { color: c.onSurfaceVariant, fontSize: 11 }]}>{label}</Text>
+      <Text
+        style={[
+          type.caption,
+          {
+            color: c.onSurface,
+            fontWeight: 'bold',
+            fontSize: 11,
+            maxWidth: '60%',
+            textAlign: 'right',
+          },
+        ]}
+        numberOfLines={2}
+      >
+        {String(value ?? 'N/A')}
+      </Text>
+    </View>
+  );
+
+  return (
+    <View
+      style={{
+        backgroundColor: c.surface,
+        padding: space.lg,
+        borderRadius: 16,
+        gap: space.sm,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 165, 0, 0.3)',
+      }}
+    >
+      <Text style={[type.subtitle, { color: '#f97316', fontWeight: 'bold' }]}>
+        🔧 Developer Diagnostics
+      </Text>
+
+      {/* Model Info */}
+      <Text style={[type.caption, { color: c.onSurfaceVariant, fontWeight: 'bold', marginTop: 4 }]}>
+        MODEL
+      </Text>
+      <DiagRow label="Description" value={modelInfo?.desc} />
+      <DiagRow
+        label="Parameters"
+        value={modelInfo?.nParams ? `${(modelInfo.nParams / 1e9).toFixed(1)}B` : 'N/A'}
+      />
+      <DiagRow
+        label="Size"
+        value={modelInfo?.size ? `${(modelInfo.size / 1e9).toFixed(2)} GB` : 'N/A'}
+      />
+      <DiagRow label="Chat Template (llamaChat)" value={modelInfo?.chatTemplates.llamaChat} />
+      <DiagRow label="Chat Template (Jinja)" value={modelInfo?.chatTemplates.jinjaDefault} />
+      <DiagRow label="Tool Use" value={modelInfo?.chatTemplates.jinjaToolUse} />
+
+      {/* Generation Config */}
+      <Text style={[type.caption, { color: c.onSurfaceVariant, fontWeight: 'bold', marginTop: 8 }]}>
+        GENERATION CONFIG
+      </Text>
+      <DiagRow label="Context Length" value="4096" />
+      <DiagRow label="Temperature" value="0.2" />
+      <DiagRow label="Top-K" value="30" />
+      <DiagRow label="Top-P" value="0.9" />
+      <DiagRow label="Min-P" value="0.05" />
+      <DiagRow label="Seed" value="42" />
+      <DiagRow label="Max Predict" value="512" />
+      <DiagRow label="Repeat Penalty" value="1.1" />
+      <DiagRow label="Streaming" value="true" />
+      <DiagRow label="KV Cache Clear" value="Before each gen" />
+
+      {/* Last Generation Stats */}
+      {lastDiag && (
+        <>
+          <Text
+            style={[type.caption, { color: c.onSurfaceVariant, fontWeight: 'bold', marginTop: 8 }]}
+          >
+            LAST GENERATION
+          </Text>
+          <DiagRow label="Input Tokens" value={lastDiag.inputTokenCount} />
+          <DiagRow label="Output Tokens" value={lastDiag.outputTokenCount} />
+          <DiagRow label="Stopped EOS" value={lastDiag.stoppedEos} />
+          <DiagRow label="Stopped Word" value={lastDiag.stoppedWord || 'none'} />
+          <DiagRow
+            label="Speed"
+            value={
+              lastDiag.timings?.predicted_per_second
+                ? `${lastDiag.timings.predicted_per_second.toFixed(1)} tok/s`
+                : 'N/A'
+            }
+          />
+          <DiagRow
+            label="Prompt Speed"
+            value={
+              lastDiag.timings?.prompt_per_second
+                ? `${lastDiag.timings.prompt_per_second.toFixed(0)} tok/s`
+                : 'N/A'
+            }
+          />
+        </>
+      )}
+
+      {/* Diagnostic Test */}
+      <View style={{ marginTop: space.md }}>
+        <Button
+          label={diagnosticRunning ? 'Running Test...' : 'Run Diagnostic: "What is 2 + 2?"'}
+          onPress={handleDiagnosticTest}
+          disabled={diagnosticRunning}
+          loading={diagnosticRunning}
+        />
+      </View>
+
+      {diagnosticResult && (
+        <View
+          style={{
+            backgroundColor: 'rgba(0,0,0,0.05)',
+            padding: 10,
+            borderRadius: 8,
+            marginTop: 4,
+          }}
+        >
+          <Text
+            style={[type.caption, { color: c.onSurface, fontFamily: 'monospace', fontSize: 10 }]}
+            selectable
+          >
+            {diagnosticResult}
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+});
+
 export default function EmergencyAIScreen() {
   const c = useAppColors();
   const { t } = useTranslation();
@@ -308,7 +481,11 @@ export default function EmergencyAIScreen() {
     } catch (e: any) {
       Alert.alert(
         t('ai.model.downloadError', 'Download Failed'),
-        e?.message || t('ai.model.downloadErrorDesc', 'Unable to download the AI model. Check your internet connection.'),
+        e?.message ||
+          t(
+            'ai.model.downloadErrorDesc',
+            'Unable to download the AI model. Check your internet connection.',
+          ),
       );
       setModelInfo(emergencyChatbot.getModelInfo()); // reset status to not_downloaded
     } finally {
@@ -660,6 +837,9 @@ export default function EmergencyAIScreen() {
               </>
             )}
           </View>
+
+          {/* Developer Diagnostics Panel */}
+          {modelInfo.status === 'ready' && llamaEngine.isReady() && <DiagnosticsPanel c={c} />}
         </ScrollView>
       )}
     </View>

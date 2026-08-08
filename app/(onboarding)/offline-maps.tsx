@@ -27,28 +27,45 @@ export default function OfflineMaps() {
       await FileSystem.makeDirectoryAsync(MAP_DIR, { intermediates: true });
       const MAP_PATH = MAP_DIR + 'himalayas_offline_pack.mbtiles';
 
-      // Download a ~10MB dummy file to represent the map tiles
+      // Use a reliable, appropriately-sized test file (~10MB)
+      // This simulates downloading map tile data for offline use
       const downloadResumable = FileSystem.createDownloadResumable(
-        'https://speed.hetzner.de/100MB.bin',
+        'https://ash-speed.hetzner.com/10MB.bin',
         MAP_PATH,
         {},
         (downloadProgress: any) => {
-          const pct = downloadProgress.totalBytesWritten / 10000000; // Cap visual progress at 10MB
+          const totalExpected = downloadProgress.totalBytesExpectedToWrite || 10000000;
+          const pct = downloadProgress.totalBytesWritten / totalExpected;
           setProgress(Math.min(pct, 1));
-          if (pct > 0.3) setStatusText('Caching Emergency POIs...');
-          if (pct > 0.7) setStatusText('Optimizing for offline use...');
-          if (pct >= 1) {
-            downloadResumable.pauseAsync(); // Stop the 100MB download at 10MB to save time
-            setDownloadState('completed');
-            setStatusText('Offline Maps Ready!');
-          }
+          if (pct > 0.3 && pct <= 0.7) setStatusText('Caching Emergency POIs...');
+          if (pct > 0.7 && pct < 1) setStatusText('Optimizing for offline use...');
         },
       );
 
-      await downloadResumable.downloadAsync();
-    } catch (e) {
+      const result = await downloadResumable.downloadAsync();
+
+      // Verify the file was downloaded successfully
+      if (result && result.uri) {
+        const info = await FileSystem.getInfoAsync(MAP_PATH);
+        if (info.exists) {
+          setDownloadState('completed');
+          setStatusText('Offline Maps Ready!');
+          setProgress(1);
+        } else {
+          throw new Error('Download completed but file not found on disk.');
+        }
+      } else {
+        throw new Error('Download did not return a valid result.');
+      }
+    } catch (e: any) {
+      console.error('[OFFLINE MAPS] Download failed:', e);
       setDownloadState('idle');
-      setStatusText('Download failed. Tap to retry.');
+      setProgress(0);
+      setStatusText(
+        e?.message?.includes('Network')
+          ? 'No internet connection. Please connect and try again.'
+          : 'Download failed. Tap to retry.',
+      );
     }
   };
 
@@ -83,7 +100,10 @@ export default function OfflineMaps() {
         {downloadState !== 'idle' && (
           <View style={[styles.progressBarContainer, { backgroundColor: c.surfaceVariant }]}>
             <View
-              style={[styles.progressBar, { backgroundColor: c.primary, width: `${progress * 100}%` as any }]}
+              style={[
+                styles.progressBar,
+                { backgroundColor: c.primary, width: `${progress * 100}%` as any },
+              ]}
             />
           </View>
         )}
@@ -104,7 +124,11 @@ export default function OfflineMaps() {
 
       {downloadState !== 'completed' && (
         <Button
-          label={downloadState === 'downloading' ? 'Continue in Background' : 'Skip for now (Not Recommended)'}
+          label={
+            downloadState === 'downloading'
+              ? 'Continue in Background'
+              : 'Skip for now (Not Recommended)'
+          }
           variant="secondary"
           onPress={handleContinue}
         />

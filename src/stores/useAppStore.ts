@@ -124,10 +124,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   showVerificationPrompt: (countdown, vector) => set({ verificationPrompt: { countdown, vector } }),
   clearVerificationPrompt: () => set({ verificationPrompt: undefined }),
   hydrateAuth: async () => {
-    const [token, pin] = await Promise.all([
-      storage.getAccessToken(),
-      storage.getDevicePin(),
-    ]);
+    const [token, pin] = await Promise.all([storage.getAccessToken(), storage.getDevicePin()]);
     // Always hydrate PIN regardless of auth state so PinGuard never flickers
     set({ isAuthenticated: !!token, hasSetPin: !!pin });
   },

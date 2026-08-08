@@ -1,4 +1,4 @@
-﻿/**
+/**
  * emergencyChatbot.ts
  * Real on-device LLM inference via llama.rn (Gemma 2B INT4).
  * Falls back to the edgeAiGuidance protocol library when model is not loaded.
@@ -73,13 +73,15 @@ export const QUICK_PROMPTS: QuickPrompt[] = [
   {
     id: 'qp_bleed',
     label: 'Heavy Bleeding',
-    query: 'Someone is bleeding heavily from a wound and it will not stop. What are the first aid steps?',
+    query:
+      'Someone is bleeding heavily from a wound and it will not stop. What are the first aid steps?',
     icon: 'bleeding',
   },
   {
     id: 'qp_altitude',
     label: 'Altitude Sickness',
-    query: 'I am high up in the mountains experiencing intense headache, dizziness, and difficulty breathing.',
+    query:
+      'I am high up in the mountains experiencing intense headache, dizziness, and difficulty breathing.',
     icon: 'altitude',
   },
   {
@@ -157,9 +159,7 @@ class EmergencyChatbotEngine {
     return { ...this.modelState };
   }
 
-  public async downloadOfflineModel(
-    onProgress?: (pct: number) => void,
-  ): Promise<OfflineModelInfo> {
+  public async downloadOfflineModel(onProgress?: (pct: number) => void): Promise<OfflineModelInfo> {
     if (this.modelState.status === 'ready' && llamaEngine.isReady()) {
       return this.getModelInfo();
     }
@@ -177,9 +177,7 @@ class EmergencyChatbotEngine {
         {},
         (downloadProgress) => {
           const pct = Math.round(
-            (downloadProgress.totalBytesWritten /
-              downloadProgress.totalBytesExpectedToWrite) *
-              100,
+            (downloadProgress.totalBytesWritten / downloadProgress.totalBytesExpectedToWrite) * 100,
           );
           this.modelState.progress = pct;
           if (onProgress) onProgress(pct);
@@ -266,6 +264,14 @@ class EmergencyChatbotEngine {
 
   public resetConversation(): ChatMessage[] {
     const isLoaded = llamaEngine.isReady();
+
+    // Clear KV cache when resetting conversation to prevent context contamination
+    if (isLoaded) {
+      llamaEngine
+        .clearCache()
+        .catch((e) => console.warn('[CHATBOT] Failed to clear KV cache on reset:', e));
+    }
+
     this.memory = [
       {
         id: Crypto.randomUUID(),
@@ -298,8 +304,7 @@ class EmergencyChatbotEngine {
           minute: '2-digit',
           second: '2-digit',
         });
-        const sender =
-          m.role === 'user' ? 'YOU' : m.role === 'assistant' ? 'YATRI AI' : 'SYSTEM';
+        const sender = m.role === 'user' ? 'YOU' : m.role === 'assistant' ? 'YATRI AI' : 'SYSTEM';
         return `[${dateStr}] ${sender}:\n${m.content}\n`;
       })
       .join('\n----------------------------------------\n');
@@ -329,14 +334,100 @@ class EmergencyChatbotEngine {
       timestamp: Date.now(),
       severity: responseData.severity,
       action: responseData.action,
-      modelMeta: llamaEngine.isReady()
-        ? 'Gemma 2B INT4 (On-Device)'
-        : 'Protocol Engine (Offline)',
+      modelMeta: llamaEngine.isReady() ? 'Gemma 2B INT4 (On-Device)' : 'Protocol Engine (Offline)',
     };
 
     this.memory.push(assistantMessage);
     this.persistHistory();
     return assistantMessage;
+  }
+
+  /**
+   * Detect if a query is an emergency that has a verified protocol.
+   * Returns the matching protocol if found, null otherwise.
+   */
+  private classifyEmergencyIntent(
+    query: string,
+  ): ReturnType<typeof edgeAiGuidance.searchProtocols>[0] | null {
+    const matches = edgeAiGuidance.searchProtocols(query);
+    // Only classify as emergency if we have a strong match (score >= 10 is the threshold)
+    if (matches.length > 0) {
+      return matches[0];
+    }
+    return null;
+  }
+
+  /**
+   * Validate LLM output for coherence.
+   * Returns true if the output appears valid, false if it's garbage/corrupted.
+   */
+  private isLlmOutputValid(text: string): boolean {
+    if (!text || text.trim().length === 0) {
+      console.warn('[CHATBOT] LLM output validation: empty output');
+      return false;
+    }
+
+    const trimmed = text.trim();
+
+    // Check for extremely short output (likely broken)
+    if (trimmed.length < 2) {
+      console.warn('[CHATBOT] LLM output validation: too short');
+      return false;
+    }
+
+    // Check for excessive non-ASCII characters (sign of tokenizer corruption)
+    const nonAsciiRatio = trimmed.replace(/[\x20-\x7E\n\r\t]/g, '').length / trimmed.length;
+    if (nonAsciiRatio > 0.4 && trimmed.length > 20) {
+      console.warn(
+        '[CHATBOT] LLM output validation: high non-ASCII ratio:',
+        nonAsciiRatio.toFixed(2),
+      );
+      return false;
+    }
+
+    // Check for excessive repetition (e.g., same 10-char fragment repeated 5+ times)
+    if (trimmed.length > 50) {
+      const fragment = trimmed.substring(0, 10);
+      const count = trimmed.split(fragment).length - 1;
+      if (count > 5) {
+        console.warn('[CHATBOT] LLM output validation: excessive repetition detected');
+        return false;
+      }
+    }
+
+    // Check for known corruption patterns
+    const corruptionPatterns = [
+      /[\u0590-\u05FF]{5,}/, // Long Hebrew character sequences
+      /VersionUID/i, // Java serialization artifacts
+      /\x00{3,}/, // Null byte sequences
+    ];
+    for (const pattern of corruptionPatterns) {
+      if (pattern.test(trimmed)) {
+        console.warn('[CHATBOT] LLM output validation: corruption pattern detected');
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Format a protocol match into a readable response string.
+   */
+  private formatProtocolResponse(
+    protocol: ReturnType<typeof edgeAiGuidance.searchProtocols>[0],
+    hasActiveSos: boolean,
+  ): string {
+    return (
+      (hasActiveSos ? '**Active SOS Detected.** Emergency services are being contacted.\n\n' : '') +
+      `**${protocol.title}**\n\n` +
+      `**Immediate Steps:**\n` +
+      protocol.immediateSteps.map((step, i) => `${i + 1}. ${step}`).join('\n') +
+      `\n\n**Do:**\n` +
+      protocol.dos.map((d) => `\u2705 ${d}`).join('\n') +
+      `\n\n**Do NOT:**\n` +
+      protocol.donts.map((d) => `\u274C ${d}`).join('\n')
+    );
   }
 
   private async generateResponse(
@@ -365,7 +456,61 @@ class EmergencyChatbotEngine {
       // Ignore
     }
 
-    // PATH 1: Real on-device LLM inference via llama.rn
+    // ── STEP 1: Emergency Intent Classification ──
+    // For high-risk emergencies, ALWAYS serve the verified deterministic protocol
+    // first, regardless of whether the LLM is available. The LLM can augment but
+    // never replace critical safety instructions.
+    const emergencyMatch = this.classifyEmergencyIntent(query);
+    const isHighRiskEmergency =
+      emergencyMatch &&
+      (emergencyMatch.severity === 'CRITICAL' || emergencyMatch.severity === 'HIGH');
+
+    if (isHighRiskEmergency && emergencyMatch) {
+      console.log(
+        '[CHATBOT] High-risk emergency detected:',
+        emergencyMatch.title,
+        '— serving verified protocol',
+      );
+
+      // Serve the deterministic protocol immediately
+      const protocolText = this.formatProtocolResponse(emergencyMatch, hasActiveSos);
+      const severity = (hasActiveSos ? 'CRITICAL' : emergencyMatch.severity) as
+        'CRITICAL' | 'HIGH' | 'MODERATE' | 'INFO';
+
+      // If LLM is available, augment with LLM explanation
+      let augmentedText = protocolText;
+      if (llamaEngine.isReady()) {
+        try {
+          const augmentPrompt =
+            SYSTEM_PROMPT +
+            sosContext +
+            `\n\nIMPORTANT: A verified emergency protocol has already been provided to the user. ` +
+            `Your role is to provide a brief (2-3 sentence) additional explanation or reassurance ` +
+            `specific to their situation. Do NOT repeat the protocol steps.`;
+
+          let llmText = '';
+          const llmResponse = await llamaEngine.generate(augmentPrompt, query, (partial) => {
+            llmText = partial;
+            if (onProgress) onProgress(protocolText + '\n\n---\n\n' + partial);
+          });
+
+          if (this.isLlmOutputValid(llmResponse)) {
+            augmentedText = protocolText + '\n\n---\n\n**Additional Guidance:**\n' + llmResponse;
+          }
+        } catch (e) {
+          console.error('[CHATBOT] LLM augmentation failed (protocol still served):', e);
+        }
+      }
+
+      if (onProgress) onProgress(augmentedText);
+      return {
+        text: augmentedText,
+        severity,
+        action: hasActiveSos ? undefined : { label: 'Trigger SOS Now', type: 'navigate_sos' },
+      };
+    }
+
+    // ── STEP 2: LLM inference for non-critical or unmatched queries ──
     if (llamaEngine.isReady()) {
       try {
         const fullSystemPrompt = SYSTEM_PROMPT + sosContext;
@@ -373,56 +518,49 @@ class EmergencyChatbotEngine {
           if (onProgress) onProgress(partial);
         });
 
-        const lower = text.toLowerCase();
-        let severity: 'CRITICAL' | 'HIGH' | 'MODERATE' | 'INFO' = 'MODERATE';
-        if (
-          lower.includes('call 112') ||
-          lower.includes('unconscious') ||
-          lower.includes('cpr') ||
-          lower.includes('tourniquet') ||
-          lower.includes('arterial')
-        ) {
-          severity = 'CRITICAL';
-        } else if (
-          lower.includes('descend') ||
-          lower.includes('evacuate') ||
-          lower.includes('fracture') ||
-          lower.includes('snakebite') ||
-          lower.includes('hypothermia')
-        ) {
-          severity = 'HIGH';
-        }
+        // Validate LLM output — if corrupted, fall through to protocol/fallback
+        if (!this.isLlmOutputValid(text)) {
+          console.error('[CHATBOT] LLM output failed validation — falling back to protocols');
+          // Fall through to protocol-based response below
+        } else {
+          const lower = text.toLowerCase();
+          let severity: 'CRITICAL' | 'HIGH' | 'MODERATE' | 'INFO' = 'MODERATE';
+          if (
+            lower.includes('call 112') ||
+            lower.includes('unconscious') ||
+            lower.includes('cpr') ||
+            lower.includes('tourniquet') ||
+            lower.includes('arterial')
+          ) {
+            severity = 'CRITICAL';
+          } else if (
+            lower.includes('descend') ||
+            lower.includes('evacuate') ||
+            lower.includes('fracture') ||
+            lower.includes('snakebite') ||
+            lower.includes('hypothermia')
+          ) {
+            severity = 'HIGH';
+          }
 
-        return {
-          text,
-          severity,
-          action: hasActiveSos ? undefined : { label: 'Trigger SOS', type: 'navigate_sos' },
-        };
+          return {
+            text,
+            severity,
+            action: hasActiveSos ? undefined : { label: 'Trigger SOS', type: 'navigate_sos' },
+          };
+        }
       } catch (e) {
         console.error('[CHATBOT] LLM inference failed, falling back to protocols:', e);
       }
     }
 
-    // PATH 2: Protocol-based fallback (model not loaded or inference error)
-    const matches = edgeAiGuidance.searchProtocols(query);
-
-    if (matches.length > 0) {
-      const primary = matches[0];
-      const severity = (hasActiveSos ? 'HIGH' : primary.severity) as
-        | 'CRITICAL'
-        | 'HIGH'
-        | 'MODERATE'
-        | 'INFO';
+    // ── STEP 3: Protocol-based fallback ──
+    if (emergencyMatch) {
+      const severity = (hasActiveSos ? 'HIGH' : emergencyMatch.severity) as
+        'CRITICAL' | 'HIGH' | 'MODERATE' | 'INFO';
 
       const text =
-        (hasActiveSos ? '**Active SOS Detected.** Emergency services are being contacted.\n\n' : '') +
-        `**${primary.title}**\n\n` +
-        `**Immediate Steps:**\n` +
-        primary.immediateSteps.map((step, i) => `${i + 1}. ${step}`).join('\n') +
-        `\n\n**Do:**\n` +
-        primary.dos.map((d) => `� ${d}`).join('\n') +
-        `\n\n**Do NOT:**\n` +
-        primary.donts.map((d) => `� ${d}`).join('\n') +
+        this.formatProtocolResponse(emergencyMatch, hasActiveSos) +
         `\n\n*Download the AI model for fully conversational, adaptive guidance.*`;
 
       if (onProgress) onProgress(text);
@@ -433,7 +571,7 @@ class EmergencyChatbotEngine {
       };
     }
 
-    // PATH 3: Generic safe fallback
+    // ── STEP 4: Generic safe fallback ──
     const text =
       (hasActiveSos ? '**Active SOS Detected.**\n\n' : '') +
       `I don't have a specific protocol for that, but here are immediate steps:\n\n` +
