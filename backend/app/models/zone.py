@@ -21,7 +21,7 @@ class Zone(Base):
     approved_by = Column(UUID(as_uuid=True))
     approved_at = Column(DateTime(timezone=True))
     expires_at = Column(DateTime(timezone=True))
-    created_by = Column(UUID(as_uuid=True), ForeignKey("auth.users.id"), nullable=False)
+    created_by = Column(UUID(as_uuid=True), ForeignKey("auth.internal_users.id"), nullable=False)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
