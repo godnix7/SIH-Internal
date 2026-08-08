@@ -287,7 +287,16 @@ export default function HomeScreen() {
         />
       </Card>
       <View style={{ gap: space.xs }}>
-        <Text style={[type.title, { color: c.onSurface }]}>{t('home.nearby')}</Text>
+        <View
+          style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
+        >
+          <Text style={[type.title, { color: c.onSurface }]}>{t('home.nearby')}</Text>
+          <Button
+            label="View on Map"
+            variant="outline"
+            onPress={() => router.push('/facilities/map')}
+          />
+        </View>
         <Card>
           {loadingFacilities ? (
             <View style={{ padding: space.md, alignItems: 'center' }}>
