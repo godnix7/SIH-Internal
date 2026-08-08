@@ -32,6 +32,7 @@ import Markdown from 'react-native-markdown-display';
 import * as Speech from 'expo-speech';
 import * as Clipboard from 'expo-clipboard';
 import { Screen } from '@/src/components/Screen';
+import { OfflineModelManager } from '@/src/services/ai/OfflineModelManager';
 import { Button, useAppColors } from '@/src/components/ui';
 import {
   emergencyChatbot,
