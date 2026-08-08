@@ -19,6 +19,7 @@ from app.api.v1.analytics import router as analytics_router
 from app.api.v1.system import router as system_router
 from app.api.v1.voice import router as voice_router
 from app.api.v1.faqs import router as faqs_router
+from app.api.v1.healthcare import router as healthcare_router
 from app.api.v1 import blockchain
 from app.core.redis import init_redis, close_redis
 from app.services.sweeper import start_scheduler
@@ -52,6 +53,30 @@ async def lifespan(app: FastAPI):
     await close_redis()
 
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+import uuid
+import time
+import logging
+
+class StructuredLoggingMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        correlation_id = request.headers.get("X-Correlation-ID", str(uuid.uuid4()))
+        request.state.correlation_id = correlation_id
+        start_time = time.time()
+        
+        response = await call_next(request)
+        
+        process_time = time.time() - start_time
+        response.headers["X-Correlation-ID"] = correlation_id
+        
+        # Only log non-200 or slow requests structurally for production clarity
+        if response.status_code >= 400 or process_time > 1.0:
+            logger.info(
+                f"[CorrID:{correlation_id}] {request.method} {request.url.path} "
+                f"- Status: {response.status_code} - Time: {process_time:.3f}s"
+            )
+            
+        return response
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -59,6 +84,8 @@ app = FastAPI(
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     lifespan=lifespan
 )
+
+app.add_middleware(StructuredLoggingMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
@@ -88,6 +115,7 @@ app.include_router(risk_router, prefix=f"{settings.API_V1_STR}/risk", tags=["ris
 app.include_router(analytics_router, prefix=f"{settings.API_V1_STR}/analytics", tags=["analytics"])
 app.include_router(voice_router, prefix=f"{settings.API_V1_STR}/voice", tags=["voice"])
 app.include_router(faqs_router, prefix=f"{settings.API_V1_STR}/faqs", tags=["faqs"])
+app.include_router(healthcare_router, prefix=f"{settings.API_V1_STR}/healthcare", tags=["healthcare"])
 
 # --- Global Exception Handlers ---
 

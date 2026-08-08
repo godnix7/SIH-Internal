@@ -343,7 +343,7 @@ async def resolve_incident(
     return {"status": "resolved"}
 
 class IncidentAssignRequest(BaseModel):
-    unitId: uuid.UUID
+    unitId: str
 
 @router.post("/{incident_id}/assign")
 async def assign_incident(

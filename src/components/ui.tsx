@@ -285,7 +285,15 @@ export function SOSButton({ onComplete }: { onComplete: () => void }) {
   );
 }
 
-export function CheckInCountdown({ target, onPress, paused }: { target: number; onPress?: () => void; paused?: boolean }) {
+export function CheckInCountdown({
+  target,
+  onPress,
+  paused,
+}: {
+  target: number;
+  onPress?: () => void;
+  paused?: boolean;
+}) {
   const c = useAppColors();
   const [now, setNow] = useState<number>(Date.now());
   useEffect(() => {

@@ -14,6 +14,11 @@ from app.schemas.auth import (
     InternalLoginRequest, InternalLoginResponse,
     RefreshRequest, RefreshResponse,
 )
+
+class PushTokenRequest(BaseModel):
+    device_id: str
+    push_token: str
+
 from app.models.auth import User, Device, Session, InternalUser, InternalSession
 from app.core.security import encrypt_pii, create_access_token, get_password_hash, verify_password
 
@@ -197,6 +202,27 @@ async def login_internal(request: InternalLoginRequest, db: AsyncSession = Depen
         isNewUser=False,
         expiresIn=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
+
+
+@router.post("/push-token")
+async def update_push_token(request: PushTokenRequest, db: AsyncSession = Depends(get_db)):
+    """Update the push token for a specific device."""
+    try:
+        device_uuid = uuid.UUID(request.device_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid device_id format")
+        
+    result = await db.execute(select(Device).where(Device.id == device_uuid))
+    device = result.scalars().first()
+    
+    if not device:
+        raise HTTPException(status_code=404, detail="Device not found")
+        
+    device.push_token = request.push_token
+    device.last_seen_at = datetime.utcnow()
+    await db.commit()
+    
+    return {"status": "ok"}
 
 
 @router.post("/refresh", response_model=RefreshResponse)

@@ -17,7 +17,7 @@ class Incident(Base):
     severity = Column(String, nullable=False)
     status = Column(String, nullable=False, default='created', index=True)
     jurisdiction = Column(UUID(as_uuid=True), index=True)
-    assigned_to = Column(UUID(as_uuid=True), index=True)
+    assigned_to = Column(String(100), index=True)
     location = Column(Geometry(geometry_type='POINT', srid=4326))
     disposition_code = Column(String)
     summary = Column(String)
@@ -29,13 +29,12 @@ class Incident(Base):
     resolved_at = Column(DateTime(timezone=True))
     closed_at = Column(DateTime(timezone=True))
 
-
 class IncidentEvent(Base):
     __tablename__ = "incident_events"
     __table_args__ = {"schema": "incident"}
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    incident_id = Column(UUID(as_uuid=True), ForeignKey('incident.incidents.id'), nullable=False, index=True)
+    incident_id = Column(UUID(as_uuid=True), ForeignKey('incident.incidents.id'), index=True)
     event_type = Column(String, nullable=False)
     actor_id = Column(UUID(as_uuid=True))
     details = Column(JSON)

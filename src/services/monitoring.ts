@@ -17,10 +17,10 @@ TaskManager.defineTask(TASK_NAME, async ({ data, error }) => {
   const locations = (data as { locations?: Location.LocationObject[] }).locations ?? [];
   const trip = activeMonitoringTrip;
   if (!trip) return;
-  
+
   // Use live zones from the store so that if a zone is deleted in the dashboard, the alert stops.
   const liveZones = useAppStore.getState().zones;
-  
+
   for (const location of locations) {
     const evaluations = await locationEngine.ingestFix(
       {

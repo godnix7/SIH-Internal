@@ -6,6 +6,7 @@ import { preferences } from '@/src/services/preferences';
 export type Language = 'en' | 'hi';
 
 export const LANGUAGE_KEY = 'language';
+export const CONVERSATION_LANGUAGE_KEY = 'conversationLanguage';
 
 const en = {
   common: {
@@ -475,6 +476,10 @@ const hi: typeof en = {
 
 export function savedLanguage(): Language {
   return preferences.getString(LANGUAGE_KEY) === 'hi' ? 'hi' : 'en';
+}
+
+export function savedConversationLanguage(): Language {
+  return preferences.getString(CONVERSATION_LANGUAGE_KEY) === 'hi' ? 'hi' : 'en';
 }
 
 void i18n.use(initReactI18next).init({

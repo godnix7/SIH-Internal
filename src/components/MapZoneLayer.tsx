@@ -68,6 +68,8 @@ export function MapZoneLayer({
           class: zone.class || 'advisory',
           name: zone.name || 'Geofenced Area',
           safetyScore: zone.safetyScore ?? zone.safety_score ?? 100,
+          expiresAt: zone.expiresAt,
+          geometrySource: zone.geometrySource,
         },
       };
     }),
@@ -103,12 +105,23 @@ export function MapZoneLayer({
         >
           <View style={{ flex: 1, paddingRight: 8 }}>
             <Text style={{ color: '#fca5a5', fontWeight: '800', fontSize: 12, letterSpacing: 0.5 }}>
-              ⚠️ OFFLINE MAP GEOFENCE HIGHLIGHT
+              ⚠️{' '}
+              {dangerZone.geometrySource === 'derived_approximation'
+                ? 'APPROXIMATE AFFECTED AREA'
+                : 'OFFICIAL GEOFENCE'}
             </Text>
             <Text style={{ color: '#ffffff', fontSize: 13, fontWeight: '700', marginTop: 2 }}>
-              {dangerZone.name} · Safety Score:{' '}
-              {dangerZone.safetyScore ?? dangerZone.safety_score ?? 100}/100
+              {dangerZone.name}
             </Text>
+            {dangerZone.expiresAt && new Date(dangerZone.expiresAt).getTime() < Date.now() ? (
+              <Text style={{ color: '#fbbf24', fontSize: 11, fontWeight: '700', marginTop: 2 }}>
+                STALE DATA - MAY BE OUTDATED
+              </Text>
+            ) : (
+              <Text style={{ color: '#a7f3d0', fontSize: 11, fontWeight: '700', marginTop: 2 }}>
+                CACHED / LIVE
+              </Text>
+            )}
           </View>
           <View
             style={{

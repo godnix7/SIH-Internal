@@ -173,12 +173,13 @@ export default function TripDetail() {
       <MonitoringStatusPill
         state={trip.status === 'paused' ? 'paused' : trip.monitoringLimited ? 'limited' : 'live'}
       />
-      
+
       {trip.status === 'active' && engineState.mode === 'HIGH_RISK' && (
         <Card style={{ backgroundColor: c.errorContainer, borderColor: c.error, borderWidth: 1 }}>
           <Text style={[type.subtitle, { color: c.critical }]}>⚠️ DANGER ZONE</Text>
           <Text style={[type.body, { color: c.onSurface, marginTop: 4 }]}>
-            You have entered a high-risk geofence. Police have been notified of your location. Please proceed with extreme caution or evacuate.
+            You have entered a high-risk geofence. Police have been notified of your location.
+            Please proceed with extreme caution or evacuate.
           </Text>
         </Card>
       )}

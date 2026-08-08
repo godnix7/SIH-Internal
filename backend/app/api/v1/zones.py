@@ -34,6 +34,10 @@ def _zone_to_response(zone, geojson_str=None) -> ZoneResponse:
         crime_data=zone.crime_data or [],
         risk_factors=zone.risk_factors or [],
         total_incidents=zone.total_incidents or 0,
+        expires_at=getattr(zone, 'expires_at', None),
+        geometry_source=getattr(zone, 'geometry_source', 'official'),
+        confidence=getattr(zone, 'overall_confidence', 1.0), # Phase 16F
+        sources=getattr(zone, 'sources', [])
     )
 
 

@@ -16,11 +16,16 @@ class Zone(Base):
     buffer_m = Column(Integer, nullable=False, default=100)
     schedule = Column(JSONB)
     description = Column(Text, nullable=False)
+    geometry_source = Column(String, nullable=False, default='official') # 'official' or 'derived_approximation'
+    source_confidence = Column(Float, nullable=False, default=1.0)
+    corroboration_score = Column(Float, nullable=False, default=0.0)
+    overall_confidence = Column(Float, nullable=False, default=1.0)
+    sources = Column(JSONB, default=list) # Array of source strings
     status = Column(String, nullable=False, default='draft', index=True)
     version = Column(Integer, nullable=False, default=1)
     approved_by = Column(UUID(as_uuid=True))
     approved_at = Column(DateTime(timezone=True))
-    expires_at = Column(DateTime(timezone=True))
+    expires_at = Column(DateTime(timezone=True), index=True)
     created_by = Column(UUID(as_uuid=True), ForeignKey("auth.internal_users.id"), nullable=False)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)

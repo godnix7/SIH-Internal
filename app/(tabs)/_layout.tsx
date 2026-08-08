@@ -34,7 +34,7 @@ function ShieldTabButton({
       Alert.alert(
         'SOS Failed',
         'Could not initiate the emergency alert. Please try again or call 112 directly.',
-        [{ text: 'OK' }]
+        [{ text: 'OK' }],
       );
     }
   };

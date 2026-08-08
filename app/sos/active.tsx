@@ -18,7 +18,7 @@ import { space, type } from '@/src/theme/tokens';
 export default function SosActiveScreen() {
   const c = useAppColors();
   const { t } = useTranslation();
-  const { sos, trips, incidentEvents } = useAppStore();
+  const { sos, trips, incidentEvents, zones } = useAppStore();
   const [pin, setPin] = useState('');
   const [cancelOpen, setCancelOpen] = useState(false);
   const setSosStatus = useAppStore((state) => state.setSosStatus);
@@ -62,10 +62,13 @@ export default function SosActiveScreen() {
             ? 'This emergency has been resolved and confirmed by the responding officer via OTP verification.'
             : 'You have successfully cancelled the SOS alert using your Safe PIN. Emergency tracking has stopped.';
       Alert.alert(title, label, [{ text: 'OK', onPress: () => router.replace('/home') }]);
-      // Only call resolveSos for server-driven terminal states (not user cancellations,
-      // which are already fully cleaned up by cancelSos in the store)
+      // Only call resolveSos/clearSos for server-driven terminal states
       if (sos.status !== 'CANCELLED_BY_USER' && sos.status !== 'CANCELLED') {
-        void resolveSos();
+        if (sos.status === 'FALSE_ALARM') {
+          void useAppStore.getState().clearSos();
+        } else {
+          void resolveSos();
+        }
       }
       return;
     }
@@ -365,7 +368,63 @@ export default function SosActiveScreen() {
           </Card>
         </View>
       )}
-      <MapZoneLayer zones={trip?.zones ?? []} location={sos.location} showTrail />
+      <MapZoneLayer
+        zones={zones && zones.length > 0 ? zones : (trip?.zones ?? [])}
+        location={sos.location}
+        showTrail
+      />
+
+      {sos.nearestFacility && (
+        <Card>
+          <Text style={[type.subtitle, { color: c.onSurface }]}>Nearest Safe Facility</Text>
+
+          {sos.nearestFacility.expiresAt && Date.now() > sos.nearestFacility.expiresAt && (
+            <Text style={[type.caption, { color: c.warning, marginBottom: 4, fontWeight: 'bold' }]}>
+              STALE: Previously known hospital. Information may be outdated.
+            </Text>
+          )}
+
+          {sos.healthcareRoute?.routeType === 'offline_straight_line' ? (
+            <Text style={[type.body, { color: c.onSurfaceVariant }]}>
+              {sos.nearestFacility.name} - Approximate straight-line distance:{' '}
+              {Math.round((sos.nearestFacility.distanceMeter || 0) / 1000)}km
+            </Text>
+          ) : (
+            <Text style={[type.body, { color: c.onSurfaceVariant }]}>
+              {sos.nearestFacility.name} -{' '}
+              {Math.round((sos.nearestFacility.distanceMeter || 0) / 1000)}km
+            </Text>
+          )}
+
+          {sos.healthcareRoute?.safe === false && (
+            <Text style={[type.caption, { color: c.critical, marginTop: 4, fontWeight: 'bold' }]}>
+              {sos.healthcareRoute.warnings?.[0]}
+            </Text>
+          )}
+
+          <View style={{ marginTop: 8 }}>
+            <Button
+              label="Get Directions"
+              variant="secondary"
+              onPress={() =>
+                void Linking.openURL(
+                  `geo:${sos.nearestFacility?.location.lat},${sos.nearestFacility?.location.lon}?q=${sos.nearestFacility?.location.lat},${sos.nearestFacility?.location.lon}(${encodeURIComponent(sos.nearestFacility?.name || 'Healthcare')})`,
+                )
+              }
+            />
+          </View>
+        </Card>
+      )}
+
+      {offline && !sos.nearestFacility && (
+        <Card>
+          <Text style={[type.subtitle, { color: c.onSurface }]}>Nearest Safe Facility</Text>
+          <Text style={[type.caption, { color: c.warning, marginTop: 4, fontWeight: 'bold' }]}>
+            Current healthcare facilities could not be verified because the device is offline.
+          </Text>
+        </Card>
+      )}
+
       <View style={{ flexDirection: 'row', gap: space.sm }}>
         <View style={{ flex: 1 }}>
           <Button

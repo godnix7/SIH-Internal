@@ -3,7 +3,13 @@ import * as Location from 'expo-location';
 import { create } from 'zustand';
 import { storage } from '@/src/lib/storage';
 
-import i18n, { LANGUAGE_KEY, savedLanguage, type Language } from '@/src/i18n';
+import i18n, {
+  LANGUAGE_KEY,
+  CONVERSATION_LANGUAGE_KEY,
+  savedLanguage,
+  savedConversationLanguage,
+  type Language,
+} from '@/src/i18n';
 import { remoteConfig } from '@/src/lib/constants';
 import { tierLabel } from '@/src/lib/formatters';
 import { hashEvent } from '@/src/lib/hashChain';
@@ -22,6 +28,8 @@ import { flushOutbox, tripApi, zoneApi, sosApi } from '@/src/services/api';
 import { locationEngine } from '@/src/services/locationEngine';
 import { preferences } from '@/src/services/preferences';
 import * as Crypto from 'expo-crypto';
+import { HealthcareCache } from '@/src/services/healthcare/HealthcareCache';
+import { HealthcareRouter } from '@/src/services/healthcare/HealthcareRouter';
 
 const SOS_KEY = 'yatri-shield.active-sos.v1';
 // The event chain can exceed SecureStore's value limit, so it lives in MMKV beside the record.
@@ -38,6 +46,7 @@ type Profile = {
   homeCity: string;
   idRef: string;
   language: Language;
+  conversationLanguage: Language;
   phone?: string;
   role?: string;
 };
@@ -46,6 +55,7 @@ type AppStore = {
   hasCompletedOnboarding: boolean;
   online: boolean;
   language: Language;
+  conversationLanguage: Language;
   profile?: Profile;
   trips: Trip[];
   alerts: AlertItem[];
@@ -67,8 +77,9 @@ type AppStore = {
   logout: () => Promise<void>;
   completeOnboarding: () => void;
   setOnline: (online: boolean) => void;
-  saveProfile: (profile: Omit<Profile, 'idRef' | 'language'>) => void;
+  saveProfile: (profile: Omit<Profile, 'idRef' | 'language' | 'conversationLanguage'>) => void;
   setLanguage: (language: Language) => void;
+  setConversationLanguage: (language: Language) => void;
   setTheme: (theme: AppStore['theme']) => void;
   createTrip: (
     values: Pick<Trip, 'destination' | 'startDate' | 'endDate' | 'tier'> &
@@ -85,6 +96,7 @@ type AppStore = {
   sendSos: () => Promise<void>;
   setSosStatus: (status: SOSStatus, otp?: string) => Promise<void>;
   cancelSos: (pin: string) => Promise<boolean>;
+  clearSos: () => Promise<void>;
   resolveSos: () => Promise<void>;
   restoreSos: () => Promise<void>;
   restoreTrips: () => Promise<void>;
@@ -171,6 +183,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
         ...profile,
         idRef: `YS-2026-${Math.floor(1000 + Math.random() * 9000)}`,
         language: savedLanguage(),
+        conversationLanguage: savedConversationLanguage(),
       },
     }),
   language: savedLanguage(),
@@ -180,6 +193,14 @@ export const useAppStore = create<AppStore>((set, get) => ({
     set((state) => ({
       language,
       profile: state.profile ? { ...state.profile, language } : state.profile,
+    }));
+  },
+  conversationLanguage: savedConversationLanguage(),
+  setConversationLanguage: (language) => {
+    preferences.set(CONVERSATION_LANGUAGE_KEY, language);
+    set((state) => ({
+      conversationLanguage: language,
+      profile: state.profile ? { ...state.profile, conversationLanguage: language } : state.profile,
     }));
   },
   setTheme: (theme) => {
@@ -355,29 +376,67 @@ export const useAppStore = create<AppStore>((set, get) => ({
   sendSos: async () => {
     const sos = get().sos;
     if (!sos || sos.status !== 'COUNTDOWN') return;
-    await get().setSosStatus(get().online ? 'SENDING' : 'OFFLINE_QUEUED');
-    await outboxQueue.enqueue(
-      'sos.triggered',
-      {
-        clientSosId: sos.id,
-        tripId: activeTrip(get().trips)?.id || undefined,
-        incidentId: sos.incidentId,
-        type: sos.type,
-        silent: sos.silent,
-        location: sos.location
-          ? {
-              lat: sos.location.latitude,
-              lon: sos.location.longitude,
-              accM: sos.location.accuracy,
-              ts: new Date(sos.location.timestamp).toISOString(),
+
+    const online = get().online;
+
+    // 1. Immediately update SOS state and execute protocol
+    await get().setSosStatus(online ? 'SENDING' : 'OFFLINE_QUEUED');
+
+    // Fire and forget the outbox queue
+    outboxQueue
+      .enqueue(
+        'sos.triggered',
+        {
+          clientSosId: sos.id,
+          tripId: activeTrip(get().trips)?.id || undefined,
+          incidentId: sos.incidentId,
+          type: sos.type,
+          silent: sos.silent,
+          location: sos.location
+            ? {
+                lat: sos.location.latitude,
+                lon: sos.location.longitude,
+                accM: sos.location.accuracy,
+                ts: new Date(sos.location.timestamp).toISOString(),
+              }
+            : undefined,
+        },
+        'SOS',
+      )
+      .catch((e) => console.error('SOS Queue Error:', e));
+
+    if (online) {
+      flushOutbox().catch((e) => console.error('SOS Flush Error:', e));
+    }
+
+    // 2. Queue healthcare enrichment as non-critical background work
+    if (sos.location) {
+      setTimeout(async () => {
+        try {
+          const facilities = HealthcareCache.getNearestOffline(
+            sos.location!.latitude,
+            sos.location!.longitude,
+          );
+          if (facilities.length > 0) {
+            const nearestFacility = facilities[0];
+            const route = await HealthcareRouter.getRoute(
+              sos.location!.latitude,
+              sos.location!.longitude,
+              nearestFacility,
+              online,
+            );
+
+            // Only update if SOS is still active
+            const currentSos = get().sos;
+            if (currentSos && currentSos.id === sos.id) {
+              set({ sos: { ...currentSos, nearestFacility, healthcareRoute: route || undefined } });
             }
-          : undefined,
-      },
-      'SOS',
-    );
-    if (get().online) {
-      void flushOutbox();
-      await get().setSosStatus('SENT');
+          }
+        } catch (e) {
+          console.error('[Healthcare Enrichment] Failed:', e);
+          // SOS remains active regardless
+        }
+      }, 0);
     }
   },
   setSosStatus: async (status, otp) => {
@@ -445,11 +504,14 @@ export const useAppStore = create<AppStore>((set, get) => ({
     set({ sos: undefined, incidentEvents: [] });
     return true;
   },
-  resolveSos: async () => {
-    await get().setSosStatus('RESOLVED');
+  clearSos: async () => {
     await clearPersistedSos();
     await locationEngine.setEmergency(false);
     set({ sos: undefined, incidentEvents: [] });
+  },
+  resolveSos: async () => {
+    await get().setSosStatus('RESOLVED');
+    await get().clearSos();
   },
   restoreSos: async () => {
     const saved = await SecureStore.getItemAsync(SOS_KEY);
@@ -504,7 +566,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
             tier: bt.consent_tier,
             status: bt.status,
             partySize: bt.party_size,
-            nextCheckInAt: existing?.nextCheckInAt ?? (Date.now() + 4 * 60 * 60_000),
+            nextCheckInAt: existing?.nextCheckInAt ?? Date.now() + 4 * 60 * 60_000,
             zones: existing?.zones ?? get().zones,
           };
         });

@@ -61,7 +61,7 @@ export default function HomeScreen() {
     const zoneInterval = setInterval(() => {
       void fetchZones();
     }, 30000);
-    
+
     async function loadFacilities() {
       try {
         setLoadingFacilities(true);
@@ -85,7 +85,7 @@ export default function HomeScreen() {
       }
     }
     loadFacilities();
-    
+
     return () => clearInterval(zoneInterval);
   }, []);
 
@@ -118,10 +118,18 @@ export default function HomeScreen() {
       {trip?.status === 'active' && zones && zones.length > 0 && (
         <Card>
           {trip?.status === 'active' && engineState.mode === 'HIGH_RISK' && (
-            <Card style={{ backgroundColor: c.errorContainer, borderColor: c.critical, borderWidth: 1, marginBottom: 12 }}>
+            <Card
+              style={{
+                backgroundColor: c.errorContainer,
+                borderColor: c.critical,
+                borderWidth: 1,
+                marginBottom: 12,
+              }}
+            >
               <Text style={[type.subtitle, { color: c.critical }]}>⚠️ DANGER ZONE</Text>
               <Text style={[type.body, { color: c.onSurface, marginTop: 4 }]}>
-                You have entered a high-risk geofence. Please proceed with extreme caution or evacuate.
+                You have entered a high-risk geofence. Please proceed with extreme caution or
+                evacuate.
               </Text>
             </Card>
           )}

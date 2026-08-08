@@ -35,6 +35,8 @@ export type Zone = {
   message: string;
   schedule?: { startHour: number; endHour: number };
   polygon: [number, number][][];
+  geometrySource?: 'official' | 'derived_approximation';
+  expiresAt?: string | null;
   safetyScore?: number;
   safety_score?: number;
   riskFactors?: string[];
@@ -83,4 +85,6 @@ export type SOSRecord = {
   location?: Coordinates;
   silent: boolean;
   incidentId: string;
+  nearestFacility?: any; // Avoiding deep type import cycles for now
+  healthcareRoute?: any;
 };

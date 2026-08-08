@@ -1,3 +1,5 @@
+import * as Crypto from 'expo-crypto';
+import { useAppStore } from '@/src/stores/useAppStore';
 import { remoteConfig } from '@/src/lib/constants';
 import { evaluateZoneCandidate } from '@/src/lib/geo';
 import type { ConsentTier, Coordinates, ModeAccuracy, MonitoringMode, Zone } from '@/src/lib/types';
@@ -160,6 +162,22 @@ export class LocationEngine {
     const evaluations = zones.map((zone) => this.evaluate(zone, fix));
     for (const evaluation of evaluations) {
       if (!evaluation.confirmed || evaluation.state !== 'inside') continue;
+
+      if (evaluation.zone.class === 'disaster') {
+        const areaType =
+          evaluation.zone.geometrySource === 'derived_approximation'
+            ? 'an approximate'
+            : 'an official';
+        useAppStore.getState().addAlert({
+          kind: 'zone',
+          severity: 'critical',
+          title: `Disaster Alert: ${evaluation.zone.name}`,
+          body:
+            evaluation.zone.message ||
+            `You have entered ${areaType} disaster risk area. Please stay safe and follow local guidance.`,
+        });
+      }
+
       if (
         isCritical(evaluation.zone) &&
         remoteConfig.tiers[this.state.tier].restrictedEventsUploaded

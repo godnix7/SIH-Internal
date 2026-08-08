@@ -301,9 +301,16 @@ export default function ResponderDashboard() {
   };
 
   const handleResolve = async (id: string) => {
-    // State-machine guard: can only resolve acknowledged/assigned/escalated incidents
     const incident = incidents.find((i) => i.id === id);
-    if (incident && incident.status === 'created') {
+    if (!incident) return;
+
+    if (incident.status === 'resolve_pending') {
+      setConfirmResolveId(id);
+      setResolveOtp('');
+      return;
+    }
+
+    if (incident.status === 'created') {
       showToast('Cannot resolve an incident that has not been acknowledged yet.', 'error');
       return;
     }
@@ -313,12 +320,26 @@ export default function ResponderDashboard() {
       showToast('Safety verification initiated. Ask the tourist for their 6-digit code.');
       setConfirmResolveId(id);
       setResolveOtp('');
+      await fetchIncidents();
     } catch (error: any) {
       if (!error.response) {
         showToast('Network error. Please try again.', 'error');
       } else {
         showToast(error.response?.data?.detail || 'Failed to request resolution.', 'error');
       }
+    } finally {
+      setProcessingActionId(null);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (!confirmResolveId) return;
+    setProcessingActionId(confirmResolveId);
+    try {
+      await requestResolve(confirmResolveId);
+      showToast('OTP resent to tourist.');
+    } catch (error: any) {
+      showToast('Failed to resend OTP.', 'error');
     } finally {
       setProcessingActionId(null);
     }
@@ -816,12 +837,12 @@ export default function ResponderDashboard() {
                   <button
                     className="btn btn-secondary"
                     disabled={
-                      ['created', 'resolve_pending'].includes(selectedIncident.status) ||
+                      ['created', 'resolved'].includes(selectedIncident.status) ||
                       processingActionId === selectedIncident.id
                     }
                     onClick={() => handleResolve(selectedIncident.id)}
                   >
-                    Resolve Case
+                    {selectedIncident.status === 'resolve_pending' ? 'Verify OTP' : 'Resolve Case'}
                   </button>
                   <button
                     className="btn btn-secondary"
@@ -1085,6 +1106,14 @@ export default function ResponderDashboard() {
               onClick={() => setConfirmResolveId(null)}
             >
               Cancel
+            </button>
+            <button
+              className="btn btn-secondary"
+              style={{ flex: 1, padding: '12px' }}
+              onClick={handleResendOtp}
+              disabled={processingActionId === confirmResolveId}
+            >
+              Resend OTP
             </button>
             <button
               className="btn btn-primary"

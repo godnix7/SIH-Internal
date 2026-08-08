@@ -19,6 +19,10 @@ class ZoneResponse(BaseModel):
     crime_data: Optional[List[Dict[str, Any]]] = None
     risk_factors: Optional[List[str]] = None
     total_incidents: int = 0
+    expires_at: Optional[datetime] = None
+    geometry_source: Optional[str] = "official"
+    confidence: Optional[float] = 1.0
+    sources: Optional[List[str]] = None
 
 class ZoneCreateRequest(BaseModel):
     name: str
