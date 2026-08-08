@@ -730,7 +730,11 @@ export default function EmergencyAIScreen() {
                 paddingVertical: Platform.OS === 'ios' ? 12 : 4,
               }}
             >
-              <TouchableOpacity onPress={handleMicPress} style={{ marginRight: 8 }}>
+              <TouchableOpacity
+                onPressIn={handleMicPress}
+                onPressOut={handleMicPress}
+                style={{ marginRight: 8 }}
+              >
                 {isListening ? (
                   <ActivityIndicator size="small" color={c.critical} />
                 ) : (

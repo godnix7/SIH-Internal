@@ -143,6 +143,42 @@ export default function OfflineMapsScreen() {
             </View>
           )}
         </View>
+
+        <View
+          style={{
+            backgroundColor: c.surface,
+            padding: space.md,
+            borderRadius: 12,
+            gap: space.sm,
+            marginTop: space.md,
+          }}
+        >
+          <View
+            style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              alignItems: 'flex-start',
+            }}
+          >
+            <View style={{ flex: 1 }}>
+              <Text style={[type.subtitle, { color: c.onSurface }]}>Bangalore Region (Urban)</Text>
+              <Text style={[type.caption, { color: c.onSurfaceVariant }]}>
+                Terrain, Streets, Emergency POIs
+              </Text>
+            </View>
+          </View>
+
+          <View style={{ marginTop: space.sm }}>
+            <Button
+              label="Download Region (~45 MB)"
+              onPress={() =>
+                Alert.alert('Coming Soon', 'This map pack will be available in the next release.')
+              }
+              icon={<DownloadCloud size={18} color="#fff" />}
+              variant="outline"
+            />
+          </View>
+        </View>
       </ScrollView>
     </Screen>
   );
