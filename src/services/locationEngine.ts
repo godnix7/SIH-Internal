@@ -206,3 +206,13 @@ export class LocationEngine {
 }
 
 export const locationEngine = new LocationEngine();
+
+import { useState, useEffect } from 'react';
+
+export function useLocationEngine() {
+  const [engineState, setEngineState] = useState(locationEngine.getState());
+  useEffect(() => {
+    return locationEngine.subscribe(setEngineState);
+  }, []);
+  return engineState;
+}

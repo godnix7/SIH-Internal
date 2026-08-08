@@ -17,6 +17,7 @@ import { useAppStore } from '@/src/stores/useAppStore';
 import { api } from '@/src/services/api';
 import { stopMonitoring } from '@/src/services/monitoring';
 import { space, type } from '@/src/theme/tokens';
+import { useLocationEngine } from '@/src/services/locationEngine';
 
 export default function TripDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -33,6 +34,7 @@ export default function TripDetail() {
   const [pausing, setPausing] = useState(false);
   const [resuming, setResuming] = useState(false);
   const [changingTier, setChangingTier] = useState(false);
+  const engineState = useLocationEngine();
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -171,6 +173,16 @@ export default function TripDetail() {
       <MonitoringStatusPill
         state={trip.status === 'paused' ? 'paused' : trip.monitoringLimited ? 'limited' : 'live'}
       />
+      
+      {engineState.mode === 'HIGH_RISK' && (
+        <Card style={{ backgroundColor: c.errorContainer, borderColor: c.error, borderWidth: 1 }}>
+          <Text style={[type.subtitle, { color: c.critical }]}>⚠️ DANGER ZONE</Text>
+          <Text style={[type.body, { color: c.onSurface, marginTop: 4 }]}>
+            You have entered a high-risk geofence. Police have been notified of your location. Please proceed with extreme caution or evacuate.
+          </Text>
+        </Card>
+      )}
+
       <MapZoneLayer zones={trip.zones} showTrail />
 
       {riskData && riskData.events.length > 0 && (

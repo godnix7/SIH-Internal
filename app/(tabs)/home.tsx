@@ -16,6 +16,7 @@ import {
   useAppColors,
 } from '@/src/components/ui';
 import { activeTrip, isSosActive, useAppStore } from '@/src/stores/useAppStore';
+import { useLocationEngine } from '@/src/services/locationEngine';
 import { space, type } from '@/src/theme/tokens';
 import { api } from '@/src/services/api';
 
@@ -31,6 +32,7 @@ export default function HomeScreen() {
   const c = useAppColors();
   const { t } = useTranslation();
   const { profile, trips, online, sos, addAlert, zones, fetchZones } = useAppStore();
+  const engineState = useLocationEngine();
   const trip = activeTrip(trips);
   const [facilities, setFacilities] = useState<Facility[]>([]);
   const [loadingFacilities, setLoadingFacilities] = useState(true);
@@ -109,6 +111,14 @@ export default function HomeScreen() {
       {!online && <OfflineBar />}
       {zones && zones.length > 0 && (
         <Card>
+          {engineState.mode === 'HIGH_RISK' && (
+            <Card style={{ backgroundColor: c.errorContainer, borderColor: c.critical, borderWidth: 1, marginBottom: 12 }}>
+              <Text style={[type.subtitle, { color: c.critical }]}>⚠️ DANGER ZONE</Text>
+              <Text style={[type.body, { color: c.onSurface, marginTop: 4 }]}>
+                You have entered a high-risk geofence. Please proceed with extreme caution or evacuate.
+              </Text>
+            </Card>
+          )}
           <View
             style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
           >
