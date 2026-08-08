@@ -115,7 +115,7 @@ export default function HomeScreen() {
         />
       </View>
       {!online && <OfflineBar />}
-      {zones && zones.length > 0 && (
+      {trip?.status === 'active' && zones && zones.length > 0 && (
         <Card>
           {trip?.status === 'active' && engineState.mode === 'HIGH_RISK' && (
             <Card style={{ backgroundColor: c.errorContainer, borderColor: c.critical, borderWidth: 1, marginBottom: 12 }}>
