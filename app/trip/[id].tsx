@@ -174,7 +174,7 @@ export default function TripDetail() {
         state={trip.status === 'paused' ? 'paused' : trip.monitoringLimited ? 'limited' : 'live'}
       />
       
-      {engineState.mode === 'HIGH_RISK' && (
+      {trip.status === 'active' && engineState.mode === 'HIGH_RISK' && (
         <Card style={{ backgroundColor: c.errorContainer, borderColor: c.error, borderWidth: 1 }}>
           <Text style={[type.subtitle, { color: c.critical }]}>⚠️ DANGER ZONE</Text>
           <Text style={[type.body, { color: c.onSurface, marginTop: 4 }]}>

@@ -117,7 +117,7 @@ export default function HomeScreen() {
       {!online && <OfflineBar />}
       {zones && zones.length > 0 && (
         <Card>
-          {engineState.mode === 'HIGH_RISK' && (
+          {trip?.status === 'active' && engineState.mode === 'HIGH_RISK' && (
             <Card style={{ backgroundColor: c.errorContainer, borderColor: c.critical, borderWidth: 1, marginBottom: 12 }}>
               <Text style={[type.subtitle, { color: c.critical }]}>⚠️ DANGER ZONE</Text>
               <Text style={[type.body, { color: c.onSurface, marginTop: 4 }]}>
