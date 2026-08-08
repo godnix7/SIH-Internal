@@ -70,9 +70,15 @@ class VoiceOrchestratorService {
       };
       const languageName = languageMap[lang] || 'English';
 
+      // Pass current location to LLM so it can use the hospital tool
+      const currentLoc = useAppStore.getState().currentLocation;
+      const latString = currentLoc ? currentLoc.coords.latitude.toFixed(6) : '0.0';
+      const lonString = currentLoc ? currentLoc.coords.longitude.toFixed(6) : '0.0';
+
       const systemPrompt = `You are Yatri AI, an expert emergency voice assistant.
 You must output a JSON tool request if you need action or external data.
 Allowed tools: "findNearbyHospital", "triggerSOS".
+Your current location is lat: ${latString}, lon: ${lonString}.
 Output ONLY JSON in this format:
 {"tool": "toolName", "arguments": {"key": "value"}}
 
