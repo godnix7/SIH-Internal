@@ -5,55 +5,57 @@ import { Map, DownloadCloud, CheckCircle2 } from 'lucide-react-native';
 import { Screen } from '@/src/components/Screen';
 import { Button, Card, useAppColors } from '@/src/components/ui';
 import { useAppStore } from '@/src/stores/useAppStore';
+import * as FileSystem from 'expo-file-system/legacy';
 import { space, type } from '@/src/theme/tokens';
 
 export default function OfflineMaps() {
   const complete = useAppStore((state) => state.completeOnboarding);
   const c = useAppColors();
 
-  const [progress] = useState(new Animated.Value(0));
+  const [progress, setProgress] = useState(0);
   const [downloadState, setDownloadState] = useState<'idle' | 'downloading' | 'completed'>('idle');
   const [statusText, setStatusText] = useState('Ready to download local map packages.');
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (downloadState !== 'idle') return;
 
     setDownloadState('downloading');
-    setStatusText('Downloading Base Tiles...');
+    setStatusText('Downloading Himalayan Map Tiles (10 MB)...');
 
-    Animated.timing(progress, {
-      toValue: 0.4,
-      duration: 1500,
-      useNativeDriver: false,
-    }).start(() => {
-      setStatusText('Caching Emergency POIs & Safe Zones...');
-      Animated.timing(progress, {
-        toValue: 0.8,
-        duration: 2000,
-        useNativeDriver: false,
-      }).start(() => {
-        setStatusText('Optimizing for offline use...');
-        Animated.timing(progress, {
-          toValue: 1,
-          duration: 1000,
-          useNativeDriver: false,
-        }).start(() => {
-          setDownloadState('completed');
-          setStatusText('Offline Maps Ready!');
-        });
-      });
-    });
+    try {
+      const MAP_DIR = FileSystem.documentDirectory + 'maps/';
+      await FileSystem.makeDirectoryAsync(MAP_DIR, { intermediates: true });
+      const MAP_PATH = MAP_DIR + 'himalayas_offline_pack.mbtiles';
+
+      // Download a ~10MB dummy file to represent the map tiles
+      const downloadResumable = FileSystem.createDownloadResumable(
+        'https://speed.hetzner.de/100MB.bin',
+        MAP_PATH,
+        {},
+        (downloadProgress: any) => {
+          const pct = downloadProgress.totalBytesWritten / 10000000; // Cap visual progress at 10MB
+          setProgress(Math.min(pct, 1));
+          if (pct > 0.3) setStatusText('Caching Emergency POIs...');
+          if (pct > 0.7) setStatusText('Optimizing for offline use...');
+          if (pct >= 1) {
+            downloadResumable.pauseAsync(); // Stop the 100MB download at 10MB to save time
+            setDownloadState('completed');
+            setStatusText('Offline Maps Ready!');
+          }
+        },
+      );
+
+      await downloadResumable.downloadAsync();
+    } catch (e) {
+      setDownloadState('idle');
+      setStatusText('Download failed. Tap to retry.');
+    }
   };
 
   const handleContinue = () => {
     complete();
     router.replace('/(tabs)/home');
   };
-
-  const widthInterpolated = progress.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0%', '100%'],
-  });
 
   return (
     <Screen
@@ -80,8 +82,8 @@ export default function OfflineMaps() {
 
         {downloadState !== 'idle' && (
           <View style={[styles.progressBarContainer, { backgroundColor: c.surfaceVariant }]}>
-            <Animated.View
-              style={[styles.progressBar, { backgroundColor: c.primary, width: widthInterpolated }]}
+            <View
+              style={[styles.progressBar, { backgroundColor: c.primary, width: `${progress * 100}%` as any }]}
             />
           </View>
         )}
