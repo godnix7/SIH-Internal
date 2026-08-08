@@ -88,6 +88,7 @@ type AppStore = {
   resolveSos: () => Promise<void>;
   restoreSos: () => Promise<void>;
   restoreTrips: () => Promise<void>;
+  updateSosIds: (sosId: string, incidentId: string) => Promise<void>;
 };
 
 function uniqueId(prefix: string): string {
@@ -464,6 +465,13 @@ export const useAppStore = create<AppStore>((set, get) => ({
     const savedEvents = preferences.getString(SOS_EVENTS_KEY);
     const incidentEvents = savedEvents ? (JSON.parse(savedEvents) as IncidentEvent[]) : [];
     set({ sos, incidentEvents });
+  },
+  updateSosIds: async (sosId: string, incidentId: string) => {
+    const { sos, incidentEvents } = get();
+    if (!sos) return;
+    const nextSos = { ...sos, id: sosId, incidentId };
+    set({ sos: nextSos });
+    await persistSos(nextSos, incidentEvents);
   },
   restoreTrips: async () => {
     // 1. Load from MMKV immediately for fast UI

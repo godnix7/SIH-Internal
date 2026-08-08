@@ -331,9 +331,7 @@ export async function flushOutbox(): Promise<FlushResult> {
             state.sos &&
             (state.sos.id === item.id || state.sos.id === (item.payload as any).clientSosId)
           ) {
-            useAppStore.setState({
-              sos: { ...state.sos, id: res.sosId, incidentId: res.incidentId },
-            });
+            await state.updateSosIds(res.sosId, res.incidentId);
           }
         } else if (item.type === 'media.upload' || item.type === 'media') {
           await api.post(
