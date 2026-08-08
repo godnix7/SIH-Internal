@@ -59,13 +59,25 @@ class VoiceOrchestratorService {
       // 2. Load LLM and Unload STT (saving memory)
       await OfflineModelManager.loadLLM();
 
+      // Determine the conversational language from the global state
+      const lang = useAppStore.getState().conversationLanguage || 'en';
+      const languageMap: Record<string, string> = {
+        en: 'English',
+        hi: 'Hindi',
+        bn: 'Bengali',
+        ta: 'Tamil',
+        te: 'Telugu',
+      };
+      const languageName = languageMap[lang] || 'English';
+
       const systemPrompt = `You are Yatri AI, an expert emergency voice assistant.
 You must output a JSON tool request if you need action or external data.
 Allowed tools: "findNearbyHospital", "triggerSOS".
 Output ONLY JSON in this format:
 {"tool": "toolName", "arguments": {"key": "value"}}
 
-If you don't need a tool, just answer concisely under 50 words.`;
+If you don't need a tool, just answer concisely under 50 words.
+CRITICAL: You MUST reply in the ${languageName} language.`;
 
       let rawLlmResponse = await llamaEngine.generate(systemPrompt, sttResult.text, (partial) => {
         if (onPartialAssistantText) onPartialAssistantText(partial);
@@ -115,7 +127,6 @@ If you don't need a tool, just answer concisely under 50 words.`;
       cleanText = HallucinationPreventionService.sanitizeResponse(cleanText);
 
       this.updateState('speaking');
-      const lang = useAppStore.getState().conversationLanguage || 'en';
       await OfflineModelManager.loadTTS(lang);
       const tts = OfflineModelManager.getTTSProvider();
 
