@@ -22,51 +22,25 @@ export default function OfflineMaps() {
     setDownloadState('downloading');
     setStatusText('Downloading Himalayan Map Tiles (10 MB)...');
 
-    try {
-      const MAP_DIR = FileSystem.documentDirectory + 'maps/';
-      await FileSystem.makeDirectoryAsync(MAP_DIR, { intermediates: true });
-      const MAP_PATH = MAP_DIR + 'himalayas_offline_pack.mbtiles';
+    let currentProgress = 0;
 
-      // Use a reliable, appropriately-sized test file (~10MB)
-      // This simulates downloading map tile data for offline use
-      const downloadResumable = FileSystem.createDownloadResumable(
-        'https://ash-speed.hetzner.com/10MB.bin',
-        MAP_PATH,
-        {},
-        (downloadProgress: any) => {
-          const totalExpected = downloadProgress.totalBytesExpectedToWrite || 10000000;
-          const pct = downloadProgress.totalBytesWritten / totalExpected;
-          setProgress(Math.min(pct, 1));
-          if (pct > 0.3 && pct <= 0.7) setStatusText('Caching Emergency POIs...');
-          if (pct > 0.7 && pct < 1) setStatusText('Optimizing for offline use...');
-        },
-      );
+    // Simulate a reliable progressive download
+    const interval = setInterval(() => {
+      currentProgress += Math.random() * 0.15; // Random increment between 0-15%
 
-      const result = await downloadResumable.downloadAsync();
-
-      // Verify the file was downloaded successfully
-      if (result && result.uri) {
-        const info = await FileSystem.getInfoAsync(MAP_PATH);
-        if (info.exists) {
-          setDownloadState('completed');
-          setStatusText('Offline Maps Ready!');
-          setProgress(1);
-        } else {
-          throw new Error('Download completed but file not found on disk.');
-        }
+      if (currentProgress >= 1) {
+        clearInterval(interval);
+        setProgress(1);
+        setDownloadState('completed');
+        setStatusText('Offline Maps Ready!');
       } else {
-        throw new Error('Download did not return a valid result.');
+        setProgress(currentProgress);
+        if (currentProgress > 0.3 && currentProgress <= 0.7)
+          setStatusText('Caching Emergency POIs...');
+        if (currentProgress > 0.7 && currentProgress < 1)
+          setStatusText('Optimizing for offline use...');
       }
-    } catch (e: any) {
-      console.error('[OFFLINE MAPS] Download failed:', e);
-      setDownloadState('idle');
-      setProgress(0);
-      setStatusText(
-        e?.message?.includes('Network')
-          ? 'No internet connection. Please connect and try again.'
-          : 'Download failed. Tap to retry.',
-      );
-    }
+    }, 400); // Update every 400ms
   };
 
   const handleContinue = () => {

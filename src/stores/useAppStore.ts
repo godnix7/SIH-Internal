@@ -190,7 +190,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
         set({ zones: freshZones });
       }
     } catch (e) {
-      console.warn('Failed to fetch zones, using defaults', e);
+      // Log instead of warn to prevent yellow boxes in Expo when backend is down
+      console.log('Failed to fetch zones, using defaults:', (e as any).message);
     }
   },
   createTrip: async (values) => {
