@@ -58,6 +58,10 @@ export default function HomeScreen() {
 
   useEffect(() => {
     void fetchZones();
+    const zoneInterval = setInterval(() => {
+      void fetchZones();
+    }, 30000);
+    
     async function loadFacilities() {
       try {
         setLoadingFacilities(true);
@@ -81,6 +85,8 @@ export default function HomeScreen() {
       }
     }
     loadFacilities();
+    
+    return () => clearInterval(zoneInterval);
   }, []);
 
   const state = isSosActive(sos)

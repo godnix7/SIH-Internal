@@ -29,9 +29,10 @@ def run_db_migrations():
     try:
         import subprocess
         import os
+        import sys
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         logger.info("Running database migrations via subprocess...")
-        result = subprocess.run(["alembic", "upgrade", "head"], cwd=base_dir, capture_output=True, text=True)
+        result = subprocess.run([sys.executable, "-m", "alembic", "upgrade", "head"], cwd=base_dir, capture_output=True, text=True)
         if result.returncode == 0:
             logger.info("Database migrations applied successfully on startup!")
         else:

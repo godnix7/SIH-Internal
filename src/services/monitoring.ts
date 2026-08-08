@@ -10,11 +10,17 @@ import { locationEngine, isCritical, type SamplingPlan } from './locationEngine'
 
 const TASK_NAME = 'yatri-shield-location-task';
 
+import { useAppStore } from '@/src/stores/useAppStore';
+
 TaskManager.defineTask(TASK_NAME, async ({ data, error }) => {
   if (error || !data) return;
   const locations = (data as { locations?: Location.LocationObject[] }).locations ?? [];
   const trip = activeMonitoringTrip;
   if (!trip) return;
+  
+  // Use live zones from the store so that if a zone is deleted in the dashboard, the alert stops.
+  const liveZones = useAppStore.getState().zones;
+  
   for (const location of locations) {
     const evaluations = await locationEngine.ingestFix(
       {
@@ -23,7 +29,7 @@ TaskManager.defineTask(TASK_NAME, async ({ data, error }) => {
         accuracy: location.coords.accuracy ?? 999,
         timestamp: location.timestamp,
       },
-      trip.zones,
+      liveZones.length > 0 ? liveZones : trip.zones,
     );
     for (const evalResult of evaluations) {
       if (evalResult.confirmed && evalResult.state === 'inside' && isCritical(evalResult.zone)) {
